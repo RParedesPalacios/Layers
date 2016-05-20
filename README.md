@@ -1,4 +1,4 @@
-# Layers
+![](./figs/layers.jpg)
 
 * A Neural Network toolkit
 
