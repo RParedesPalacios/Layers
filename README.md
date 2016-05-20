@@ -1,6 +1,6 @@
 ![](./figs/layers.jpg)
 
-* A Neural Network toolkit
+* A Neural Network toolkit.
 
 * Flexible but low scale toolkit (not GPU) for academic purposes.
 
