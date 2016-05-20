@@ -329,7 +329,7 @@ network N1 {
 * layers generates a _dot_ file with the name of each network
 * Use " dot -T pdf N1.dot > N1.pdf" to generate a PDF with the network:
 
-![](./figs/MNIST_MLP.pdf)
+![](./figs/MNIST_MLP.jpg)
 
 * but yes, more complicated networks can be defined
 
@@ -378,7 +378,7 @@ network N1 {
 }
 ~~~
 
-![](./figs/MNIST_MLP2.pdf)
+![](./figs/MNIST_MLP2.jpg)
 
 #### Example 3 - Convolutional CIFAR
 
@@ -420,7 +420,7 @@ network N1 {
 }
 ~~~
 
-![](./figs/CIFAR_CNN.pdf)
+![](./figs/CIFAR_CNN.jpg)
 
 #### Example 4 - CAT layers 
 ~~~c
@@ -474,7 +474,7 @@ network N1 {
 ~~~
 
 
-![](./figs/CAT.pdf)
+![](./figs/CAT.jpg)
 
 
 
