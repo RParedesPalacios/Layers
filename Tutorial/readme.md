@@ -477,14 +477,14 @@ network N1 {
 ![](./figs/CAT.jpg)
 
 
-## SCRIPTS
+## Scripts
 
 * Script is a block of actions. There are two different types of actions:
 	* functions
 	* parameters modifications
 
 
-## SCRIPTS Functions
+## Scripts Functions
 
 * There are several functions that can be applied to the defined objects:
 
@@ -513,7 +513,7 @@ script {
 }
 ~~~
 
-## SCRIPTS Parameters
+## Scripts Parameters
 
 * There are several parameters that can be modified:
 
@@ -747,7 +747,6 @@ script {
 TODO
 
 ### Training several networks
-
 
 TODO
 
