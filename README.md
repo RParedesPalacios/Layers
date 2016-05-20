@@ -14,7 +14,7 @@
 	
 ## Authors
 
-* Layers is written in C++ by [**Roberto Paredes**](http://users.dsic.upv.es/~rparedes/)
+* Layers is written by [**Roberto Paredes**](http://users.dsic.upv.es/~rparedes/)
 * Layers provides a prototype and script language in order to ease the networks definition and experimentation. This parser is written by [**Jose Miguel Benedí**](http://users.dsic.upv.es/~jbenedi/)
 
 
