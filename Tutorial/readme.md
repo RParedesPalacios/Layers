@@ -740,13 +740,13 @@ script {
 
 ~~~
 
-# ADVANCED ISSUES
+## ADVANCED ISSUES
 
-## Networks sharing layers
+### Networks sharing layers
 
 TODO
 
-## Training several networks
+### Training several networks
 
 
 TODO
