@@ -1,7 +1,16 @@
 ![](./figs/layers.jpg)
 
+
+
 * A Neural Network toolkit.
 
-* Flexible but low scale toolkit (not GPU) for academic purposes.
+* Layers is written in C++. 
+* Layers uses Eigen, OpenMP and ad-hoc multi-threading
 
-* The toolkit is written in C++. It uses Eigen an threads to optimize.
+* Some features:
+	* Flexible
+	* Easy to use
+	* Optimized for CPU (not GPU)
+	* Mainly for academic use 
+	
+
