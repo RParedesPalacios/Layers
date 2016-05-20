@@ -477,8 +477,280 @@ network N1 {
 ![](./figs/CAT.jpg)
 
 
+## SCRIPTS
 
-to be continued...
+* Script is a block of actions. There are two different types of actions:
+	* functions
+	* parameters modifications
+
+
+## SCRIPTS Functions
+
+* There are several functions that can be applied to the defined objects:
+
+	* For Data:
+		* Zscore(): To normalize Data	
+		* yuv(): to convert RGB Maps to YUV maps
+	* For Networks:
+		* train(epochs): to train networks
+
+
+> More functions will be soon implemented
+
+
+	
+
+~~~c
+script {
+
+  D1.yuv()
+  D2.yuv()
+  
+  D1.zscore()
+  D2.zscore(D1) //normalize D2 with D1 statistics
+
+  N1.train(100)
+}
+~~~
+
+## SCRIPTS Parameters
+
+* There are several parameters that can be modified:
+
+	* mu: learning rate
+	* mmu: momentum rate
+	* l2: l2 regularization (weight decay)
+	* l1: l1 regularization		
+	* maxn: maxnorm regularization
+	* noiser: noise ratio after activation function
+	* noisesd: standard deviation of noise ($N(0.0,\sigma)$)
+	* drop: dropout (0<drop<1)
+	* bn: batch normalization ({0,1})
+	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU)
+	* flip: to flip input images ({1,0})
+	* shift: to shift randomly input images 
+	
+* Parameters can be modified for one particular layer:
+
+~~~c
+script{
+...
+N1.c2.drop=0.5
+N1.in.flip=1
+N1.in.shift=2
+...
+}
+~~~
+
+* Or, parameters can be modified for all the layers of the same network:
+
+~~~c
+script{
+...
+N1.mu=0.001
+N1.l2=0.0005
+// noise in all the layers of the network:
+N1.noiser=0.5
+N1.noiser=0.3 
+...
+}
+~~~
+
+* Some examples of scripts:
+
+#### Example 1
+~~~c
+script {
+
+  D1.yuv()
+  D2.yuv()
+
+  D1.zscore()
+  D2.zscore(D1)
+
+  N1.in.flip=1.0
+  N1.in.noiser=0.5
+  N1.in.noisesd=1.0
+
+  N1.f1.drop=0.5
+
+  N1.l2=0.0005
+
+  N1.bn=1.0
+
+  // Learning rate annealing every 15 epochs
+  N1.mu=0.01
+  N1.train(15)
+
+  N1.mu=0.005
+  N1.train(15)
+
+  N1.mu=0.0025
+  N1.train(15)
+}
+~~~
+
+#### Example 2
+
+~~~c
+script {
+
+  D1.zscore()
+  D2.zscore(D1)
+
+  N1.noiser=0.0
+  N1.noisesd=1.0
+  N1.in.noiser=0.5
+  N1.mu=0.001
+  N1.maxn=3.0
+
+  N1.train(100)
+
+}
+~~~
+
+# The whole picture
+
+#### Example 1
+
+~~~c
+// A typical MLP
+// 784->1024->1024->1024->10
+// Check N1.dot and get a pdf of the net with: 
+// dot -T pdf N1.dot > N1.pdf
+
+//CONSTANTS
+const{
+  threads=8
+  batch=10
+  log="mnist.log"
+}
+
+// DATA FILES
+data {
+  D1 [filename="../training", binary]
+  D2 [filename="../test", binary]
+}
+
+//NETWORK
+network N1 {  
+  //data
+  data tr D1  //mandatory
+  data ts D2 //optional
+
+  // Fully Connected Input 
+  FI in 
+  
+  // Fully connected
+  F  f1 [numnodes=1024]
+  F  f2 [numnodes=1024]
+  F  f3 [numnodes=1024]
+  
+  // Fully Connected Output
+  FO  out [regression]	
+
+  // Links
+  in->f1
+  f1->f2
+  f2->f3
+  f3->out
+}
+
+//RUN SCRIPT 
+script {
+  
+  D1.zscore()
+  D2.zscore(D1)
+
+
+  //N1.noisesd=1.0
+  //N1.noiser=0.5
+  N1.mu=0.01
+  //N1.maxn=3.0
+
+  N1.train(10)
+
+}
+~~~
+
+#### Example 2
+
+~~~c
+const {
+threads=4
+batch=100
+}
+data {
+  D1 [filename="training", binary]
+  D2 [filename="test", binary]
+}
+
+
+network N1 { 
+  data tr D1 
+  data ts D2
+
+  // Covolutional Input
+  CI in [nz=3, nr=32, nc=32]
+
+  C c0 [nk=16, kr=3, kc=3]	  
+  MP p0[sizer=2,sizec=2]
+  C c1 [nk=32, kr=3, kc=3]	  	 
+  MP p1 [sizer=2,sizec=2]
+  C c2 [nk=64, kr=3, kc=3]		
+  MP p2 [sizer=2,sizec=2]
+  
+  // FC reshape
+  F   f0 []	
+
+  // FC hidden
+  F  f1 [numnodes=128]
+
+  // FC output
+  FO f2 [classification]
+
+  // Connections
+  in->c0
+  c0->p0 
+  p0->c1
+  c1->p1
+  p1->c2
+  c2->p2
+  //reshape
+  p2->f0
+  f0->f1
+  f1->f2
+
+}
+
+// RUN
+script {
+  
+  D1.zscore()
+  D2.zscore(D1)
+
+  N1.mu=0.1
+
+  N1.in.noiser=0.5
+  N1.in.noisesd=1.0
+  //N1.bn=1.0
+  
+  N1.train(1000)
+}
+
+~~~
+
+# ADVANCED ISSUES
+
+## Networks sharing layers
+
+TODO
+
+## Training several networks
+
+
+TODO
+
 
 
 
