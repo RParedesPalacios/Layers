@@ -1,1 +1,1 @@
-Some examples
+Some examples with MNIST and CIFAR datasets
