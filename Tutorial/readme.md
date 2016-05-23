@@ -549,7 +549,7 @@ N1.mu=0.001
 N1.l2=0.0005
 // noise in all the layers of the network:
 N1.noiser=0.5
-N1.noiser=0.3 
+N1.noisesd=0.3 
 ...
 }
 ~~~
