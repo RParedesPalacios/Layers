@@ -1,6 +1,6 @@
 ## MIT Urban and Natural Scenes
 
-* A subset of the original data set
+* A subset of the [original data set](http://cvcl.mit.edu/database.htm) 
 * A classification problem over 8 classes
 * Images: RGB 64x64
 * Training set: ~2k images
