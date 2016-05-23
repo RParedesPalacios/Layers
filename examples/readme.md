@@ -1,1 +1,1 @@
-Some examples with MNIST and CIFAR datasets
+Some examples with MNIST, CIFAR and MIT-UrbanNatural datasets
