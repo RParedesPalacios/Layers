@@ -10,7 +10,9 @@
 	* Flexible.
 	* Easy to use.
 	* Optimized for CPU (not GPU).
-	* Mainly for academic use.
+	* Mainly for academic use. Layers is used in the following subjects:
+		* Neural Networks
+		* Computer Vision
 	
 ## Authors
 
