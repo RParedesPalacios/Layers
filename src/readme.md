@@ -28,7 +28,7 @@ source ~/.bashrc
 
 * back to layers src and compile layers
 
-~~~
+~~~shell
 cd ..
 make clean
 make
