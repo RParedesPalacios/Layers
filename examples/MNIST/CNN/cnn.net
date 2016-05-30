@@ -58,8 +58,6 @@ script {
   D1.zscore()
   D2.zscore(D1)
 
-  N1.in.shift=2
-
   N1.in.noiser=0.5
   N1.in.noisesd=1.0
   
