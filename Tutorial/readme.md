@@ -566,7 +566,7 @@ script {
   D1.zscore()
   D2.zscore(D1)
 
-  N1.in.flip=1.0
+  N1.in.flip=1
   N1.in.noiser=0.5
   N1.in.noisesd=1.0
 
@@ -574,7 +574,7 @@ script {
 
   N1.l2=0.0005
 
-  N1.bn=1.0
+  N1.bn=1
 
   // Learning rate annealing every 15 epochs
   N1.mu=0.01
@@ -731,7 +731,7 @@ script {
 
   N1.in.noiser=0.5
   N1.in.noisesd=1.0
-  //N1.bn=1.0
+  //N1.bn=1
   
   N1.train(1000)
 }
