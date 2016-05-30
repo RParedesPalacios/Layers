@@ -10,9 +10,10 @@ const {
 }
 
 // DATA FILES
+// Remember to download from links
 data {
-  D1 [filename="../training", binary]
-  D2 [filename="../test", binary]
+  D1 [filename="training", binary]
+  D2 [filename="test", binary]
 }
 
 //NETWORK
