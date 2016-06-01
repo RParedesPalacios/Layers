@@ -487,6 +487,7 @@ void FLayer::forward()
   doActivation();
   
   
+  setNbThreads(threads);
   for(i=0;i<lout;i++) {
     if (rnet->isIn(Lout[i])) {
       if (Lout[i]->type==1) {
@@ -497,6 +498,7 @@ void FLayer::forward()
       }
     }
   }
+  setNbThreads(1);
 }
 
 //////////////////////////////////////////
@@ -689,6 +691,7 @@ void FLayer::backward()
 
     if (bn) bBN();
 
+    setNbThreads(threads);
     for(i=0;i<lin;i++) {
       if (rnet->isIn(Lin[i])) {
 	if (Lin[i]->type==1) { // Fully connected
@@ -719,6 +722,7 @@ void FLayer::backward()
 	}
       }
     }
+    setNbThreads(1);
   }
 }
 
