@@ -11,6 +11,9 @@
 #define VERBOSE 0
 #define SHOW_TIME 0
 
+// Comment this line for Mac
+#define USETIME 
+
 ////////////////////////////////////
 ///// NET CLASS
 ////////////////////////////////////
@@ -404,7 +407,8 @@ void Net::forward()
   struct timespec t0, t1,ft0,ft1;
   float e;
 
-  
+  #ifdef USETIME
+
   if (SHOW_TIME) {
     fprintf(stderr,"===== FORWARD ======\n");
   }
@@ -413,27 +417,34 @@ void Net::forward()
   for(i=0;i<layers;i++) {
     if (SHOW_TIME) {
       fprintf(stderr,"\t %s Ftime=",fts[i]->name);
-      clock_gettime(CLOCK_MONOTONIC, &t0);
+      if (USETIME) clock_gettime(CLOCK_MONOTONIC, &t0);
     }
     fts[i]->rnet=this;
     fts[i]->forward();
     if (SHOW_TIME) {
-      clock_gettime(CLOCK_MONOTONIC, &t1);
+      if clock_gettime(CLOCK_MONOTONIC, &t1);
       e = (t1.tv_sec - t0.tv_sec);
       e += (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
       fprintf(stderr,"%g\n",e);
     }
   }
-
-  clock_gettime(CLOCK_MONOTONIC, &ft1);
-  e = (ft1.tv_sec - ft0.tv_sec);
-  e += (ft1.tv_nsec - ft0.tv_nsec) / 1000000000.0;
-  ftime+=e;
-
+ 
+    clock_gettime(CLOCK_MONOTONIC, &ft1);
+    e = (ft1.tv_sec - ft0.tv_sec);
+    e += (ft1.tv_nsec - ft0.tv_nsec) / 1000000000.0;
+    ftime+=e;
+  
   if (SHOW_TIME) {
     fprintf(stderr,"Total Forward=%g acum=%g\n",e,ftime);
     fprintf(stderr,"===================\n\n");
   }
+#else
+  for(i=0;i<layers;i++) {
+    fts[i]->rnet=this;
+    fts[i]->forward();
+  }
+   
+#endif
   
 }
 
@@ -484,6 +495,8 @@ void Net::backward()
 
   int i;
 
+#ifdef USETIME
+
   if (SHOW_TIME) {
     fprintf(stderr,"===== BACKWARD ======\n");
   }
@@ -502,15 +515,25 @@ void Net::backward()
       fprintf(stderr,"%g\n",e);
     }
   }
+
+ 
   clock_gettime(CLOCK_MONOTONIC, &ft1);
   e = (ft1.tv_sec - ft0.tv_sec);
   e += (ft1.tv_nsec - ft0.tv_nsec) / 1000000000.0;
   btime+=e;
+    
   if (SHOW_TIME) {
     fprintf(stderr,"Total Backward=%g acum=%g\n",e,btime);
     fprintf(stderr,"===================\n\n");
     getchar();
   }
+#else
+  for(i=0;i<layers;i++) {
+    bts[i]->rnet=this;
+    bts[i]->backward();
+  }
+#endif
+
 }
 
 

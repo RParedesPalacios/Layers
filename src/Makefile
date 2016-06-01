@@ -1,10 +1,10 @@
 CXX = g++
 
 # FOR LINUX
-CXXFLAGS = -fopenmp -I Eigen -lpthread -lm  -O3 
+#CXXFLAGS = -fopenmp -I Eigen -lpthread -lm  -O3 
 
 # FOR MAC:
-#CXXFLAGS = -I Eigen -O3 
+CXXFLAGS = -I Eigen -O3 
 
 
 all: utils.o data.o layer.o flayer.o clayer.o player.o net.o layers ascii2bin
