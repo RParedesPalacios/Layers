@@ -417,7 +417,7 @@ void Net::forward()
   for(i=0;i<layers;i++) {
     if (SHOW_TIME) {
       fprintf(stderr,"\t %s Ftime=",fts[i]->name);
-      if (USETIME) clock_gettime(CLOCK_MONOTONIC, &t0);
+      clock_gettime(CLOCK_MONOTONIC, &t0);
     }
     fts[i]->rnet=this;
     fts[i]->forward();
