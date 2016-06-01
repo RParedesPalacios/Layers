@@ -422,7 +422,7 @@ void Net::forward()
     fts[i]->rnet=this;
     fts[i]->forward();
     if (SHOW_TIME) {
-      if clock_gettime(CLOCK_MONOTONIC, &t1);
+      clock_gettime(CLOCK_MONOTONIC, &t1);
       e = (t1.tv_sec - t0.tv_sec);
       e += (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
       fprintf(stderr,"%g\n",e);
