@@ -62,6 +62,7 @@ script {
   N1.in.noisesd=1.0
   
   N1.f1.drop=0.5
+  N1.bn=1
 
   N1.mu=0.1
   N1.train(50)
