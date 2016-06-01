@@ -494,7 +494,7 @@ void FLayer::forward()
 	l=(FLayer *)Lout[i];
 	//l->E.noalias()+=N*W[i];
 	l->E+=N*W[i];
-	l->E.rowwise()+=b[i];
+	if (!bn) l->E.rowwise()+=b[i];
       }
     }
   }
@@ -713,8 +713,9 @@ void FLayer::backward()
 	    fprintf(stderr,"gW %s = %f\n",l->name,l->gW[ind].norm());
 	  }
 
-	  for(j=0;j<l->gb[ind].cols();j++) 
-	    l->gb[ind](i)+=Delta.col(i).sum();
+	  if (!bn) 
+	    for(j=0;j<l->gb[ind].cols();j++) 
+	      l->gb[ind](i)+=Delta.col(i).sum();
     
 	  // back-propagate Delta
 	  //noalias
@@ -750,8 +751,10 @@ void FLayer::applygrads()
 	}
       }
 
-    pgb[k]=(mu/batch)*gb[k]+mmu*pgb[k];
-    b[k]+=pgb[k];
+    if (!bn) {
+      pgb[k]=(mu/batch)*gb[k]+mmu*pgb[k];
+      b[k]+=pgb[k];
+    }
 
     gW[k].setZero();
     gb[k].setZero();

@@ -1139,7 +1139,7 @@ void CLayer::initialize()
 
 #pragma omp parallel for
     for(int i=0;i<nk;i++) {
-      bias(i)+=(mu/batch)*gbias(i);
+      if (!bn) bias(i)+=(mu/batch)*gbias(i);
 
       for(int j=0;j<kz;j++) {
 	pgK[i][j]=(mu/batch)*gK[i][j]+mmu*pgK[i][j];
