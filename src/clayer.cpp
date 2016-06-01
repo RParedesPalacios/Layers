@@ -30,6 +30,7 @@ struct tdata{
   int stride;
   int inr;
   int inc;
+  int bn;
 
   MatrixXf **N;
   MatrixXf **K;
@@ -341,6 +342,7 @@ void *Convolt(void *threadarg)
     int si,sj;
     int inr=m->inr;
     int inc=m->inc;
+    int bn=m->bn;
 
     if (!m->rpad) kr2=0;
     if (!m->cpad) kc2=0;
@@ -384,7 +386,7 @@ void *Convolt(void *threadarg)
 	for(i=0;i<m->outr;i++) 
 	  for(j=0;j<m->outc;j++,z++) {
 	    Et[b][k](i,j)=O(k,z+ib);
-	    Et[b][k](i,j)+=bt(k);
+	    if (!bn) Et[b][k](i,j)+=bt(k);
 	  }
       }
     }
@@ -441,6 +443,8 @@ void CLayer::Convol()
     td[i].E=E;
     td[i].inr=cin->outr;
     td[i].inc=cin->outc;
+    td[i].bn=bn;
+    
 
     rc = pthread_create(&thr[i], NULL,Convolt, (void *)(&td[i]));
     if (rc){
@@ -628,6 +632,7 @@ void *ConvolB1t(void *threadarg)
   int stride=m->stride;
   int inr=m->inr;
   int inc=m->inc;
+  int bn=m->bn;
 
   if (!m->rpad) kr2=0;
   if (!m->cpad) kc2=0;
@@ -718,25 +723,26 @@ void *ConvolB1t(void *threadarg)
   }//if
 
   //Bias
-  if (m->nt<m->nk) {
-    kini=(m->id*(m->nk/m->nt));
-    kfin=kini+(m->nk/m->nt);
-    if (m->id==(m->nt-1)) kfin=m->nk;
-  }
-  else {
-    kini=m->id;
-    kfin=kini+1;
-  }
+  if (!bn) {
+    if (m->nt<m->nk) {
+      kini=(m->id*(m->nk/m->nt));
+      kfin=kini+(m->nk/m->nt);
+      if (m->id==(m->nt-1)) kfin=m->nk;
+    }
+    else {
+      kini=m->id;
+      kfin=kini+1;
+    }
  
-  if ((m->nt<m->nk)||(m->id<m->nk)) {
-    for(k=kini;k<kfin;k++) 
-      for(b=0;b<m->batch;b++) {
-	for(i2=0;i2<m->outr;i2++)
-	  for(j2=0;j2<m->outc;j2++)
-	    gbt(k)+=Dt[b][k](i2,j2);
-      }
+    if ((m->nt<m->nk)||(m->id<m->nk)) {
+      for(k=kini;k<kfin;k++) 
+	for(b=0;b<m->batch;b++) {
+	  for(i2=0;i2<m->outr;i2++)
+	    for(j2=0;j2<m->outc;j2++)
+	      gbt(k)+=Dt[b][k](i2,j2);
+	}
+    }
   }
-  
 }
 
 
@@ -983,7 +989,7 @@ void CLayer::ConvolB()
     td[i].K=K;
     td[i].inr=cin->outr;
     td[i].inc=cin->outc;
-
+    td[i].bn=bn;
     
     td[i].IN=cin->N;
     td[i].ID=cin->De;
