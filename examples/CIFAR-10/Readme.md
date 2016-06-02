@@ -1,4 +1,4 @@
-## CIFAR examples
+## CIFAR-10
 
 * A classification problem over 10 classes
 * Images: RGB 32x32
