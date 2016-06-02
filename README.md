@@ -20,6 +20,8 @@
 * Layers provides a prototype and script language in order to ease the networks definition and experimentation. This parser is written by [**Jose Miguel Benedí**](http://users.dsic.upv.es/~jbenedi/)
 
 
+## Install and compiling instructions:
 
+[Install](https://github.com/RParedesPalacios/Layers/blob/master/src/readme.md)
 
 
