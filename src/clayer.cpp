@@ -876,6 +876,10 @@ void *ConvolB2t(void *threadarg)
 	}//j
       }//i
     }
+
+    for(i=0;i<m->kz;i++)
+      Kr[i].resize(0,0);
+
   }
   
 }
