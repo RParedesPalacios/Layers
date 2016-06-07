@@ -61,6 +61,12 @@ DONE!
 
 ## Changelog
 
+
+### V0.1.1 - June 5 2016
+
+* Important memory problem solved.
+
+
 ### V0.1 - May 30 2016
  * Initial commit of source code
  
