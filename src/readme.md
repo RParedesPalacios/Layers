@@ -63,10 +63,10 @@ DONE!
 
 ### V0.2 - June 2016
 
-* New functions availabel:
+* New functions available:
 	* Network save and load are now available. 
 	* Write the output of test data is also available
-	* Weite out the weights of a particular layer
+	* Write out the weights of a particular layer
 
 * Check the new functions in [Scripts-functions](https://github.com/RParedesPalacios/Layers/tree/master/Tutorial#scripts-functions) in the tutoria/
 
