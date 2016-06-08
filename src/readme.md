@@ -70,6 +70,8 @@ DONE!
 
 * Check the new functions in [Scripts-functions](https://github.com/RParedesPalacios/Layers/tree/master/Tutorial#scripts-functions) in the tutorial
 
+* Note: **Parser must be recomplied**
+
 
 ### V0.1.1 - June 2016
 
