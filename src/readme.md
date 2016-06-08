@@ -68,7 +68,7 @@ DONE!
 	* Write the output of test data is also available
 	* Write out the weights of a particular layer
 
-* Check the new functions in [Scripts-functions](https://github.com/RParedesPalacios/Layers/tree/master/Tutorial#scripts-functions) in the tutoria/
+* Check the new functions in [Scripts-functions](https://github.com/RParedesPalacios/Layers/tree/master/Tutorial#scripts-functions) in the tutorial
 
 
 ### V0.1.1 - June 2016
