@@ -73,3 +73,81 @@ void Layer::setnoiser(float m){ if (VERBOSE) fprintf(stderr,"Layer %s setting no
 void Layer::setnoisesd(float m){ if (VERBOSE) fprintf(stderr,"Layer %s setting noisesd %f\n",name,m);noisesd=m;}
 void Layer::setthreads(int t){threads=t;}
 void Layer::setopt(int t){opt=t;}
+
+void Layer::save_param(FILE *fe)
+{
+  int i;
+
+  fprintf(fe,"%s\n",name);
+  fprintf(fe,"%d\n",din);
+  fprintf(fe,"%d\n",lin);
+  fprintf(fe,"%d\n",lout);
+
+  fprintf(fe,"%d\n",act);
+  fprintf(fe,"%d\n",bn);
+  fprintf(fe,"%d\n",shift);
+  fprintf(fe,"%d\n",flip);
+
+  fprintf(fe,"%f\n",mu);
+  fprintf(fe,"%f\n",mmu);
+  fprintf(fe,"%f\n",drop);
+  fprintf(fe,"%f\n",l2);
+  fprintf(fe,"%f\n",l1);
+  fprintf(fe,"%f\n",maxn);
+  fprintf(fe,"%f\n",brightness);
+  fprintf(fe,"%f\n",contrast);
+  
+  // FOR FUTURE PARAMS
+  for(i=0;i<10;i++)
+    fprintf(fe,"-1\n");
+  
+}
+void Layer::load_param(FILE *fe)
+{
+  char lname[100];
+  int ldin,llin,llout;
+  int fsd,i;
+
+  
+  fsd=fscanf(fe,"%s\n",lname);
+  if (strcmp(name,lname)) {
+    fprintf(stderr,"Error loading layer  %s (name) %s -- %s\n",name,name,lname);
+    exit(1);
+  }
+  fsd=fscanf(fe,"%d\n",&ldin);
+  if (ldin!=din) {
+    fprintf(stderr,"Error loading layer  %s (din) %d -- %d\n",name,din,ldin);
+    exit(1);
+  }
+
+  fsd=fscanf(fe,"%d\n",&llin);
+  if (llin!=lin) {
+    fprintf(stderr,"Error loading layer  %s (lin) %d -- %d\n",name,lin,llin);
+    exit(1);
+  }
+  fsd=fscanf(fe,"%d\n",&llout);
+  if (llout!=lout) {
+    fprintf(stderr,"Error loading layer  %s (lout) %d -- %d\n",name,lout,llout);
+    exit(1);
+  }
+
+  fsd=fscanf(fe,"%d\n",&act);
+  fsd=fscanf(fe,"%d\n",&bn);
+  fsd=fscanf(fe,"%d\n",&shift);
+  fsd=fscanf(fe,"%d\n",&flip);
+
+  fsd=fscanf(fe,"%f\n",&mu);
+  fsd=fscanf(fe,"%f\n",&mmu);
+  fsd=fscanf(fe,"%f\n",&drop);
+  fsd=fscanf(fe,"%f\n",&l2);
+  fsd=fscanf(fe,"%f\n",&l1);
+  fsd=fscanf(fe,"%f\n",&maxn);
+  fsd=fscanf(fe,"%f\n",&brightness);
+  fsd=fscanf(fe,"%f\n",&contrast);
+
+  // FOR FUTURE PARAMS
+  for(i=0;i<10;i++)
+    fsd=fscanf(fe,"-1\n");
+  
+
+}

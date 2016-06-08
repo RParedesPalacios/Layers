@@ -66,8 +66,14 @@ class Layer {
   void setnoisesd(float n);
   void setthreads(int t);
   void setopt(int i);  
-  
 
+  void save_param(FILE *fe);
+  void load_param(FILE *fe);
+
+
+  virtual void save(FILE *fe){}
+  virtual void load(FILE *fe){}
+  virtual void printkernels(FILE *fe){}
   virtual void addchild(Layer *l){}
   virtual void addparent(Layer *l){}
   virtual void forward(){}
@@ -136,6 +142,11 @@ class FLayer : public Layer {
 
   void doActivation();
   void dactivation();
+
+  void save(FILE *fe);
+  void load(FILE *fe);
+
+  void printkernels(FILE *fe);
 
 };
   
@@ -224,6 +235,7 @@ class CLayer : public Layer {
   void resetstats();
   void resetmomentum();
   void setzpad(int t);
+ 
 
   void fBN();
   void bBN();
@@ -234,7 +246,10 @@ class CLayer : public Layer {
   void doActivation();
   void ConvolB();
   void MaxPoolB();
-  void savekernels(int v);
+  void printkernels(FILE *fe);
+
+  void save(FILE *fe);
+  void load(FILE *fe);
 
   
 };
@@ -255,7 +270,8 @@ class ICLayer : public CLayer {
   void initialize();
   void applygrads();
   void reset();
-
+  void save(FILE *fe);
+  void load(FILE *fe);
 
   void doflip(MatrixXf& I);
   void doshift(MatrixXf& I,int sx,int sy);
@@ -294,6 +310,9 @@ class PLayer : public CLayer {
   void MaxPoolB();
   void MaxPool();
 
+  void save(FILE *fe);
+  void load(FILE *fe);
+
   PLayer();
   PLayer(int batch,int sizer,int sizec,char *name);
 };
@@ -312,6 +331,8 @@ class CatLayer : public CLayer {
   void applygrads();
   void reset();
 
+  void save(FILE *fe);
+  void load(FILE *fe);
 
   CatLayer();
   CatLayer(int batch,char *name);

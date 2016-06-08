@@ -448,7 +448,32 @@ void Net::forward()
   
 }
 
-  //Backward topologic sort
+void Net::save(FILE *fe)
+{
+  int i;
+
+  fprintf(stderr,"Saving Network %s\n",name);
+
+  for(i=0;i<layers;i++) {
+    fts[i]->save(fe);
+  }
+  fclose(fe);
+}
+
+void Net::load(FILE *fe)
+{
+  int i;
+
+  fprintf(stderr,"Loading Network %s\n",name);
+
+  for(i=0;i<layers;i++) {
+    fts[i]->load(fe);
+  }
+  fclose(fe);
+
+}
+
+//Backward topologic sort
 void Net::build_bts()
 {
   int gout[MAX_LAYERS];
@@ -725,6 +750,7 @@ void Net::train(int epochs)
     
     decmu(decay);
   }
+  
   //fclose(flog);
 }
 
@@ -957,14 +983,9 @@ void Net::gcheckF()
 }
 
 
-void Net::testOut()
+void Net::testOut(FILE *fs)
 {
   int i,j;
-  FILE *fs;
-  char cad[100];
-
-  sprintf(cad,"%s_test.out",name);
-  fs=fopen(cad,"wt");
 
   if (Dtest!=NULL) {
     fprintf(stderr,"writting test output\n");

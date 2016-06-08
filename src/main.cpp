@@ -14,6 +14,7 @@ int main(int argc, char **argv) {
   int threads=4;
   char cad[MAX_CHAR];
   char cad2[MAX_CHAR];
+  char cad3[MAX_CHAR];
   char logname[MAX_CHAR];
 
   Eigen::initParallel();
@@ -332,7 +333,46 @@ int main(int argc, char **argv) {
 	  
 	  //NTable[i]->gcheck();
 	  NTable[i]->train(par);
-	  NTable[i]->testOut();
+
+	}
+      }
+      else if (!strcmp(com,"save")) {
+	sscanf(line,"command %s save 1 %s",cad,cad2);
+	for(i=0;i<Nc;i++) 
+	  if (!strcmp(NTable[i]->name,cad)) break;
+	FILE *fe=fopen(cad2,"wt");
+	NTable[i]->save(fe);
+      }
+      else if (!strcmp(com,"load")) {
+	sscanf(line,"command %s load 1 %s",cad,cad2);
+	for(i=0;i<Nc;i++) 
+	  if (!strcmp(NTable[i]->name,cad)) break;
+	FILE *fe=fopen(cad2,"rt");
+	NTable[i]->load(fe);
+      }
+      else if (!strcmp(com,"testout")) {
+	sscanf(line,"command %s testout 1 %s",cad,cad2);
+	for(i=0;i<Nc;i++) 
+	  if (!strcmp(NTable[i]->name,cad)) break;
+	FILE *fe=fopen(cad2,"wt");
+	NTable[i]->testOut(fe);
+      }
+      // script over a particular layer
+      else {
+	sscanf(line,"command %s %s %s ",cad,cad2,com);
+	if (!strcmp(com,"printkernels")) {
+	  sscanf(line,"command %s %s printkernels 1 %s",cad,cad2,cad3);
+	  sprintf(lname,"%s:%s",cad,cad2);
+
+	  Layer *l;
+	  for(i=0;i<Lc;i++)
+	    if (!strcmp(LTable[i]->name,lname)) break;
+	  l=LTable[i];
+	  
+	  fprintf(stderr,"printkernels %s\n",l->name);
+
+	  FILE *fe=fopen(cad3,"wt");
+	  l->printkernels(fe);
 	}
       }
     }

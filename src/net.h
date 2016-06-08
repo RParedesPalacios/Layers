@@ -61,7 +61,7 @@ class Net {
   void setvalues();
   void train(int epochs);
   void trainbatch(int b);
-  void testOut();
+  void testOut(FILE *fs);
   void printOut(Data *Dt,FILE *fs);
   void preparetrainbatch();
   void calcerr(Data *Dt);
@@ -89,6 +89,10 @@ class Net {
   void setnoisesd(float n);
 
   int isIn(Layer *l);
+
+  void save(FILE *fe);
+  void load(FILE *fe);
+
 };
 
 class MLP : public Net {

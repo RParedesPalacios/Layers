@@ -142,6 +142,17 @@ void CatLayer::forward()
   }
 }
 
+void CatLayer::save(FILE *fe)
+{
+  save_param(fe);
+}
+
+void CatLayer::load(FILE *fe)
+{
+  load_param(fe);
+}
+
+
 void CatLayer::backward()
 {
   int i,j,b;

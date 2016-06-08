@@ -26,7 +26,7 @@
  shift_  flip_  brightness_  contrast_  bn_
 /*****************************************************************  Keywords */
  const_  data_  network_  script_  train_  save_  zscore_  yuv_  printkernels_
- local_
+ local_  load_  testout_  
 /****************************************************************  operators */
  BCB_  ECB_  BSB_  ESB_  BRB_  ERB_  PER_  COM_  EQ_  RAR_
 /**************************************************** tokens with attributes */
@@ -420,19 +420,18 @@ amendment
        ;
 /*****************************************************************************/
 command
-       : id_  PER_  id_  PER_  printkernels_  BRB_  ERB_
+       : id_  PER_  id_  PER_  printkernels_  BRB_  nfile_  ERB_
 
        { int k2, k1 =  search_network ($1);
 	 if (k1 >= 0) {
            k2 = search_layer(k1, $3);
 	   if (k2 >= 0) 
-	     get_printkernels(k1, k2);
+	     get_printkernels(k1, k2, $7);
 	   else 
 	     yyerror("The name of the layer does not exist on this network");
 	 }
 	 else yyerror("Network name does not exist");
        }
-
 
        | train_  BRB_  cte_  COM_  cte_  rest_train  ERB_
 
@@ -445,12 +444,28 @@ command
 	 else yyerror("Network name does not exist");
        }
 
-       | id_  PER_  save_  BRB_  ERB_
+       | id_  PER_  save_  BRB_  nfile_  ERB_
 
        { int k = search_network ($1);
 	 if (k < 0)
 	   yyerror("Network name does not exist");
-	 else get_save(k);
+	 else get_save(k, $5);
+       }
+
+       | id_  PER_  load_  BRB_  nfile_  ERB_
+
+       { int k = search_network ($1);
+	 if (k < 0)
+	   yyerror("Network name does not exist");
+	 else get_load(k, $5);
+       }
+
+       | id_  PER_  testout_  BRB_  nfile_  ERB_
+
+       { int k = search_network ($1);
+	 if (k < 0)
+	   yyerror("Network name does not exist");
+	 else get_testout(k, $5);
        }
 
        | id_  PER_  zscore_  BRB_  rest_zscore  ERB_

@@ -608,6 +608,49 @@ void CLayer::forward()
   }
 }
 
+void CLayer::save(FILE *fe)
+{
+  int i,j,r,c;
+  
+  save_param(fe);
+
+  for(i=0;i<nk;i++) {
+    for(j=0;j<kz;j++) 
+      for(r=0;r<kr;r++)
+	for(c=0;c<kc;c++) 
+	  fprintf(fe,"%f ",K[i][j](r,c));
+    fprintf(fe,"%f ",bias(i));
+  }
+  fprintf(fe,"\n");
+  
+}
+
+void CLayer::load(FILE *fe)
+{
+
+  int i,j,r,c;
+  float fv;
+  int fsd;
+
+  load_param(fe);
+ 
+
+  for(i=0;i<nk;i++) {
+    for(j=0;j<kz;j++) 
+      for(r=0;r<kr;r++)
+	for(c=0;c<kc;c++) {
+	  fsd=fscanf(fe,"%f ",&fv);
+	  K[i][j](r,c)=fv;
+	}
+    fsd=fscanf(fe,"%f ",&fv);
+    bias(i)=fv;
+  }
+  fsd=fscanf(fe,"\n");
+
+}
+
+
+
 ///////////////////
 // BACKWARD
 ///////////////////
@@ -1204,69 +1247,27 @@ void CLayer::initialize()
 
   }
 
-void CLayer::savekernels(int v)
+void CLayer::printkernels( FILE *fe)
 {
   int i,j,r,c;
-  FILE *fs;
-  char name[100];
-  float min,max,fv;
-  int g;
-
-
-  if ((kz==1)||(kz==3)) {
-
-    fprintf(stderr,"Saving kernels...\n");
-    min=max=K[0][0](0,0);
-
-    for(i=0;i<nk;i++)
-      for(j=0;j<kz;j++) 
-	for(r=0;r<kr;r++)
-	  for(c=0;c<kc;c++){
-	    if (K[i][j](r,c)>max) max=K[i][j](r,c);
-	    if (K[i][j](r,c)<min) min=K[i][j](r,c);
-	  }
-
-      
-    if (kz==3) {
-      sprintf(name,"kernel_%d.ppm",v);
-      fs=fopen(name,"wt");
-      fprintf(fs,"P3\n%d %d\n255\n",((kc+1)*nk),kr);
-    }
-    else {
-      sprintf(name,"kernel_%d.pgm",v);
-      fs=fopen(name,"wt");
-      fprintf(fs,"P2\n%d %d\n255\n",(kc+1)*nk,kr);
-    }
+ 
     
-
-    for(r=0;r<kr;r++) {
-      for(i=0;i<nk;i++) {
-	for(c=0;c<kc;c++) {
-	  for(j=0;j<kz;j++) {
-	    fv=(K[i][j](r,c)-min)/(max-min);
-	    fv*=255.0;
-	    g=fv;
-	    fprintf(fs,"%d ",g);
-	  }
-	}
-	for(j=0;j<kz;j++)
-	  fprintf(fs,"255 ");
+  for(i=0;i<nk;i++) {
+    for(j=0;j<kz;j++) {
+      for(r=0;r<kr;r++) {
+	for(c=0;c<kc;c++) 
+	  fprintf(fe,"%f ",K[i][j](r,c));
       }
-      fprintf(fs,"\n");
     }
-
-    fprintf(fs,"\n");
-    fclose(fs);
-      
-  }
-  else {
-    fprintf(stderr,"Not saving kernels...\n");
-  }
+    fprintf(fe,"\n");
+  }      
+  fclose(fe);
 }
 
-  ///////////////////////////////////////////
-  /// Input Convol Layer
-  ///////////////////////////////////////////
+
+///////////////////////////////////////////
+/// Input Convol Layer
+///////////////////////////////////////////
 ICLayer::ICLayer(Data *D,int batch,int z,int ir,int ic,int cr,int cc,char *name):CLayer(batch,name)
 {
   int i,j;
@@ -1566,6 +1567,17 @@ void ICLayer::addparent(Layer *l)
   fprintf(stderr,"Error: ICLayer(%s) can not have parent layer\n",name);
   exit(1);
 }
+
+void ICLayer::save(FILE *fe)
+{
+  save_param(fe);
+}
+
+void ICLayer::load(FILE *fe)
+{
+  load_param(fe);
+}
+
 void ICLayer::forward() {
 
 }

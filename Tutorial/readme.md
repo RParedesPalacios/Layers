@@ -487,11 +487,25 @@ network N1 {
 * There are several functions that can be applied to the defined objects:
 
 	* For Data:
-		* Zscore(): To normalize Data	
+		* zscore(): To normalize Data	
 		* yuv(): to convert RGB Maps to YUV maps
 	* For Networks:
 		* train(epochs): to train networks
+		* save(fname): to save the network parameters to file
+		* load(fname): to load the network parameters from file
 
+			Note that __save__ and __load__ do not take into accont the network structure, only the parameters of the layers (learning rate, dropout,...) and weights (and bias). So in order to load a network the network structure must match the network structure used when it was saved.
+		* testout("fname"): writes the output of all the test data in the file. Forward over all data set.
+	
+	* For Layers:
+
+		* printkernels("fname"): save the weights of a paricular layer in the file. 
+			
+			For convolutional networks printkernels loop over each filter, then over each map (depth) and then over each pixel (rows and cols). For fully connected layers printkernels loop over each unit and then over each connection to next layer units.
+	
+	
+			In any case, saving a network with the __save__ command provides the weights (and bias) of __all__ the layers.
+		
 
 > More functions will be soon implemented
 
@@ -508,6 +522,17 @@ script {
   D2.zscore(D1) //normalize D2 with D1 statistics
 
   N1.train(100)
+  
+  N1.save("N1.saved")
+  
+  N1.load("N1.saved")	
+  
+  N1.f1.printkernels("N1f1.txt")
+  
+  N1.train(100)
+  
+  N1.testout("test_output.txt")
+
 }
 ~~~
 

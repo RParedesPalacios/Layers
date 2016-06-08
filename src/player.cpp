@@ -148,11 +148,11 @@ void PLayer::MaxPool()
   }
 
 
-  #pragma omp parallel for
+#pragma omp parallel for
   for(int b=0;b<batch;b++) {
     MatrixXf::Index x,y;
-     int i,j,k,z,r;
-     int mr,mc;
+    int i,j,k,z,r;
+    int mr,mc;
     for(k=0;k<nk;k++) {
       for(i=0;i<outr;i++) {
 	for(j=0;j<outc;j++) {
@@ -183,6 +183,28 @@ void PLayer::forward()
     fprintf(stderr,"N(%s) = %f\n",name,sum);
   }
 }
+
+
+
+void PLayer::save(FILE *fe)
+{
+  save_param(fe);
+
+  fprintf(fe,"%d %d\n",sizer,sizec);
+  
+}
+
+void PLayer::load(FILE *fe)
+{
+  int fsd;
+
+  load_param(fe);
+
+  fsd=fscanf(fe,"%d %d\n",&sizer,&sizec);
+  
+}
+
+
 
 void PLayer::MaxPoolB()
 {

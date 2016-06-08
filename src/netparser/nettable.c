@@ -690,17 +690,32 @@ void get_train (int par1, int par2, int ref)
   emit(line);
 }
 /*****************************************************************************/
-void get_printkernels (int refn, int refl)
+void get_printkernels (int refn, int refl, char *aux)
 { char line[140]; 
 
-  sprintf(line,"command %s %s printkernels 0",tdn[refn].name,tdl[refl].name);
+  sprintf(line,"command %s %s printkernels 1 %s", tdn[refn].name, 
+	  tdl[refl].name, aux);
   emit(line);
 }
 /*****************************************************************************/
-void get_save (int ref)
+void get_save (int ref, char *aux)
 { char line[140]; 
 
-  sprintf(line,"command %s save 0",tdn[ref].name);
+  sprintf(line,"command %s save 1 %s", tdn[ref].name, aux);
+  emit(line);
+}
+/*****************************************************************************/
+void get_load (int ref, char *aux)
+{ char line[140]; 
+
+  sprintf(line,"command %s load 1 %s", tdn[ref].name, aux);
+  emit(line);
+}
+/*****************************************************************************/
+void get_testout (int ref, char *aux)
+{ char line[140]; 
+
+  sprintf(line,"command %s testout 1 %s", tdn[ref].name, aux);
   emit(line);
 }
 /*****************************************************************************/

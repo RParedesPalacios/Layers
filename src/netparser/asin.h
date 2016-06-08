@@ -94,20 +94,22 @@
      yuv_ = 312,
      printkernels_ = 313,
      local_ = 314,
-     BCB_ = 315,
-     ECB_ = 316,
-     BSB_ = 317,
-     ESB_ = 318,
-     BRB_ = 319,
-     ERB_ = 320,
-     PER_ = 321,
-     COM_ = 322,
-     EQ_ = 323,
-     RAR_ = 324,
-     id_ = 325,
-     nfile_ = 326,
-     cte_ = 327,
-     ctr_ = 328
+     load_ = 315,
+     testout_ = 316,
+     BCB_ = 317,
+     ECB_ = 318,
+     BSB_ = 319,
+     ESB_ = 320,
+     BRB_ = 321,
+     ERB_ = 322,
+     PER_ = 323,
+     COM_ = 324,
+     EQ_ = 325,
+     RAR_ = 326,
+     id_ = 327,
+     nfile_ = 328,
+     cte_ = 329,
+     ctr_ = 330
    };
 #endif
 
@@ -128,7 +130,7 @@ typedef union YYSTYPE
 
 
 /* Line 2068 of yacc.c  */
-#line 132 "asin.h"
+#line 134 "asin.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

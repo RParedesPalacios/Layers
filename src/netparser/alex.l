@@ -94,6 +94,8 @@ script          { display(script_);       }
 train           { display(train_);        }
 printkernels    { display(printkernels_); }
 save            { display(save_);         }
+load            { display(load_);         }
+testout         { display(testout_);      }
 zscore          { display(zscore_);       }
 yuv             { display(yuv_);          }
 

@@ -501,6 +501,61 @@ void FLayer::forward()
   setNbThreads(1);
 }
 
+void FLayer::save(FILE *fe)
+{
+  int k,i,j;
+
+  save_param(fe);
+
+  for(k=0;k<lout;k++) {
+    for(i=0;i<din;i++)
+      for(j=0;j<Lout[k]->din;j++)
+	fprintf(fe,"%f ",W[k](i,j));
+    for(j=0;j<Lout[k]->din;j++)
+      fprintf(fe,"%f ",b[k](j));
+    fprintf(fe,"\n");
+  }
+
+}
+
+void FLayer::printkernels(FILE *fe)
+{
+  int k,i,j;
+
+  for(k=0;k<lout;k++) {
+    for(i=0;i<din;i++)
+      for(j=0;j<Lout[k]->din;j++)
+	fprintf(fe,"%f ",W[k](i,j));
+    fprintf(fe,"\n");
+  }
+
+  fclose(fe);
+}
+
+void FLayer::load(FILE *fe)
+{
+  int k,i,j;
+  float fv;
+  int fsd;
+  
+  load_param(fe);
+
+  for(k=0;k<lout;k++) {
+    for(i=0;i<din;i++)
+      for(j=0;j<Lout[k]->din;j++) {
+	fsd=fscanf(fe,"%f ",&fv);
+	W[k](i,j)=fv;
+      }
+    for(j=0;j<Lout[k]->din;j++) {
+      fsd=fscanf(fe,"%f ",&fv);
+      b[k](j)=fv;
+    }
+    fsd=fscanf(fe,"\n");
+  }
+
+}
+
+
 //////////////////////////////////////////
 ///// BACKWARD
 //////////////////////////////////////////
