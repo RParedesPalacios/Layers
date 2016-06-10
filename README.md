@@ -18,7 +18,7 @@
 		* Computer Vision
 
 * Check the last changes [Chagelog](https://github.com/RParedesPalacios/Layers/blob/master/src/readme.md#changelog)
-* Read the [Tutorail](https://github.com/RParedesPalacios/Layers/tree/master/Tutorial)
+* Read the [Tutorial](https://github.com/RParedesPalacios/Layers/tree/master/Tutorial)
 	
 ## Authors
 
