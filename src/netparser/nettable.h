@@ -18,18 +18,19 @@
 
 #define mu          0
 #define mmu         1
-#define drop        2
-#define l2          3   
-#define l1          4
-#define maxn        5
-#define act         6
-#define noiser      7
-#define noisesd     8
-#define shift       9
-#define flip       10
-#define brightness 11
-#define contrast   12
-#define bn         13
+#define l2          2   
+#define l1          3
+#define maxn        4
+#define drop        5
+#define noiser      6
+#define noisesd     7
+#define brightness  8
+#define contrast    9
+#define bn         10
+#define act        11
+#define shift      12
+#define flip       13
+#define balance    14
 
 #define tr  0
 #define ts  1
@@ -49,6 +50,7 @@
 
 #define NETWORK 0
 #define LAYER   1
+#define DATA    2
 /************************************** External variables defined in the AL */
 extern FILE *yyin;
 extern int   yylineno;
@@ -87,6 +89,7 @@ void  get_net_layers (int n) ;
 void  get_net_links(int n, int l) ;
 void  get_network() ;
 void  get_amendment(int type, int ref, char *aux) ;
+void  get_amendment_data(int ref, int aux) ;
 char *get_amend_param_ctr(int param, float value) ;
 char *get_amend_param_cte(int param, int value) ;
 void  get_train (int par1, int par2, int ref) ;
@@ -96,7 +99,9 @@ void  get_save (int ref, char *aux) ;
 void  get_load (int ref, char *aux) ;
 void  get_testout (int ref, char *aux) ;
 void  get_zscore (int ref1, int ref2) ;
+void  get_center (int ref1, int ref2) ;
 void  get_yuv (int ref1) ;
+void  get_div (int ref1, float aux) ;
 /*****************************************************************************/
 #endif  /* _LIBTDS_H */
 /*****************************************************************************/

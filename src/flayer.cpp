@@ -35,12 +35,16 @@ FLayer::FLayer(int in,int batch,char *name):Layer(batch,name)
     exit(1);
   }
 
-  W=new MatrixXf[MAX_CONNECT];
-  gW=new MatrixXf[MAX_CONNECT];
-  pgW=new MatrixXf[MAX_CONNECT];
-  b=new RowVectorXf[MAX_CONNECT];
-  gb=new RowVectorXf[MAX_CONNECT];
-  pgb=new RowVectorXf[MAX_CONNECT];
+  W=new LMatrix[MAX_CONNECT];
+  gW=new LMatrix[MAX_CONNECT];
+  pgW=new LMatrix[MAX_CONNECT];
+  b=new LRVector[MAX_CONNECT];
+  gb=new LRVector[MAX_CONNECT];
+  pgb=new LRVector[MAX_CONNECT];
+  MT=new LMatrix[MAX_CONNECT];
+  VT=new LMatrix[MAX_CONNECT];
+  MTs=new LMatrix[MAX_CONNECT];
+  VTs=new LMatrix[MAX_CONNECT];
 
   N.resize(batch,in);
   E.resize(batch,in);
@@ -93,12 +97,16 @@ FLayer::FLayer(Layer *In,int batch,char *name):Layer(batch,name)
   // Linear
   act=0;
   
-  W=new MatrixXf[MAX_CONNECT];
-  gW=new MatrixXf[MAX_CONNECT];
-  pgW=new MatrixXf[MAX_CONNECT];
-  b=new RowVectorXf[MAX_CONNECT];
-  gb=new RowVectorXf[MAX_CONNECT];
-  pgb=new RowVectorXf[MAX_CONNECT];
+  W=new LMatrix[MAX_CONNECT];
+  gW=new LMatrix[MAX_CONNECT];
+  pgW=new LMatrix[MAX_CONNECT];
+  b=new LRVector[MAX_CONNECT];
+  gb=new LRVector[MAX_CONNECT];
+  pgb=new LRVector[MAX_CONNECT];
+  MT=new LMatrix[MAX_CONNECT];
+  VT=new LMatrix[MAX_CONNECT];
+  MTs=new LMatrix[MAX_CONNECT];
+  VTs=new LMatrix[MAX_CONNECT];
 
   N.resize(batch,din);
   E.resize(batch,din);
@@ -159,12 +167,16 @@ FLayer::FLayer(Layer *In,int lr,int lc,char *name):Layer(0,name)
   // Linear
   act=0;
   
-  W=new MatrixXf[MAX_CONNECT];
-  gW=new MatrixXf[MAX_CONNECT];
-  pgW=new MatrixXf[MAX_CONNECT];
-  b=new RowVectorXf[MAX_CONNECT];
-  gb=new RowVectorXf[MAX_CONNECT];
-  pgb=new RowVectorXf[MAX_CONNECT];
+  W=new LMatrix[MAX_CONNECT];
+  gW=new LMatrix[MAX_CONNECT];
+  pgW=new LMatrix[MAX_CONNECT];
+  MT=new LMatrix[MAX_CONNECT];
+  VT=new LMatrix[MAX_CONNECT];
+  MTs=new LMatrix[MAX_CONNECT];
+  VTs=new LMatrix[MAX_CONNECT];
+  b=new LRVector[MAX_CONNECT];
+  gb=new LRVector[MAX_CONNECT];
+  pgb=new LRVector[MAX_CONNECT];
 
   N.resize(batch,din);
   E.resize(batch,din);
@@ -217,6 +229,12 @@ void FLayer::addchild(Layer *li)
       W[lout].resize(din,l->din);
       b[lout].resize(l->din);
       gW[lout].resize(din,l->din);
+
+      MT[lout].resize(din,l->din);
+      VT[lout].resize(din,l->din);
+      MTs[lout].resize(din,l->din);
+      VTs[lout].resize(din,l->din);
+
       pgW[lout].resize(din,l->din); 
       pgW[lout].setZero();
   
@@ -262,7 +280,7 @@ void FLayer::initialize()
 {
   int i,j;
   int k;
-  float s;
+  double s;
 
   if (!init) {
     for(k=0;k<lout;k++) {
@@ -273,6 +291,13 @@ void FLayer::initialize()
    
       for(j=0;j<b[k].cols();j++) 
 	b[k](j)=0.1;
+      
+      MT[k].setZero();
+      VT[k].setZero();
+      MTs[k].setZero();
+      VTs[k].setZero();
+      ab1t=1.0;
+      ab2t=1.0;
     }
 
     if ((!local)&&(!reshape))
@@ -338,7 +363,7 @@ void FLayer::fBN()
     //#pragma omp parallel for
     for(int i=0;i<din;i++) {
       int b;
-      float m,var,eps=0.0001;
+      double m,var,eps=0.00001;
 
       m=0;
       for(b=0;b<batch;b++)
@@ -349,11 +374,14 @@ void FLayer::fBN()
       var=0;
       for(b=0;b<batch;b++)
 	var+=(m-E(b,i))*(m-E(b,i));
-      var/=(batch-1);
+      var/=batch;
       bn_var(i)=var;
     	
       for(b=0;b<batch;b++) {
-	bn_E(b,i)=(E(b,i)-bn_mean(i))/sqrt(bn_var(i)+eps);
+	bn_E(b,i)=(E(b,i)-bn_mean(i))/sqrt(bn_var(i)+eps); //this is \hat{x}
+	if (noiser>0.0) 
+	  if (uniform()<noiser)
+	    bn_E(b,i)+=gauss(0.0,noisesd);
 	BNE(b,i)=(bn_g(i)*bn_E(b,i))+bn_b(i);
       }
     }
@@ -364,7 +392,7 @@ void FLayer::fBN()
     //#pragma omp parallel for
     for(int i=0;i<din;i++) {
       int b;
-      float var,eps=0.0001;
+      double var,eps=0.00001;
 
       for(b=0;b<batch;b++){
 	bn_E(b,i)=(E(b,i)-bn_gmean(i)/bnc)/sqrt(bn_gvar(i)/bnc+eps);
@@ -383,7 +411,18 @@ void FLayer::doActivation()
     else fprintf(stderr,"E(%s) = %f\n",name,E.norm());
   }
 
-  // For hidden 
+
+  if (!bn) 
+    if (trmode) {
+      if (noiser>0.0) {
+	//#pragma omp parallel for
+	for(int i=0;i<batch;i++)
+	  for(int j=0;j<din;j++) 
+	    if (uniform()<noiser)
+	      E(i,j)+=gauss(0.0,noisesd);
+	
+      }
+    }
   
   
   if (bn) {
@@ -391,50 +430,41 @@ void FLayer::doActivation()
     if (act==1) ReLu(BNE,N);
     if (act==2) Sigmoid(BNE,N);
     if (act==3) ELU(BNE,N,1.0);
+    if (act==10) Softmax(BNE,N);
+    if (act==11) N=BNE;
   }
   else {
     if (act==0) N=E;
     if (act==1) ReLu(E,N);
     if (act==2) Sigmoid(E,N);
     if (act==3) ELU(E,N,1.0);
+    if (act==10) Softmax(E,N);
+    if (act==11) N=E;
   }    
   
 
   // For output
-  if (act==10) Softmax(E,N);
-  if (act==11) Linear(E,N);
 
   if (VERBOSE) {
     fprintf(stderr,"N(%s,%d) = %f\n",name,act,N.norm());
     if (N.norm()==0) getchar();
   }
-
-  //Noise on trmode for input and hidden
-  if ((act<10)&&(trmode)) {
-    if (noiser>0.0) {
-      //#pragma omp parallel for
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++) 
-	  if (uniform()<noiser)
-	    N(i,j)+=gauss(0.0,noisesd);
-	
-    }
-  }
   
+
   // drop-out on trmode for input and hidden
   if (drop>0.0) {
     if (trmode) {
-	dvec.setZero();
-	for(i=0;i<din;i++) 
-	  if (uniform()>drop) dvec(i)=1;
+      dvec.setZero();
+      for(i=0;i<din;i++) 
+	if (uniform()>drop) dvec(i)=1;
 	
-	if (VERBOSE) fprintf(stderr,"Drop N %s(%d)\n",name,act);
-	for(j=0;j<din;j++)
-	  if (dvec(j)==0) 
-	    for(i=0;i<batch;i++) N(i,j)=0.0;
+      if (VERBOSE) fprintf(stderr,"Drop N %s(%d)\n",name,act);
+      for(j=0;j<din;j++)
+	if (dvec(j)==0) 
+	  for(i=0;i<batch;i++) N(i,j)=0.0;
     }
     else {
-	N*=(1.0-drop);
+      N*=(1.0-drop);
     }
 
   }
@@ -449,8 +479,6 @@ void FLayer::forward()
   int k,i,j,z,r,c;
   FLayer *l;
   CLayer *cin;
-  CatLayer *cat;
-  PLayer *pin;
  
   if (reshape) {
     cin=(CLayer *)Lin[0];
@@ -475,8 +503,8 @@ void FLayer::forward()
 	    for(c2=0;c2<lc;c2++)
 	      for(z=0;z<cin->outz;z++,j++)
 		E(b,j)=cin->N[k][z](r+r2,c+c2);
-	  E(b,j)=(float)r/(float)cin->outr;
-	  E(b,j+1)=(float)c/(float)cin->outc;
+	  E(b,j)=(double)r/(double)cin->outr;
+	  E(b,j+1)=(double)c/(double)cin->outc;
 	}
     }
 
@@ -486,15 +514,13 @@ void FLayer::forward()
 
   doActivation();
   
-  
   setNbThreads(threads);
   for(i=0;i<lout;i++) {
     if (rnet->isIn(Lout[i])) {
       if (Lout[i]->type==1) {
 	l=(FLayer *)Lout[i];
-	//l->E.noalias()+=N*W[i];
 	l->E+=N*W[i];
-	if (!bn) l->E.rowwise()+=b[i];
+	l->E.rowwise()+=b[i];
       }
     }
   }
@@ -535,7 +561,7 @@ void FLayer::printkernels(FILE *fe)
 void FLayer::load(FILE *fe)
 {
   int k,i,j;
-  float fv;
+  double fv;
   int fsd;
   
   load_param(fe);
@@ -543,11 +569,11 @@ void FLayer::load(FILE *fe)
   for(k=0;k<lout;k++) {
     for(i=0;i<din;i++)
       for(j=0;j<Lout[k]->din;j++) {
-	fsd=fscanf(fe,"%f ",&fv);
+	fsd=fscanf(fe,"%lf ",&fv);
 	W[k](i,j)=fv;
       }
     for(j=0;j<Lout[k]->din;j++) {
-      fsd=fscanf(fe,"%f ",&fv);
+      fsd=fscanf(fe,"%lf ",&fv);
       b[k](j)=fv;
     }
     fsd=fscanf(fe,"\n");
@@ -564,56 +590,60 @@ void FLayer::bBN()
   //#pragma omp parallel for
   for(int i=0;i<din;i++) {
     int b;
-    float m,var,eps=0.0001;
+    double m,var,eps=0.00001;
+    double sqvar,var32;
     
     m=batch;
+  
     //1 Gamma
     gbn_g(i)=0.0;
     for(b=0;b<batch;b++)
       gbn_g(i)+=Delta(b,i)*bn_E(b,i);
   
     //2 Beta
-
     gbn_b(i)=0.0;
     for(b=0;b<batch;b++)
       gbn_b(i)+=Delta(b,i);
   
 
     //3 bnE
-
     for(b=0;b<batch;b++)
       gbn_E(b,i)=Delta(b,i)*bn_g(i);
   
 	  
     //4 Var
+    sqvar=sqrt(bn_var(i)+eps);
+    var32=(bn_var(i)+eps)*sqvar;
 
     gbn_var(i)=0;
     for(b=0;b<batch;b++)
-      gbn_var(i)+=-0.5*gbn_E(b,i)*(E(b,i)-bn_mean(i))/((bn_var(i)+eps)*sqrt(bn_var(i)+eps));
+      gbn_var(i)+=-0.5*gbn_E(b,i)*(E(b,i)-bn_mean(i))/var32;
     
   
     //5 Mean
-
     gbn_mean(i)=0;
     for(b=0;b<batch;b++) {
-      gbn_mean(i)+=-gbn_E(b,i)/sqrt(bn_var(i)+eps);
-      gbn_mean(i)+=-2*gbn_var(i)*(E(b,i)-bn_mean(i))/m;
+      gbn_mean(i)+=-gbn_E(b,i)/sqvar;
+      //gbn_mean(i)+=-2*gbn_var(i)*(E(b,i)-bn_mean(i))/m;
     }
   
     //6 x
     for(b=0;b<batch;b++) {
-      Delta(b,i)=gbn_E(b,i)/(sqrt(bn_var(i)+eps));
+      Delta(b,i)=gbn_E(b,i)/sqvar;
       Delta(b,i)+=gbn_var(i)*2*(E(b,i)-bn_mean(i))/m;
       Delta(b,i)+=gbn_mean(i)/m;
     }
+
+    
+
   }
+ 
   
 }
 
 
 void FLayer::dactivation()
 {
-  
   
   if (bn) {
     if (act==0) {
@@ -680,7 +710,7 @@ void FLayer::dactivation()
 void FLayer::backward()
 {
   int i,j,k,ind,b,c,r,z;
-  float sum;
+  double sum;
   FLayer *l;
   CLayer *cnn;
   CatLayer *cat;
@@ -719,7 +749,7 @@ void FLayer::backward()
 	  for(r2=0;r2<lr;r2++)
 	    for(c2=0;c2<lc;c2++)
 	      for(z=0;z<cnn->outz;z++,j++)
-		cnn->De[k][z](r+r2,c+c2)+=Delta(b,j)/ld;
+		cnn->De[k][z](r+r2,c+c2)+=Delta(b,j);
 	}
     }
     if (VERBOSE) {
@@ -768,9 +798,8 @@ void FLayer::backward()
 	    fprintf(stderr,"gW %s = %f\n",l->name,l->gW[ind].norm());
 	  }
 
-	  if (!bn) 
-	    for(j=0;j<l->gb[ind].cols();j++) 
-	      l->gb[ind](i)+=Delta.col(i).sum();
+	  for(j=0;j<l->gb[ind].cols();j++) 
+	    l->gb[ind](i)+=Delta.col(i).sum();
     
 	  // back-propagate Delta
 	  //noalias
@@ -787,35 +816,62 @@ void FLayer::backward()
 void FLayer::applygrads()
 {
   int k,i,j;
-  float inc;
-  float sum=0;
+  double inc;
+  double sum=0;
   
+
   for(k=0;k<lout;k++) {
     
-    pgW[k]=(mu/batch)*gW[k]+mmu*pgW[k];
-    if (VERBOSE) sum+=pgW[k].norm();
+    // WEIGHTS
+    if (optim==1) {//MOMENTUM
+      pgW[k]=(mu/batch)*gW[k]+mmu*pgW[k];
+      W[k]+=pgW[k];
 
-    W[k]+=pgW[k];
+    }
+    else if (optim==2) { //ADAM
+      ab1t*=ab1;
+      ab2t*=ab2;
+      for(i=0;i<W[k].rows();i++)
+	for(j=0;j<W[k].cols();j++) {
+	  MT[k](i,j)=(ab1*MT[k](i,j))+(1-ab1)*gW[k](i,j);
+	  VT[k](i,j)=(ab2*VT[k](i,j))+(1-ab2)*(gW[k](i,j)*gW[k](i,j));
+	  MTs[k](i,j)=MT[k](i,j)/(1-ab1t);
+	  VTs[k](i,j)=VT[k](i,j)/(1-ab2t);
+	}
+      for(i=0;i<W[k].rows();i++)
+	for(j=0;j<W[k].cols();j++) 
+	  W[k](i,j)+=(mu/batch)*MTs[k](i,j)/(sqrt(VTs[k](i,j))+aeps);
+    }
+
+    // REGULARIZATION
     if (l2!=0.0) 
       W[k]-=l2*W[k];
-
+    
     if (maxn>0.0) 
       for(i=0;i<W[k].cols();i++) {
 	if (W[k].col(i).norm()>maxn) {
 	  W[k].col(i)=(maxn/W[k].col(i).norm())*W[k].col(i);
 	}
       }
-
-    if (!bn) {
-      pgb[k]=(mu/batch)*gb[k]+mmu*pgb[k];
-      b[k]+=pgb[k];
+    
+    if (l1!=0.0) {
+      for(i=0;i<W[k].rows();i++)
+	for(j=0;j<W[k].cols();j++)
+	  if (W[k](i,j)<0.0) W[k](i,j)+=l1;
+	  else W[k](i,j)-=l1;
     }
+
+    // BIAS
+    pgb[k]=(mu/batch)*gb[k]+mmu*pgb[k];
+    b[k]+=pgb[k];
 
     gW[k].setZero();
     gb[k].setZero();
     
   }
 
+
+  // BATCH NORM g,b
   if (bn) {
     for(i=0;i<din;i++) {
       bn_g(i)+=(mu/batch)*gbn_g(i);
@@ -823,9 +879,6 @@ void FLayer::applygrads()
     }
   }
 
-  if (VERBOSE) {
-    fprintf(stderr,"%s IncW %f\n",name,sum);
-  }
 }
 
 
@@ -846,11 +899,11 @@ IFLayer::IFLayer(Data *D,int b,char *name):FLayer(D->dim,b,name)
 void IFLayer::getbatch(Data *Dt)
 {
   int i,j,c;
-  float fv;
+  double fv;
 
   for(i=0;i<batch;i++) 
     for(j=0;j<din;j++)
-      E(i,j)=Dt->M(Dt->gethead()+i,j);
+      E(i,j)=Dt->M(Dt->getpos(i),j);
   
 }
 
@@ -914,16 +967,18 @@ void OFLayer::modbatch(int b)
 void OFLayer::forward()
 {
   int i;
+
+  if (bn) fBN();
   doActivation();
 }
 
 
-float OFLayer::get_err(Data *Dt)
+double OFLayer::get_err(Data *Dt)
 { 
   int i,j,k,p;
   int rindex;
   int nindex;
-  float err;
+  double err;
   
 
   if (lm) {
@@ -932,29 +987,29 @@ float OFLayer::get_err(Data *Dt)
       for(i=0;i<batch/lm;i++) 
 	for(k=0;k<lm;k++,p++)
 	  for(j=0;j<din;j++)
-	    T(p,j)=Dt->M(Dt->gethead()+i,j);
+	    T(p,j)=Dt->M(Dt->getpos(i),j);
     else 
       for(i=0;i<batch/lm;i++) 
 	for(k=0;k<lm;k++,p++)
 	  for(j=0;j<din;j++)
-	    T(p,j)=Dt->T(Dt->gethead()+i,j);
+	    T(p,j)=Dt->T(Dt->getpos(i),j);
 
   }
   else {
     if (ae)
       for(i=0;i<batch;i++) 
 	for(j=0;j<din;j++)
-	  T(i,j)=Dt->M(Dt->gethead()+i,j);
+	  T(i,j)=Dt->M(Dt->getpos(i),j);
     else 
       for(i=0;i<batch;i++) 
 	for(j=0;j<din;j++)
-	  T(i,j)=Dt->T(Dt->gethead()+i,j);
+	  T(i,j)=Dt->T(Dt->getpos(i),j);
   }
 
   if (lm) {
     int b=batch/lm;
-    MatrixXf T2;
-    MatrixXf N2;
+    LMatrix T2;
+    LMatrix N2;
 
     T2.resize(b,din);
     N2.resize(b,din);
@@ -1008,7 +1063,8 @@ float OFLayer::get_err(Data *Dt)
     }
     else{
       for(i=0;i<batch;i++) 
-	mse+=((T.row(i)-N.row(i)).squaredNorm())/din;
+	for(j=0;j<din;j++)
+	  mse+=(T(i,j)-N(i,j))*(T(i,j)-N(i,j))/din;
 
       for(i=0;i<batch;i++) 
 	rmse+=sqrt(((T.row(i)-N.row(i)).squaredNorm())/din);
@@ -1026,17 +1082,17 @@ float OFLayer::get_err(Data *Dt)
 void OFLayer::backward()
 {
   int i,j,k,p;
-  float sum;
+  double sum;
   
   if (!lm) {
     if (ae)
       for(i=0;i<batch;i++) 
 	for(j=0;j<din;j++)
-	  T(i,j)=D->M(D->gethead()+i,j);
+	  T(i,j)=D->M(D->getpos(i),j);
     else 
       for(i=0;i<batch;i++) 
 	for(j=0;j<din;j++)
-	  T(i,j)=D->T(D->gethead()+i,j);
+	  T(i,j)=D->T(D->getpos(i),j);
       
   }
   else {
@@ -1045,19 +1101,21 @@ void OFLayer::backward()
       for(i=0;i<batch/lm;i++) 
 	for(k=0;k<lm;k++,p++)
 	  for(j=0;j<din;j++)
-	    T(p,j)=D->M(D->gethead()+i,j);
+	    T(p,j)=D->M(D->getpos(i),j);
     else 
       for(i=0;i<batch/lm;i++) 
 	for(k=0;k<lm;k++,p++)
 	  for(j=0;j<din;j++)
-	    T(p,j)=D->T(D->gethead()+i,j);
+	    T(p,j)=D->T(D->getpos(i),j);
   }
 
   if (act==10) // Softmax, CrossEnt
     Delta=(T-N);
 
-  if (act==11) // Linear, MSE
-    Delta=2*(T-N); 
+  if (act==11) {// Linear, MSE
+    Delta=2.0*(T-N);
+    //Delta*=2000.0;
+  }
 
   FLayer::backward();
 

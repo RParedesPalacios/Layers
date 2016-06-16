@@ -210,22 +210,38 @@ int main(int argc, char **argv) {
       }
       
       ////////////// R //////////////
-      else if (!strcmp(ltype,"R")) {
-	sscanf(line,"layer %s R 2 prevlayer %s %s\n",name,cad,cad2);
-	sprintf(lname,"%s:%s",cad,cad2);
+      else if (!strcmp(ltype,"R")) { 
+	//layer f0 R 2 prevlayer N1 p1 local 1
+	sscanf(line,"layer %s R 2 prevlayer %s %s %s 1\n",name,cad,cad2,cad3);
+	if (!strcmp(cad3,"local")) {
+	  sprintf(lname,"%s:%s",cad,cad2);
 
-	fprintf(stderr,"%s %s %s \n",name,cad,cad2);
+	  for(i=0;i<Lc;i++) {
+	    if (!strcmp(lname,LTable[i]->name)) break;
+	  }
+	  sprintf(lname,"%s:%s",innet,name);
 
-	for(i=0;i<Lc;i++) {
-	  if (!strcmp(lname,LTable[i]->name)) break;
+	  //FLayer::FLayer(lname,int lr,int lc,char *name):Layer(0,name)
+	  CLayer *cnn=(CLayer *)LTable[i];
+	  int lr=cnn->outr/2;
+	  int lc=cnn->outc/2;
+	  LTable[Lc]=new FLayer(LTable[i],lr,lc,lname);
+	  NTable[Nc]->addLayer(LTable[Lc]);
+	  Lc++;
 	}
-	sprintf(lname,"%s:%s",innet,name);
-	fprintf(stderr,"%s->%s found\n",LTable[i]->name,lname);
-	LTable[Lc]=new FLayer(LTable[i],batch,lname);
-	NTable[Nc]->addLayer(LTable[Lc]);
-	Lc++;
+	else {
+	  sprintf(lname,"%s:%s",cad,cad2);
+
+	  for(i=0;i<Lc;i++) {
+	    if (!strcmp(lname,LTable[i]->name)) break;
+	  }
+	  sprintf(lname,"%s:%s",innet,name);
+
+	  LTable[Lc]=new FLayer(LTable[i],batch,lname);
+	  NTable[Nc]->addLayer(LTable[Lc]);
+	  Lc++;
+	}
       }
-      
       ////////////// FO //////////////
       else if (!strcmp(ltype,"FO")) {
 	sscanf(line,"layer %s FO %d criterion %s autoencoder %d\n",name,&val,crit,&ae);
@@ -305,15 +321,44 @@ int main(int argc, char **argv) {
 
 	  for(i=0;i<Dc;i++)
 	    if (!strcmp(DTable[i]->name,cad2)) break;
+
 	  d->zscore(DTable[i]);
 	}
+      }
+      if (!strcmp(com,"center")) {
+	for(i=0;i<Dc;i++) 
+	  if (!strcmp(DTable[i]->name,cad)) break;
+	d=DTable[i];
+	if (par==0) {
+	  d->center();
+	  
+	}
+	else{
+	  sscanf(line,"command %s center %d %s",cad,&par,cad2);
+
+	  for(i=0;i<Dc;i++) 
+	    if (!strcmp(DTable[i]->name,cad)) break;
+	  d=DTable[i];
+
+	  for(i=0;i<Dc;i++)
+	    if (!strcmp(DTable[i]->name,cad2)) break;
+	  
+	  d->center(DTable[i]);
+	}
+      }
+      if (!strcmp(com,"div")) {
+	sscanf(line,"command %s %s 1 %f ",cad,com,&fv);
+	for(i=0;i<Dc;i++) 
+	  if (!strcmp(DTable[i]->name,cad)) break;
+	d=DTable[i];
+	
+	d->div(fv);
       }
       //command D1 yuv 0
       if (!strcmp(com,"yuv")) {
 	for(i=0;i<Dc;i++) 
 	  if (!strcmp(DTable[i]->name,cad)) break;
 	d=DTable[i];
-	fprintf(stderr,"%s YUV\n",DTable[i]->name);
 	d->YUV();
       }
       else if (!strcmp(com,"train")) {
@@ -331,7 +376,7 @@ int main(int argc, char **argv) {
 	  for(i=0;i<Nc;i++) 
 	    if (!strcmp(NTable[i]->name,cad)) break;
 	  
-	  //NTable[i]->gcheck();
+	  
 	  NTable[i]->train(par);
 
 	}
@@ -381,7 +426,16 @@ int main(int argc, char **argv) {
     ///////////////////////////
     else if (!strcmp(cad,"amendment")) {
       sscanf(line,"amendment %s %s ",cad,cad2);
-      if (!strcmp(cad2,"*")) {
+      if (!strcmp(cad2,"balance")) {
+	Data *d;
+	int par;
+	sscanf(line,"amendment %s %s %d ",cad,cad2,&par);
+	for(i=0;i<Dc;i++) 
+	  if (!strcmp(DTable[i]->name,cad)) break;
+	d=DTable[i];
+	d->setbalance(par);	
+      }
+      else if (!strcmp(cad2,"*")) {
 	sscanf(line,"amendment %s * %s %f\n",cad,arg,&fv);
 	Net *net;
 	for(i=0;i<Nc;i++)

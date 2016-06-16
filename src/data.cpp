@@ -26,10 +26,15 @@ Data::Data(int n,int d,int o,int b,char *name)
   strcpy(this->name,name);
   sprintf(fname,"newdata");
 
+  idx=(int *)malloc(num*sizeof(int));
+  for(int i=0;i<num;i++) idx[i]=i;
+
   M.resize(num,dim);
   T.resize(num,out);
   head=0;
   batch=b;
+  balance=0;
+  init_balance=0;
 }
 
 // Binary
@@ -61,12 +66,16 @@ Data::Data(int bin,char *fname,int b,char *name)
   strcpy(this->name,name);
   strcpy(this->fname,fname);
 
+  idx=(int *)malloc(num*sizeof(int));
+  for(int i=0;i<num;i++) idx[i]=i;
+
   M.resize(num,dim);
   T.resize(num,out);
   head=0;
   batch=b;
-
-  fptr=(float *)malloc((dim+out)*sizeof(float));
+  balance=0;
+  init_balance=0;
+  fptr=(float *)malloc((dim+out)*sizeof(float ));
 
   for(i=0;i<num;i++) {
     if (feof(fe)) {fprintf(stderr,"Error reading line %d\n",i);exit(1);}
@@ -93,6 +102,8 @@ Data::Data(char *fname,int b,char *name)
     
   batch=b;
   head=0;
+  balance=0;
+  init_balance=0;
   strcpy(this->name,name);
   strcpy(this->fname,fname);
 
@@ -105,6 +116,8 @@ Data::Data(char *fname,int b,char *name)
   fsc=fscanf(fe,"%d %d %d\n",&num,&dim,&out);
   fprintf(stderr,"Reading %s %d %d %d\n",this->name,num,dim,out);
 
+  idx=(int *)malloc(num*sizeof(int));
+  for(int i=0;i<num;i++) idx[i]=i;
 
   M.resize(num,dim);
   T.resize(num,out);
@@ -118,8 +131,6 @@ Data::Data(char *fname,int b,char *name)
       fsc=fscanf(fe,"%f ",&fv);
       T(i,j)=fv;
     }
-    //cout<<T.row(i)<<endl;
-    //getchar();
   }
  
   fclose(fe);
@@ -180,9 +191,11 @@ void Data::SaveBin(char *fname)
   
 }
 
-void Data::div(float val) 
+void Data::div(double val) 
 {
   int i,j;
+
+  fprintf(stderr,"Div %s %f\n",name,val);
 
   if (val!=0.0) 
     for(i=0;i<num;i++) 
@@ -193,7 +206,7 @@ void Data::div(float val)
 void Data::zscore() 
 {
   int i,j;
-  float m,sd;
+  double m,sd;
   
   fprintf(stderr,"Zscore of %s\n",name);
 
@@ -229,7 +242,7 @@ void Data::zscore()
 void Data::center() 
 {
   int i,j;
-  float m;
+  double m;
   
   fprintf(stderr,"Center of %s\n",name);
 
@@ -278,8 +291,8 @@ void Data::YUV()
 {
   int i,j;
   int s;
-  float r,g,b;
-  float y,u,v;
+  double r,g,b;
+  double y,u,v;
 
   // it assumes that there are three channels R-G-B
   if ((dim%3)!=0) {
@@ -287,7 +300,7 @@ void Data::YUV()
     exit(1);
   }
 
-  fprintf(stderr,"RGB->YUV\n");
+  fprintf(stderr,"%s YUV\n",name);
   s=dim/3;
   for(i=0;i<num;i++) {
     for(j=0;j<s;j++) {
@@ -327,37 +340,102 @@ void Data::center(Data *D)
     
 }
 
+int Data::getpos(int p)
+{
+  return idx[(gethead()+p)%num];
+}
 
 void Data::shuffle()
 {
-  
-  MatrixXf M2(num,dim);
-  MatrixXf T2(num,out);
   int *ind;
-  int i,j;
+  int i,j,s,k,l;
+  
   
   fprintf(stderr,"Shuffle %s\n",name);
 
-  ind=(int *)malloc(num*sizeof(int));
-  for(i=0;i<num;i++)
-    ind[i]=-1;
+  
 
-  for(i=0;i<num;i++) {
-    j=rand()%num;
-    for(;ind[j]!=-1;j=rand()%num);
-    ind[j]=i;
+  if (!balance) {
+    for(i=0;i<num;i++)
+      idx[i]=i;
+
+    //shuffle idx
+    for(i=0;i<num;i++) {
+      int temp=idx[i];
+      int r=rand()%num;
+    
+      idx[i]=idx[r];
+      idx[r]=temp;
+    }
+
   }
-   
-  for(i=0;i<num;i++) {
-    M2.row(i)=M.row(ind[i]);
-    T2.row(i)=T.row(ind[i]);
+  else {
+    fprintf(stderr,"Balancing classes\n");
+
+    if (!init_balance) {
+      init_balance=1;
+
+      bci=(int **)malloc(out*sizeof(int*));
+      bcc=(int *)malloc(out*sizeof(int));
+      for(j=0;j<out;j++) bcc[j]=0;
+      
+      for(i=0;i<num;i++) 
+	for(j=0;j<out;j++) 
+	  if (T(i,j)==1) bcc[j]++;
+
+     
+      for(j=0;j<out;j++) {
+	//fprintf(stderr,"Class %d : %d\n",j,bcc[j]);
+	
+	bci[j]=(int *)malloc(bcc[j]*sizeof(int));
+
+	int c=0;
+	for(i=0;i<num;i++) 
+	  if (T(i,j)==1) {
+	    bci[j][c]=i;
+	    c++;
+	  }
+      }
+    }
+
+    
+    // Fill idx whith class-balanced indexes
+    s=num/out;
+    for(k=0;k<out-1;k++) {
+      for(i=k*s;i<(k+1)*s;i++) {
+	j=rand()%bcc[k];
+	idx[i]=bci[k][j];
+      }
+    }
+    // last class because num%out couldn't be 0
+    for(i=k*s;i<num;i++) {
+      j=rand()%bcc[k];
+      idx[i]=bci[k][j];
+    }
+  
+
+    //shuffle idx
+    for(i=0;i<num;i++) {
+      int temp=idx[i];
+      int r=rand()%num;
+    
+      idx[i]=idx[r];
+      idx[r]=temp;
+    }
+
+    int *v=(int *)malloc(out*sizeof(int));
+    for(i=0;i<out;i++) 
+      v[i]=0;
+    for(i=0;i<num;i++) {
+      for(j=0;j<out;j++) 
+	if (T(idx[i],j)==1) v[j]++;
+    }
+    //for(j=0;j<out;j++) 
+    //  fprintf(stderr,"Class %d ---> %d\n",j,v[j]);
+    free(v);
   }
-
-  M=M2;
-  T=T2;
-  //fprintf(stderr,"done\n");
-
 }
+
 
 void Data::preparebatch(int code)
 {
@@ -379,4 +457,9 @@ void Data::next()
 int Data::gethead()
 {
   return head;
+}
+
+void Data::setbalance(int b)
+{
+  balance=b;
 }

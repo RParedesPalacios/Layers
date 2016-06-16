@@ -107,18 +107,18 @@ void PLayer::addparent(Layer *l)
       for(j=0;j<nk;j++)
 	maxC[i][j].resize(outr,outc);
     
-    N=(MatrixXf **)malloc(batch*sizeof(MatrixXf *));
+    N=(LMatrix **)malloc(batch*sizeof(LMatrix *));
     for(i=0;i<batch;i++) {
-      N[i]=new MatrixXf[nk];
+      N[i]=new LMatrix[nk];
     }
     
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++)
 	N[i][j].resize(outr,outc);
     
-    De=(MatrixXf **)malloc(batch*sizeof(MatrixXf *));
+    De=(LMatrix **)malloc(batch*sizeof(LMatrix *));
     for(i=0;i<batch;i++) {
-      De[i]=new MatrixXf[nk];
+      De[i]=new LMatrix[nk];
     }
     
     for(i=0;i<batch;i++)
@@ -138,7 +138,7 @@ void PLayer::MaxPool()
   
  
   CLayer *c=(CLayer *)Lin[0];
-  float sum=0.0;
+  double sum=0.0;
 
   if (VERBOSE) {
     for(int b=0;b<batch;b++) 
@@ -150,7 +150,7 @@ void PLayer::MaxPool()
 
 #pragma omp parallel for
   for(int b=0;b<batch;b++) {
-    MatrixXf::Index x,y;
+    LMatrix::Index x,y;
     int i,j,k,z,r;
     int mr,mc;
     for(k=0;k<nk;k++) {
@@ -172,7 +172,7 @@ void PLayer::MaxPool()
 void PLayer::forward()
 {
   int i,b;
-  float sum=0.0;
+  double sum=0.0;
 
   MaxPool();
     
@@ -209,7 +209,7 @@ void PLayer::load(FILE *fe)
 void PLayer::MaxPoolB()
 {
   CLayer *c=(CLayer *)Lin[0];
-  float sum=0;
+  double sum=0;
 
   #pragma omp parallel for
   for(int b=0;b<batch;b++) {

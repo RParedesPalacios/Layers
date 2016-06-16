@@ -16,7 +16,7 @@ class Net {
 
   Layer *out[MAX_LAYERS];
   Layer *in[MAX_LAYERS];
-  float err[MAX_LAYERS];
+  double err[MAX_LAYERS];
   
 
   Layer *fts[MAX_LAYERS];
@@ -30,10 +30,11 @@ class Net {
   int trit;
   int trepoch;
   
-  float mu;
+  double mu;
+  double decay;
 
-  float ftime;
-  float btime;
+  double ftime;
+  double btime;
 
   Net(char *name);
 
@@ -71,22 +72,23 @@ class Net {
   void reseterrors();
   void Init(char *logname);
 
-  void setmu(float m);
-  void setmmu(float m);
+  void setmu(double m);
+  void setmmu(double m);
   void setshift(int f);
   void setflip(int f);
-  void setbrightness(float f);
-  void setcontrast(float f);
-  void decmu(float decay);  
+  void setbrightness(double f);
+  void setcontrast(double f);
+  void decmu(double decay);  
   void setact(int a);
   void setbn(int a);
-  void setmaxn(float m);
-  void setl2(float m);
-  void setdrop(float m);
-  void setopt(int l);
+  void setmaxn(double m);
+  void setl2(double m);
+  void setdrop(double m);
+  void setoptim(int l);
   void setthreads(int l);
-  void setnoiser(float n);
-  void setnoisesd(float n);
+  void setnoiser(double n);
+  void setnoisesd(double n);
+  void setdecay(double f);
 
   int isIn(Layer *l);
 

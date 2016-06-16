@@ -84,32 +84,35 @@
      brightness_ = 302,
      contrast_ = 303,
      bn_ = 304,
-     const_ = 305,
-     data_ = 306,
-     network_ = 307,
-     script_ = 308,
-     train_ = 309,
-     save_ = 310,
-     zscore_ = 311,
-     yuv_ = 312,
-     printkernels_ = 313,
-     local_ = 314,
-     load_ = 315,
-     testout_ = 316,
-     BCB_ = 317,
-     ECB_ = 318,
-     BSB_ = 319,
-     ESB_ = 320,
-     BRB_ = 321,
-     ERB_ = 322,
-     PER_ = 323,
-     COM_ = 324,
-     EQ_ = 325,
-     RAR_ = 326,
-     id_ = 327,
-     nfile_ = 328,
-     cte_ = 329,
-     ctr_ = 330
+     balance_ = 305,
+     const_ = 306,
+     data_ = 307,
+     network_ = 308,
+     script_ = 309,
+     train_ = 310,
+     save_ = 311,
+     zscore_ = 312,
+     yuv_ = 313,
+     printkernels_ = 314,
+     local_ = 315,
+     load_ = 316,
+     testout_ = 317,
+     center_ = 318,
+     div_ = 319,
+     BCB_ = 320,
+     ECB_ = 321,
+     BSB_ = 322,
+     ESB_ = 323,
+     BRB_ = 324,
+     ERB_ = 325,
+     PER_ = 326,
+     COM_ = 327,
+     EQ_ = 328,
+     RAR_ = 329,
+     id_ = 330,
+     nfile_ = 331,
+     cte_ = 332,
+     ctr_ = 333
    };
 #endif
 
@@ -130,7 +133,7 @@ typedef union YYSTYPE
 
 
 /* Line 2068 of yacc.c  */
-#line 134 "asin.h"
+#line 137 "asin.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

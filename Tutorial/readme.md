@@ -489,6 +489,8 @@ network N1 {
 	* For Data:
 		* zscore(): To normalize Data	
 		* yuv(): to convert RGB Maps to YUV maps
+		* center(): To center Data (mean=0)
+		* div(x): To div all the data
 	* For Networks:
 		* train(epochs): to train networks
 		* save(fname): to save the network parameters to file
@@ -517,6 +519,12 @@ script {
 
   D1.yuv()
   D2.yuv()
+  
+  D1.center()
+  D2.center(D1)
+  
+  D1.div(255)
+  D2.div(255)
   
   D1.zscore()
   D2.zscore(D1) //normalize D2 with D1 statistics
@@ -552,8 +560,10 @@ script {
 	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU)
 	* flip: to flip input images ({1,0})
 	* shift: to shift randomly input images 
+
+	* balance: for balancing data classes
 	
-* Parameters can be modified for one particular layer:
+* Parameters can be modified for one particular layer or data:
 
 ~~~c
 script{
@@ -561,6 +571,8 @@ script{
 N1.c2.drop=0.5
 N1.in.flip=1
 N1.in.shift=2
+
+D1.balance=1
 ...
 }
 ~~~

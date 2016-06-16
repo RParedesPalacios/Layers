@@ -23,10 +23,10 @@
  nk_  kr_  kc_  rpad_  cpad_ stride_
  sizer_  sizec_  
  mu_  mmu_  drop_  l2_  l1_  maxn_  act_  noiser_  noisesd_  
- shift_  flip_  brightness_  contrast_  bn_
+ shift_  flip_  brightness_  contrast_  bn_  balance_
 /*****************************************************************  Keywords */
  const_  data_  network_  script_  train_  save_  zscore_  yuv_  printkernels_
- local_  load_  testout_  
+ local_  load_  testout_  center_  div_
 /****************************************************************  operators */
  BCB_  ECB_  BSB_  ESB_  BRB_  ERB_  PER_  COM_  EQ_  RAR_
 /**************************************************** tokens with attributes */
@@ -35,7 +35,7 @@
 %token<creal> ctr_
 /********************************************** nonterminals with attributes */
 %type<aux>   filetype  f_param  name_layer  param_ctr  param_cte  rest_train
-%type<ident> rest_zscore  parameter
+%type<ident> other_data  parameter
 /*****************************************************************************/
 %%
 /*****************************************************************************/
@@ -413,9 +413,15 @@ amendment
        | id_  PER_  parameter
 
        { int k = search_network ($1);
-	 if (k < 0)
-	   yyerror("Network name does not exist");
-	 else get_amendment(NETWORK, k, $3);
+	 if (k >= 0)  get_amendment(NETWORK, k, $3);
+	 else yyerror("Network name does not exist");
+       }
+
+       | id_  PER_  balance_  EQ_  cte_
+
+       { int k = search_data ($1);
+	 if (k >= 0)  get_amendment_data(k, $5);
+	 else yyerror("Data or network name does not exist");
        }
        ;
 /*****************************************************************************/
@@ -468,7 +474,7 @@ command
 	 else get_testout(k, $5);
        }
 
-       | id_  PER_  zscore_  BRB_  rest_zscore  ERB_
+       | id_  PER_  zscore_  BRB_  other_data  ERB_
 
        { int k2, k1 = search_data ($1);
 	 if (k1 >= 0) 
@@ -481,6 +487,19 @@ command
 	 else yyerror("Data name does not exist");
        }
 
+       | id_  PER_  center_  BRB_  other_data  ERB_
+
+       { int k2, k1 = search_data ($1);
+	 if (k1 >= 0) 
+	   if (strlen($5) > 0) {
+	     k2 = search_data ($5);
+	     if (k2 >= 0) get_center(k1,k2);
+	     else yyerror("Data name does not exist");
+	   }
+	   else  get_center(k1,-1);
+	 else yyerror("Data name does not exist");
+       }
+
        | id_  PER_  yuv_  BRB_  ERB_
 
        { int k = search_data ($1);
@@ -488,6 +507,12 @@ command
 	 else yyerror("Data name does not exist");
        }
 
+       | id_  PER_  div_  BRB_  ctr_  ERB_
+
+       { int k = search_data ($1);
+	 if (k >= 0) get_div(k, $5);
+	 else yyerror("Data name does not exist");
+       }
        ;
 /*****************************************************************************/
 rest_train
@@ -501,7 +526,7 @@ rest_train
 
        ;
 /*****************************************************************************/
-rest_zscore   
+other_data
        :      { $$ = ""; }  /* instruccion vacia */      
        | id_  { $$ = $1; }
        ;
@@ -511,7 +536,7 @@ parameter
 
        { $$ = get_amend_param_ctr($1, $3); }
 
-       |  param_cte  EQ_  cte_
+       | param_cte  EQ_  cte_
 
        { $$ = get_amend_param_cte($1, $3); }
        ;

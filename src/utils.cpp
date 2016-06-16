@@ -7,7 +7,6 @@
 #include <pthread.h>
 
 #include "utils.h"
-
 #include "Dense"
 
 #define PI 3.1415926
@@ -15,17 +14,17 @@
 
 using namespace Eigen;
 using namespace std;
-float uniform() {
+double uniform() {
   return ((rand()%10000)/10000.0);
 
 }
 
-float suniform() {
+double suniform() {
   return (2*uniform())-1;
 }
 
-float gauss(float mean,float sd) {
-  float x,u1,u2;
+double gauss(double mean,double sd) {
+  double x,u1,u2;
 
   u1=uniform();
   u2=uniform();
@@ -44,24 +43,24 @@ float gauss(float mean,float sd) {
 
 
 
-float sigm(float x)
+double sigm(double x)
 {
-  if (x<-10) return 0;
-  if (x>10) return 1;
+  if (x<-100) return 0;
+  if (x>100) return 1;
 
   return 1/(1+exp(-x));
 
 }
 
-float dsigm(float x)
+double dsigm(double x)
 {
-  float s=sigm(x);
+  double s=sigm(x);
   
   return s*(1-s);
 
 }
 
-void Drop(MatrixXf &M,float drop)
+void Drop(LMatrix &M,double drop)
 {
   for(int i=0;i<M.rows();i++)
     for(int j=0;j<M.cols();j++)
@@ -70,7 +69,7 @@ void Drop(MatrixXf &M,float drop)
   
 }
 
-void ReLu(MatrixXf E,MatrixXf& N)
+void ReLu(LMatrix E,LMatrix& N)
 {
   
   for(int i=0;i<E.rows();i++)
@@ -81,7 +80,7 @@ void ReLu(MatrixXf E,MatrixXf& N)
   
 }
 
-void ELU(MatrixXf E,MatrixXf& N,float alfa)
+void ELU(LMatrix E,LMatrix& N,double alfa)
 {
   int i,j;
 
@@ -91,7 +90,7 @@ void ELU(MatrixXf E,MatrixXf& N,float alfa)
       else N(i,j)=E(i,j);
   
 }
-void Sigmoid(MatrixXf E,MatrixXf &N)
+void Sigmoid(LMatrix E,LMatrix &N)
 {
   int i,j;
 
@@ -101,10 +100,10 @@ void Sigmoid(MatrixXf E,MatrixXf &N)
 
 }
 
-void Softmax(MatrixXf E,MatrixXf &N)
+void Softmax(LMatrix E,LMatrix &N)
 {
   int i,j;
-  float max,sum;
+  double max,sum;
 
   for(i=0;i<E.rows();i++) {
 
@@ -120,7 +119,7 @@ void Softmax(MatrixXf E,MatrixXf &N)
     }
 }
 
-void Linear(MatrixXf E,MatrixXf &N)
+void Linear(LMatrix E,LMatrix &N)
 {
   N=E;  
 }

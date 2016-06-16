@@ -27,8 +27,8 @@ CatLayer::CatLayer(int batch,char *name):CLayer(batch,name)
   type=4;
   cat=0;
   
-  N=(MatrixXf **)malloc(batch*sizeof(MatrixXf *));
-  De=(MatrixXf **)malloc(batch*sizeof(MatrixXf *));
+  N=(LMatrix **)malloc(batch*sizeof(LMatrix *));
+  De=(LMatrix **)malloc(batch*sizeof(LMatrix *));
 
   fprintf(stderr,"Creating CatLayer (%s)\n",name);
 }
@@ -102,14 +102,14 @@ void CatLayer::addparent(Layer *l)
     
     nk=outz;  
     for(i=0;i<batch;i++) 
-      N[i]=new MatrixXf[nk];
+      N[i]=new LMatrix[nk];
 
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++)
 	N[i][j].resize(outr,outc);
     
     for(i=0;i<batch;i++) {
-      De[i]=new MatrixXf[nk];
+      De[i]=new LMatrix[nk];
     }
   
     for(i=0;i<batch;i++)

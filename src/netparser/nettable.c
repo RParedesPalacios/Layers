@@ -593,6 +593,12 @@ void get_amendment(int type, int ref, char *aux)
   emit(line);
 }
 /*****************************************************************************/
+void get_amendment_data(int ref, int aux)
+{ char line[140];
+  sprintf(line,"amendment %s balance %d", tdd[ref].name, aux);
+  emit(line);
+}
+/*****************************************************************************/
 char *get_amend_param_ctr(int param, float value)
 { char line[140];  char *d;
 
@@ -663,6 +669,10 @@ char *get_amend_param_cte(int param, int value)
     sprintf(line,"flip %d",value);
     break;
   }
+  case balance: { 
+    sprintf(line,"balance %d",value);
+    break;
+  }
   }
   d = malloc (strlen (line) + 1); 
   strcpy (d,line);
@@ -728,10 +738,26 @@ void get_zscore (int ref1, int ref2)
   emit(line);
 }
 /*****************************************************************************/
+void get_center (int ref1, int ref2)
+{ char line[140], line2[140]; 
+
+  if (ref2 < 0) sprintf(line2,"0");
+  else  sprintf(line2,"1 %s",tdd[ref2].name);
+  sprintf(line,"command %s center %s", tdd[ref1].name, line2);
+  emit(line);
+}
+/*****************************************************************************/
 void get_yuv (int ref1)
 { char line[140]; 
 
   sprintf(line,"command %s yuv 0",tdd[ref1].name);
+  emit(line);
+}
+/*****************************************************************************/
+void get_div (int ref1, float aux)
+{ char line[140]; 
+
+  sprintf(line,"command %s div 1 %f",tdd[ref1].name, aux);
   emit(line);
 }
 /*****************************************************************************/

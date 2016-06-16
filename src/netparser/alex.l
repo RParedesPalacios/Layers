@@ -22,8 +22,8 @@ delimitador	[ \t]+
 
 letra 		[_a-zA-Z]
 digito		[0-9]
-nentero		[0-9]+
-nreal		[0-9]+|[0-9]*"."[0-9]+
+nentero		{digito}+
+nreal		({digito}+"."{digito}*)|({digito}*"."{digito}+)
 identificador	{letra}({letra}|{digito})*
 literal         ("/"|"."|".."|{identificador})+(\.{identificador})?
 namefile        \"{literal}\"
@@ -85,10 +85,13 @@ shift           { display(shift_);      }
 flip            { display(flip_);       }     
 brightness      { display(brightness_); }     
 contrast        { display(contrast_);   }     
-bn              { display(bn_);         }     
+bn              { display(bn_);         } 
+balance         { display(balance_);    } 
 
+center          { display(center_);       }
 const           { display(const_);        }
 data            { display(data_);         }
+div             { display(div_);          }
 network         { display(network_);      }
 script          { display(script_);       }
 train           { display(train_);        }

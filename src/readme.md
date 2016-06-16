@@ -61,6 +61,18 @@ DONE!
 
 ## Changelog
 
+### V0.3 - June 2016
+
+* New functions for data:
+	* center
+	* div
+* New parameters for data:
+	* balance
+* Added a types.h to change from float to double precision
+* Other improvements
+
+* Note: **Parser must be compiled**
+
 ### V0.2 - June 2016
 
 * New functions available:

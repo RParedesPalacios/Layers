@@ -14,6 +14,8 @@
 // Comment this line for Mac
 #define USETIME 
 
+#define PERFORM_GCHECK 0
+
 ////////////////////////////////////
 ///// NET CLASS
 ////////////////////////////////////
@@ -25,6 +27,8 @@ Net::Net(char *name)
   strcpy(this->name,name);
   bn=0;
   init=0;
+  decay=0.999;
+
   Dtrain=NULL;
   Dtest=NULL;
   Dval=NULL;
@@ -183,7 +187,7 @@ void Net::setshift(int f)
     if (lvec[i]->lin==0) 
       lvec[i]->setshift(f);
 }
-void Net::setbrightness(float f)
+void Net::setbrightness(double f)
 {
   int i;
 
@@ -193,7 +197,7 @@ void Net::setbrightness(float f)
       lvec[i]->setbrightness(f);
 }
 
-void Net::setcontrast(float f)
+void Net::setcontrast(double f)
 {
   int i;
 
@@ -214,7 +218,7 @@ void Net::setflip(int f)
 }
 
 
-void Net::setmu(float m)
+void Net::setmu(double m)
 {
   int i;
 
@@ -248,37 +252,46 @@ void Net::setbn(int a)
   bn=a;
   fprintf(stderr,"Net %s set BN to %d\n",name,a);
   for(i=0;i<layers;i++) 
-    if ((lvec[i]->lin>0)&&(lvec[i]->lout>0)&&(!lvec[i]->reshape)&&(!lvec[i]->local)) 
+    if ((lvec[i]->lin>0)&&(!lvec[i]->reshape)&&(!lvec[i]->local)) 
       lvec[i]->setbn(a);
 }
-void Net::decmu(float decay)
+
+void Net::setdecay(double f)
+{
+  fprintf(stderr,"Net %s set decay lr to %f\n",name,f);
+  decay=f;
+}
+
+void Net::decmu(double decay)
 {
   int i;
   for(i=0;i<layers;i++) 
     lvec[i]->setmu(lvec[i]->mu*decay);
 }
-void Net::setmmu(float m)
+void Net::setmmu(double m)
 {
   int i;
   fprintf(stderr,"Net %s set momentum rate to %f\n",name,m);
   for(i=0;i<layers;i++) 
     lvec[i]->setmmu(m);
 }
-void Net::setl2(float m)
+void Net::setl2(double m)
 {
   int i;
   fprintf(stderr,"Net %s set l2 regularization to %f\n",name,m);
   for(i=0;i<layers;i++) 
     lvec[i]->setl2(m);
 }
-void Net::setopt(int l)
+void Net::setoptim(int l)
 {
   int i;
+
+  fprintf(stderr,"Net %s set optimization method to %d\n",name,l);
   for(i=0;i<layers;i++) 
-    lvec[i]->setopt(l);
+    lvec[i]->setoptim(l);
 }
 
-void Net::setmaxn(float m)
+void Net::setmaxn(double m)
 {
   int i;
   fprintf(stderr,"Net %s set maxnorm rate to %f\n",name,m);
@@ -286,7 +299,7 @@ void Net::setmaxn(float m)
     lvec[i]->setmaxn(m);
 
 }
-void Net::setnoiser(float n)
+void Net::setnoiser(double n)
 {
   int i;
   fprintf(stderr,"Net %s set noise rate to %f\n",name,n);
@@ -294,7 +307,7 @@ void Net::setnoiser(float n)
     lvec[i]->setnoiser(n);
 
 }
-void Net::setnoisesd(float n)
+void Net::setnoisesd(double n)
 {
   int i;
   fprintf(stderr,"Net %s set noise sd to %f\n",name,n);
@@ -303,7 +316,7 @@ void Net::setnoisesd(float n)
 
 }
 
-void Net::setdrop(float m)
+void Net::setdrop(double m)
 {
   int i;
   fprintf(stderr,"Net %s set dropout rate to %f\n",name,m);
@@ -405,7 +418,7 @@ void Net::forward()
 {
   int i;
   struct timespec t0, t1,ft0,ft1;
-  float e;
+  double e;
 
   #ifdef USETIME
 
@@ -516,7 +529,7 @@ void Net::build_bts()
 void Net::backward()
 { 
   struct timespec t0, t1,ft0,ft1;
-  float e;
+  double e;
 
   int i;
 
@@ -646,11 +659,14 @@ void Net::train(int epochs)
 {
   int i,d;
   int epoch;
-  float decay=0.999;
+  
   
   fprintf(stderr,"Training net %s %d epochs\n",name,epochs);
 
   for(epoch=1;epoch<=epochs;epoch++) {
+
+    if (PERFORM_GCHECK) gcheckF();
+
     reseterrors();
     fprintf(stderr,"Epoch %d:\n",epoch);
 
@@ -693,7 +709,7 @@ void Net::train(int epochs)
     if ((bn)&&((Dval!=NULL)||(Dtest!=NULL))) {
       trainmode();
       reseterrors();
-      Dtrain->preparebatch(1);
+      Dtrain->preparebatch(0);
       resetstats();
       for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
 	fprintf(stderr,"Forward BN %d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
@@ -749,6 +765,8 @@ void Net::train(int epochs)
     }
     
     decmu(decay);
+
+    
   }
   
   //fclose(flog);
@@ -759,11 +777,11 @@ void Net::train(int epochs)
 void Net::gcheck()
 {
   int i,j;
-  float g,ge,eps=0.0001,f1,f2,f;
+  double g,ge,eps=0.0001,f1,f2,f;
   CLayer *cl;
   OFLayer *o;
-  float a,a1,a2;
-  float n,n1,n2;
+  double a,a1,a2;
+  double n,n1,n2;
 
   
   cl=(CLayer *)lvec[1];
@@ -877,11 +895,11 @@ void Net::gcheck()
 void Net::gcheckF()
 {
   int i,j;
-  float g,ge,eps=0.0001,f1,f2,f;
+  double g,ge,eps=0.0001,f1,f2,f;
   FLayer *cl;
   OFLayer *o;
-  float a,a1,a2;
-  float n,n1,n2;
+  double a,a1,a2;
+  double n,n1,n2;
 
   
   cl=(FLayer *)lvec[1];
@@ -894,8 +912,10 @@ void Net::gcheckF()
 
   
   int b,k;
-  int tot=250;
+  int tot=10;
   for(int it=0;it<tot;it++) {
+
+
     b=rand()%cl->batch;
     k=rand()%cl->din;
     
@@ -911,7 +931,8 @@ void Net::gcheckF()
     /////
     backward();
 
-	 
+    n=cl->N(b,k);
+
     f=((o->T.row(b)-o->N.row(b)).squaredNorm());
 
     g=cl->Delta(b,k);
@@ -936,12 +957,12 @@ void Net::gcheckF()
     }
     backward();
   
-    n=cl->N(b,k);
+    
     n1=cl->N(b,k);
-    /*f1=0;
-      for(i=0;i<o->din;i++)
-      f1+=(o->T(b,i)-o->N(b,i))*(o->T(b,i)-o->N(b,i));*/
-    f1=((o->T.row(b)-o->N.row(b)).squaredNorm());
+    f1=0;
+    for(i=0;i<o->din;i++)
+      f1+=(o->T(b,i)-o->N(b,i))*(o->T(b,i)-o->N(b,i));
+    //f1=((o->T.row(b)-o->N.row(b)).squaredNorm());
   
     //-eps
     /////
@@ -963,17 +984,17 @@ void Net::gcheckF()
     n2=cl->N(b,k);
 
     f2=0;
-    /*
-      for(i=0;i<o->din;i++)
+    
+    for(i=0;i<o->din;i++)
       f2+=(o->T(b,i)-o->N(b,i))*(o->T(b,i)-o->N(b,i));
-    */
-    f2=((o->T.row(b)-o->N.row(b)).squaredNorm());
+    
+    //f2=((o->T.row(b)-o->N.row(b)).squaredNorm());
 
     ge=(f2-f1)/(2*eps);
     if ((ge-g>0.0001)||(ge-g<-0.0001)) {
       fprintf(stderr,"Gradient check fail\n");
-      fprintf(stderr,"g=%f (%f %f %f) (%f %f %f) (%f,%f,%f) gf=%f\n",g,a,a1,a2,n,n1,n2,f,f1,f2,ge);
-      exit(1);
+      fprintf(stderr,"g=%f gf=%f (%f %f %f) (%f %f %f) (%f,%f,%f)\n",g,ge,a,a1,a2,n,n1,n2,f,f1,f2);
+      getchar();
     }
     else fprintf(stderr,"%f %f\r",g,ge);
     //getchar();
@@ -1024,7 +1045,6 @@ void Net::trainbatch(int b)
 {
   int i,d;
   int epoch;
-  float decay=0.999;
   
   ftime=0;
   btime=0;

@@ -13,11 +13,16 @@ class Data {
   int batch,head;
   char name[1000];
   char fname[1000];
+  int balance;
+  int init_balance;
+  int **bci;
+  int *bcc;
 
-  ArrayXXf M;
-  ArrayXXf T;
-  ArrayXXf inmu;
-  ArrayXXf insd;
+  int *idx;
+  ArrayXXd M;
+  ArrayXXd T;
+  ArrayXXd inmu;
+  ArrayXXd insd;
 
   Data();
   Data(int n,int d,int o,int b,char *name);
@@ -31,11 +36,13 @@ class Data {
   void center();
   void center(Data *D);
   void YUV();
-  void div(float val);
+  void div(double val);
   void shuffle();
   void preparebatch(int code);
   void next();
   int gethead();
+  int getpos(int p);
+  void setbalance(int b);
 
   void Save(char *fname);
   void SaveBin(char *fname);

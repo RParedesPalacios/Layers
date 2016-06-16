@@ -1,25 +1,27 @@
 #ifndef _UTILS_
 #define _UTILS_
 
+
 #include "Dense"
+#include "types.h"
 
 
 using namespace Eigen;
 using namespace std;
 
-void ReLu(MatrixXf E,MatrixXf &N);
-void Sigmoid(MatrixXf E,MatrixXf &N);
-void ELU(MatrixXf E,MatrixXf& N,float alfa);
-void Softmax(MatrixXf E,MatrixXf &N);
-void Linear(MatrixXf E,MatrixXf &N);
-void Drop(MatrixXf &M,float drop);
+void ReLu(LMatrix E,LMatrix &N);
+void Sigmoid(LMatrix E,LMatrix &N);
+void ELU(LMatrix E,LMatrix& N,double alfa);
+void Softmax(LMatrix E,LMatrix &N);
+void Linear(LMatrix E,LMatrix &N);
+void Drop(LMatrix &M,double drop);
 
 
-float dsigm(float x);
-float sigm(float x);
-float uniform();
-float suniform();
-float gauss(float mean,float sd);
+double dsigm(double x);
+double sigm(double x);
+double uniform();
+double suniform();
+double gauss(double mean,double sd);
 
 
 #endif
