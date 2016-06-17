@@ -1116,17 +1116,18 @@ void OFLayer::backward()
 
   if (act==11) {// Linear, MSE
     Delta+=2.0*(T-N);
-    //Delta*=2000.0;
   }
 
   FLayer::backward();
 
 }
 
+/*
 void OFLayer::addchild(Layer *l) {
   fprintf(stderr,"Error: Output FC Layer (%s) can not have child layer\n",name);
   exit(1);
-}
+  }
+*/
   //  virtual void addparent(Layer *l);
   //  virtual void forward();
   //  virtual void backward();

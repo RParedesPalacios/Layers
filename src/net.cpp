@@ -55,8 +55,7 @@ void Net::initialize()
   fprintf(stderr,"Net %s initializing layers\n",name);
 
   for(i=0;i<layers;i++)
-    if (lvec[i]->lout>0) 
-      lvec[i]->initialize();
+    lvec[i]->initialize();
 }
 
 void Net::net2dot()
@@ -243,7 +242,7 @@ void Net::setact(int a)
   int i;
   fprintf(stderr,"Net %s set activation type to %d\n",name,a);
   for(i=0;i<layers;i++) 
-    if ((lvec[i]->lin>0)&&(lvec[i]->lout>0)&&(!lvec[i]->reshape)&&(!lvec[i]->local)) 
+    if ((lvec[i]->lin>0)&&(!lvec[i]->out)&&(!lvec[i]->reshape)&&(!lvec[i]->local)) 
       lvec[i]->setact(a);
 }
 void Net::setbn(int a)
@@ -389,10 +388,7 @@ void Net::build_fts()
     for(i=0;i<layers;i++) {
       if (gin[i]==0) {
 	fts[ind++]=lvec[i];
-	if (lvec[i]->lout>0)
-	  fprintf(stderr,"%s,",lvec[i]->name);
-	else 
-	  fprintf(stderr,"%s ",lvec[i]->name);
+	fprintf(stderr,"%s,",lvec[i]->name);
 	gin[i]=-1;
 	for(j=0;j<lvec[i]->lout;j++) {
 	  if (isIn(lvec[i]->Lout[j])) {
@@ -506,10 +502,7 @@ void Net::build_bts()
   
     for(i=0;i<layers;i++) {
       if (gout[i]==0) {
-	if (lvec[i]->lin>0)
-	  fprintf(stderr,"%s,",lvec[i]->name);
-	else 
-	  fprintf(stderr,"%s ",lvec[i]->name);
+	fprintf(stderr,"%s,",lvec[i]->name);
 	bts[ind++]=lvec[i];
 	gout[i]=-1;
 
