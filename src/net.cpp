@@ -390,9 +390,9 @@ void Net::build_fts()
       if (gin[i]==0) {
 	fts[ind++]=lvec[i];
 	if (lvec[i]->lout>0)
-	  fprintf(stderr,"%s-->",lvec[i]->name);
+	  fprintf(stderr,"%s,",lvec[i]->name);
 	else 
-	  fprintf(stderr,"%s| ",lvec[i]->name);
+	  fprintf(stderr,"%s ",lvec[i]->name);
 	gin[i]=-1;
 	for(j=0;j<lvec[i]->lout;j++) {
 	  if (isIn(lvec[i]->Lout[j])) {
@@ -507,9 +507,9 @@ void Net::build_bts()
     for(i=0;i<layers;i++) {
       if (gout[i]==0) {
 	if (lvec[i]->lin>0)
-	  fprintf(stderr,"%s-->",lvec[i]->name);
+	  fprintf(stderr,"%s,",lvec[i]->name);
 	else 
-	  fprintf(stderr,"%s| ",lvec[i]->name);
+	  fprintf(stderr,"%s ",lvec[i]->name);
 	bts[ind++]=lvec[i];
 	gout[i]=-1;
 

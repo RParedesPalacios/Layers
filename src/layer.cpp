@@ -29,6 +29,7 @@ Layer::Layer(int batch,char *name)
   din=0;
   lin=0;
   lout=0;
+  out=0;
   mu=0.0001;
   //MOMENTUM
   mmu=0.9;

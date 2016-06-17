@@ -1180,72 +1180,74 @@ void CLayer::initialize()
   }
 }
 
-  void CLayer::applygrads()
-  {
-    double sum=0.0;
+void CLayer::applygrads()
+{
+  double sum=0.0;
 
 #pragma omp parallel for
-    for(int i=0;i<nk;i++) {
-      if (!bn) bias(i)+=(mu/batch)*gbias(i);
+  for(int i=0;i<nk;i++) {
+    if (!bn) bias(i)+=(mu/batch)*gbias(i);
 
-      for(int j=0;j<kz;j++) {
-	pgK[i][j]=(mu/batch)*gK[i][j]+mmu*pgK[i][j];
-	K[i][j]+=pgK[i][j];
-	if (l2!=0.0) 
-	  K[i][j]-=l2*K[i][j];
-	sum+=(gK[i][j].norm());
-      }
-      if (sum!=sum) {
-	fprintf(stderr,"Nan values!!\n");
-	exit(1);
-      }
-      if (bn) {
-	bn_g(i)+=(mu/batch)*gbn_g(i);
-	bn_b(i)+=(mu/batch)*gbn_b(i);
-      }
-  
+    for(int j=0;j<kz;j++) {
+      pgK[i][j]=(mu/batch)*gK[i][j]+mmu*pgK[i][j];
+      K[i][j]+=pgK[i][j];
+      if (l2!=0.0) 
+	K[i][j]-=l2*K[i][j];
+      sum+=(gK[i][j].norm());
     }
-    if (VERBOSE) {
-      fprintf(stderr,"%s IncK %f\n",name,sum/(nk*kz));
+    if (sum!=sum) {
+      fprintf(stderr,"Nan values!!\n");
+      exit(1);
+    }
+    if (bn) {
+      bn_g(i)+=(mu/batch)*gbn_g(i);
+      bn_b(i)+=(mu/batch)*gbn_b(i);
     }
   
-    if (VERBOSE) fprintf(stderr,"grads (%s) %f\n",name,sum);
   }
+  if (VERBOSE) {
+    fprintf(stderr,"%s IncK %f\n",name,sum/(nk*kz));
+  }
+  
+  if (VERBOSE) fprintf(stderr,"grads (%s) %f\n",name,sum);
+}
 	  
-  void CLayer::resetmomentum()
-  {
-    int k,z;
+void CLayer::resetmomentum()
+{
+  int k,z;
 
-    if (VERBOSE)  fprintf(stderr,"layer %s reset momentum\n",name);
+  if (VERBOSE)  fprintf(stderr,"layer %s reset momentum\n",name);
+  
+  if (lin>0) //not for CIN
     for(k=0;k<nk;k++) 
       for(z=0;z<kz;z++) 
 	pgK[k][z].setZero();
 
-  }
+}
 
-  void CLayer::reset()
-  {
-    int i,j,k,z;
+void CLayer::reset()
+{
+  int i,j,k,z;
 
-    for(i=0;i<batch;i++)
-      for(j=0;j<nk;j++)
-	De[i][j].setZero();
+  for(i=0;i<batch;i++)
+    for(j=0;j<nk;j++)
+      De[i][j].setZero();
 
-    gbias.setZero();
-    for(k=0;k<nk;k++) 
-      for(z=0;z<kz;z++) 
-	gK[k][z].setZero();
+  gbias.setZero();
+  for(k=0;k<nk;k++) 
+    for(z=0;z<kz;z++) 
+      gK[k][z].setZero();
 
-  }
-  void CLayer::resetstats()
-  {
+}
+void CLayer::resetstats()
+{
 
-    bnc=0;
+  bnc=0;
 
-    bn_gmean.setZero();
-    bn_gvar.setZero();
+  bn_gmean.setZero();
+  bn_gvar.setZero();
 
-  }
+}
 
 void CLayer::printkernels( FILE *fe)
 {

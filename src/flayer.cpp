@@ -766,7 +766,7 @@ void FLayer::backward()
   
 
     // Delta*DerivAct
-    if (act<10) { // To prevent for output layers
+    if (!out) { // To prevent for output layers
       dactivation();
       for(int b=0;b<batch;b++) 
 	for(int j=0;j<din;j++) 
@@ -934,6 +934,7 @@ OFLayer::OFLayer(Data *D,int b,int act,char *name):FLayer(D->out,b,name)
   this->D=D;
   landa=1.0;
   this->act=act;
+  out=1;
   if (act==10)
     fprintf(stderr,"Creating Onput FC layer CLASS (%s) with %d neurons\n",name,din);
   else 
@@ -945,6 +946,7 @@ OFLayer::OFLayer(Data *D,int b,int act,int ae,char *name):FLayer(D->dim,b,name)
   T.resize(batch,din);
   this->D=D;
   landa=1.0;
+  out=1;
   this->act=act;
   if (act==10){
     fprintf(stderr,"Autoencoder %s can not have softmax activation\n",name);
@@ -964,14 +966,14 @@ void OFLayer::modbatch(int b)
 }
 
 
-void OFLayer::forward()
+/*void OFLayer::forward()
 {
   int i;
 
   if (bn) fBN();
   doActivation();
 }
-
+*/
 
 double OFLayer::get_err(Data *Dt)
 { 
@@ -1110,10 +1112,10 @@ void OFLayer::backward()
   }
 
   if (act==10) // Softmax, CrossEnt
-    Delta=(T-N);
+    Delta+=(T-N);
 
   if (act==11) {// Linear, MSE
-    Delta=2.0*(T-N);
+    Delta+=2.0*(T-N);
     //Delta*=2000.0;
   }
 
