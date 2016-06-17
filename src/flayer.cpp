@@ -1115,12 +1115,13 @@ void OFLayer::backward()
     Delta+=(T-N);
 
   if (act==11) {// Linear, MSE
-    Delta+=2.0*(T-N);
+    Delta+=(2.0*(T-N))*0.01;
   }
 
   FLayer::backward();
 
 }
+
 
 /*
 void OFLayer::addchild(Layer *l) {

@@ -186,7 +186,7 @@ class OFLayer : public FLayer {
   //void forward();
   void backward();
   void modbatch(int b);
-  void addchild(Layer *l);
+  //void addchild(Layer *l);
   double get_err(Data *Dt);
 };
 
