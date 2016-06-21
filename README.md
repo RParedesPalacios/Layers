@@ -19,6 +19,14 @@
 
 * Check the last changes [Chagelog](https://github.com/RParedesPalacios/Layers/blob/master/src/readme.md#changelog)
 * Read the [Tutorial](https://github.com/RParedesPalacios/Layers/tree/master/Tutorial)
+
+## Usage
+
+Layers only requires one argument, a net file:
+
+> **layers file.net**
+
+see some examples of net files in the [examples](https://github.com/RParedesPalacios/Layers/tree/master/examples) section
 	
 ## Authors
 
