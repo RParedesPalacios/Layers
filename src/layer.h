@@ -40,6 +40,7 @@ class Layer {
   int bn;
   int init;
   int out;
+  double lambda;
 
   int shift,flip;
   double brightness,contrast;
@@ -183,10 +184,8 @@ class OFLayer : public FLayer {
   OFLayer(Data *D,int b,int act,int ae,char *name);
   OFLayer(Data *D,int b,int act,char *name);
 
-  //void forward();
   void backward();
   void modbatch(int b);
-  //void addchild(Layer *l);
   double get_err(Data *Dt);
 };
 

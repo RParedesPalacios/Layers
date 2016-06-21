@@ -932,7 +932,6 @@ OFLayer::OFLayer(Data *D,int b,int act,char *name):FLayer(D->out,b,name)
   this->ae=0;
   T.resize(batch,din);
   this->D=D;
-  landa=1.0;
   this->act=act;
   out=1;
   if (act==10)
@@ -945,7 +944,6 @@ OFLayer::OFLayer(Data *D,int b,int act,int ae,char *name):FLayer(D->dim,b,name)
   this->ae=ae;
   T.resize(batch,din);
   this->D=D;
-  landa=1.0;
   out=1;
   this->act=act;
   if (act==10){
@@ -1115,7 +1113,7 @@ void OFLayer::backward()
     Delta+=(T-N);
 
   if (act==11) {// Linear, MSE
-    Delta+=(2.0*(T-N))*0.01;
+    Delta+=(2.0*(T-N))*lambda;
   }
 
   FLayer::backward();
@@ -1123,12 +1121,6 @@ void OFLayer::backward()
 }
 
 
-/*
-void OFLayer::addchild(Layer *l) {
-  fprintf(stderr,"Error: Output FC Layer (%s) can not have child layer\n",name);
-  exit(1);
-  }
-*/
   //  virtual void addparent(Layer *l);
   //  virtual void forward();
   //  virtual void backward();
