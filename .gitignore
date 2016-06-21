@@ -1,8 +1,8 @@
 # Compiled Object files
-src/*.slo
-src/*.lo
-src/*.o
-src/*.obj
+**/*.slo
+**/*.lo
+**/*.o
+**/*.obj
 
 # Apps & stuff
 src/ascii2bin
