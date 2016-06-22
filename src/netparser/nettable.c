@@ -543,7 +543,7 @@ void get_network()
   for (i = tdn[j].belem; i <= tdn[j].eelem; i++) {
     switch (tdl[i].type) {
     case FO: {
-      if ((tdl[i].nsucc == 0) && (tdl[i].nprev > 0)) ok = TRUE;
+      if ((tdl[i].nsucc >= 0) && (tdl[i].nprev > 0)) ok = TRUE;
       else yyerror("Error in the accessibility of final layer");
       break;
     }
@@ -641,6 +641,10 @@ char *get_amend_param_ctr(int param, float value)
   }
   case contrast: { 
     sprintf(line,"contrast %f",value);
+    break;
+  }
+  case lambda: { 
+    sprintf(line,"lambda %f",value);
     break;
   }
   }

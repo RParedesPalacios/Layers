@@ -87,6 +87,7 @@ brightness      { display(brightness_); }
 contrast        { display(contrast_);   }     
 bn              { display(bn_);         } 
 balance         { display(balance_);    } 
+lambda          { display(lambda_);     } 
 
 center          { display(center_);       }
 const           { display(const_);        }

@@ -799,7 +799,7 @@ void FLayer::backward()
 	  }
 
 	  for(j=0;j<l->gb[ind].cols();j++) 
-	    l->gb[ind](i)+=Delta.col(i).sum();
+	    l->gb[ind](j)+=Delta.col(j).sum();
     
 	  // back-propagate Delta
 	  //noalias

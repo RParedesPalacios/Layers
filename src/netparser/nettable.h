@@ -31,6 +31,7 @@
 #define shift      12
 #define flip       13
 #define balance    14
+#define lambda     15
 
 #define tr  0
 #define ts  1

@@ -83,8 +83,8 @@ void Net::net2dot()
     if (lvec[i]->type==1) {
       if (lvec[i]->lin==0) 
 	fprintf(fs,"%s [label=\"%s [%d]\",style=filled,fontsize=12,fillcolor=Gray,shape=box]\n",pch,lvec[i]->name,lvec[i]->din);
-      else if (lvec[i]->lout==0) 
-	fprintf(fs,"%s [label=\"%s [%d]\",style=filled,fontsize=12, fillcolor=Gray,shape=box]\n",pch,lvec[i]->name,lvec[i]->din);
+      else if (lvec[i]->out) 
+	fprintf(fs,"%s [label=\"%s [%d]\",style=filled,fontsize=12, fillcolor=LightSalmon,shape=box]\n",pch,lvec[i]->name,lvec[i]->din);
       else 
 	fprintf(fs,"%s [label=\"%s [%d]\",style=filled,fontsize=12, fillcolor=White,shape=box]\n",pch,lvec[i]->name,lvec[i]->din);
     }
@@ -320,7 +320,7 @@ void Net::setdrop(double m)
   int i;
   fprintf(stderr,"Net %s set dropout rate to %f\n",name,m);
   for(i=0;i<layers;i++) 
-    if (lvec[i]->lout>0)
+    if (!lvec[i]->out)
       lvec[i]->setdrop(m);
 }
 void Net::setthreads(int l)
@@ -352,7 +352,7 @@ void Net::Init(char *logname)
     flog=fopen(logname,"wt");
     olayers=0;
     for(i=0;i<layers;i++) 
-      if (lvec[i]->lout==0) {
+      if (lvec[i]->out) {
 	out[olayers++]=lvec[i];
       }
     
