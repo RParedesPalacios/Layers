@@ -212,8 +212,9 @@ int main(int argc, char **argv) {
       ////////////// R //////////////
       else if (!strcmp(ltype,"R")) { 
 	//layer f0 R 2 prevlayer N1 p1 local 1
-	sscanf(line,"layer %s R 2 prevlayer %s %s %s 1\n",name,cad,cad2,cad3);
-	if (!strcmp(cad3,"local")) {
+	int val;
+	sscanf(line,"layer %s R 2 prevlayer %s %s %s %d\n",name,cad,cad2,cad3,&val);
+	if (val==1) {
 	  sprintf(lname,"%s:%s",cad,cad2);
 
 	  for(i=0;i<Lc;i++) {
@@ -450,6 +451,7 @@ int main(int argc, char **argv) {
 	else if (!strcmp(arg,"bn")) net->setbn(fv);
 	else if (!strcmp(arg,"act")) net->setact(fv);
 	else if (!strcmp(arg,"noiser")) net->setnoiser(fv);
+	else if (!strcmp(arg,"noiseb")) net->setnoiseb(fv);
 	else if (!strcmp(arg,"noisesd")) net->setnoisesd(fv);
 	else if (!strcmp(arg,"flip")) net->setflip(fv);
       }
@@ -471,6 +473,7 @@ int main(int argc, char **argv) {
 	else if (!strcmp(arg,"drop")) l->setdrop(fv);
 	else if (!strcmp(arg,"bn")) l->setbn(fv);
 	else if (!strcmp(arg,"noiser")) l->setnoiser(fv);
+	else if (!strcmp(arg,"noiseb")) l->setnoiseb(fv);
 	else if (!strcmp(arg,"noisesd")) l->setnoisesd(fv);
 	else if (!strcmp(arg,"act")) l->setact(fv);
 	else if (!strcmp(arg,"bn")) l->setbn(fv);

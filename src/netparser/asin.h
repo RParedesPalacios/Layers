@@ -94,34 +94,35 @@ extern int yydebug;
     contrast_ = 304,
     bn_ = 305,
     balance_ = 306,
-    const_ = 307,
-    data_ = 308,
-    network_ = 309,
-    script_ = 310,
-    train_ = 311,
-    save_ = 312,
-    zscore_ = 313,
-    yuv_ = 314,
-    printkernels_ = 315,
-    local_ = 316,
-    load_ = 317,
-    testout_ = 318,
-    center_ = 319,
-    div_ = 320,
-    BCB_ = 321,
-    ECB_ = 322,
-    BSB_ = 323,
-    ESB_ = 324,
-    BRB_ = 325,
-    ERB_ = 326,
-    PER_ = 327,
-    COM_ = 328,
-    EQ_ = 329,
-    RAR_ = 330,
-    id_ = 331,
-    nfile_ = 332,
-    cte_ = 333,
-    ctr_ = 334
+    noiseb_ = 307,
+    const_ = 308,
+    data_ = 309,
+    network_ = 310,
+    script_ = 311,
+    train_ = 312,
+    save_ = 313,
+    zscore_ = 314,
+    yuv_ = 315,
+    printkernels_ = 316,
+    local_ = 317,
+    load_ = 318,
+    testout_ = 319,
+    center_ = 320,
+    div_ = 321,
+    BCB_ = 322,
+    ECB_ = 323,
+    BSB_ = 324,
+    ESB_ = 325,
+    BRB_ = 326,
+    ERB_ = 327,
+    PER_ = 328,
+    COM_ = 329,
+    EQ_ = 330,
+    RAR_ = 331,
+    id_ = 332,
+    nfile_ = 333,
+    cte_ = 334,
+    ctr_ = 335
   };
 #endif
 
@@ -137,7 +138,7 @@ union YYSTYPE
   float   creal;                      /* for the "real constant" terminal    */
   int     aux;
 
-#line 141 "asin.h" /* yacc.c:1909  */
+#line 142 "asin.h" /* yacc.c:1909  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1

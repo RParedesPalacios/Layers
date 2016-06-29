@@ -56,6 +56,9 @@ Layer::Layer(int batch,char *name)
     
   // GUASSIAN NOISE
   noiser=noisesd=0;
+  //Binary noise
+  noiseb=0.0;
+
   dev_done=0;
   reshape=0;
   local=0;
@@ -94,6 +97,7 @@ void Layer::setact(int i){ if (VERBOSE) fprintf(stderr,"Layer %s setact to %d\n"
 void Layer::setbn(int i){ if (VERBOSE) fprintf(stderr,"Layer %s setting BN %d\n",name,i);bn=i;} 
 void Layer::setnoiser(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting noiser %f\n",name,m);noiser=m;}
 void Layer::setnoisesd(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting noisesd %f\n",name,m);noisesd=m;}
+void Layer::setnoiseb(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting binary noise %f\n",name,m);noiseb=m;}
 void Layer::setthreads(int t){threads=t;}
 void Layer::setoptim(int t){if (VERBOSE) fprintf(stderr,"Set optimization method layer %s to %d\n",name,t);optim=t;}
 

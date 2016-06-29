@@ -306,6 +306,14 @@ void Net::setnoiser(double n)
     lvec[i]->setnoiser(n);
 
 }
+void Net::setnoiseb(double n)
+{
+  int i;
+  fprintf(stderr,"Net %s set binary noise rate to %f\n",name,n);
+  for(i=0;i<layers;i++) 
+    lvec[i]->setnoiseb(n);
+
+}
 void Net::setnoisesd(double n)
 {
   int i;
@@ -631,12 +639,12 @@ void Net::calcerr(Data *Dt)
   }
 }
 
-void Net::printOut(Data *Dt,FILE *fs)
+void Net::printOut(Data *Dt,FILE *fs,int n)
 {
   int i,j,b;
   OFLayer *o;
 
-  for(b=0;b<Dt->batch;b++) {
+  for(b=0;b<n;b++) {
     for(i=0;i<olayers;i++) {
       o=(OFLayer *)out[i];
       for(j=0;j<o->din;j++) 
@@ -764,6 +772,151 @@ void Net::train(int epochs)
   
   //fclose(flog);
 }
+
+
+void Net::testOut(FILE *fs)
+{
+  int i,j;
+
+  if (Dtest!=NULL) {
+    fprintf(stderr,"writting test output\n");
+    testmode();
+    Dtest->preparebatch(0);
+    for(i=0;i<Dtest->num/Dtest->batch;i++) {
+      /////
+      resetLayers();
+      /////
+      getbatch(Dtest);
+      /////
+      forward();
+      /////
+      printOut(Dtest,fs,Dtest->batch);
+      /////
+      Dtest->next();
+    }
+    // last batch
+    resetLayers();
+    getbatch(Dtest);
+    forward();
+    printOut(Dtest,fs,(Dtest->num)%Dtest->batch);
+  }
+
+  fclose(fs);
+
+}
+
+void Net::preparetrainbatch()
+{
+  trit=trepoch=0;
+  Dtrain->preparebatch(1);
+}
+
+void Net::trainbatch(int b)
+{
+  int i,d;
+  int epoch;
+  
+  ftime=0;
+  btime=0;
+ 
+  setvalues();
+
+  trit++;
+  trepoch++;
+  fprintf(stderr,"Train It: %d\n",trit);
+  if (trepoch>(Dtrain->num/(b*Dtrain->batch))){
+    Dtrain->preparebatch(1);
+    trepoch=0;
+  }
+
+  trainmode();
+  reseterrors();
+  for(i=0;i<b;i++) {
+    fprintf(stderr,"%d of %d batches\r",i+1,b);
+    /////
+    resetLayers();
+    /////
+    getbatch(Dtrain);
+    /////
+    forward();
+    /////
+    calcerr(Dtrain);
+    /////
+    backward();
+    /////
+    applygrads();
+    /////
+    Dtrain->next();
+    if (VERBOSE) getchar();
+  }
+  printerrors(Dtrain,i*Dtrain->batch);
+
+  // BN
+  if ((bn)&&((Dval!=NULL)||(Dtest!=NULL))) {
+    trainmode();
+    resetstats();
+    for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
+      fprintf(stderr,"Forward BN %d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
+      /////
+      resetLayers();
+      /////
+      getbatch(Dtrain);
+      /////
+      forward();
+      /////
+      Dtrain->next();
+    }
+  }
+    
+  // VAL
+  if (Dval!=NULL) {
+    testmode();
+    Dval->preparebatch(0);
+    reseterrors();
+    for(i=0;i<Dval->num/Dval->batch;i++) {
+      /////
+      resetLayers();
+      /////
+      getbatch(Dval);
+      /////
+      forward();
+      /////
+      calcerr(Dval);
+      /////
+      Dval->next();
+    }
+    printerrors(Dval);
+  }
+    
+  //TEST
+  if (Dtest!=NULL) {
+    testmode();
+    Dtest->preparebatch(0);
+    reseterrors();
+    for(i=0;i<Dtest->num/Dtest->batch;i++) {
+      /////
+      resetLayers();
+      /////
+      getbatch(Dtest);
+      /////
+      forward();
+      /////
+      calcerr(Dtest);
+      /////
+      Dtest->next();
+    }
+    printerrors(Dtest);
+  }
+    
+}
+
+
+
+
+
+////////////////////////////////////////
+//////      Gradient check        //////
+////////////////////////////////////////
 
 
 //gcheck
@@ -994,141 +1147,4 @@ void Net::gcheckF()
   }
 
 
-}
-
-
-void Net::testOut(FILE *fs)
-{
-  int i,j;
-
-  if (Dtest!=NULL) {
-    fprintf(stderr,"writting test output\n");
-    testmode();
-    Dtest->preparebatch(0);
-    for(i=0;i<Dtest->num/Dtest->batch;i++) {
-      /////
-      resetLayers();
-      /////
-      getbatch(Dtest);
-      /////
-      forward();
-      /////
-      printOut(Dtest,fs);
-      /////
-      Dtest->next();
-    }
-    // last batch
-    resetLayers();
-    getbatch(Dtest);
-    forward();
-    printOut(Dtest,fs);
-  }
-
-  fclose(fs);
-
-}
-
-void Net::preparetrainbatch()
-{
-  trit=trepoch=0;
-  Dtrain->preparebatch(1);
-}
-
-void Net::trainbatch(int b)
-{
-  int i,d;
-  int epoch;
-  
-  ftime=0;
-  btime=0;
- 
-  setvalues();
-
-  trit++;
-  trepoch++;
-  fprintf(stderr,"Train It: %d\n",trit);
-  if (trepoch>(Dtrain->num/(b*Dtrain->batch))){
-    Dtrain->preparebatch(1);
-    trepoch=0;
-  }
-
-  trainmode();
-  reseterrors();
-  for(i=0;i<b;i++) {
-    fprintf(stderr,"%d of %d batches\r",i+1,b);
-    /////
-    resetLayers();
-    /////
-    getbatch(Dtrain);
-    /////
-    forward();
-    /////
-    calcerr(Dtrain);
-    /////
-    backward();
-    /////
-    applygrads();
-    /////
-    Dtrain->next();
-    if (VERBOSE) getchar();
-  }
-  printerrors(Dtrain,i*Dtrain->batch);
-
-  // BN
-  if ((bn)&&((Dval!=NULL)||(Dtest!=NULL))) {
-    trainmode();
-    resetstats();
-    for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
-      fprintf(stderr,"Forward BN %d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
-      /////
-      resetLayers();
-      /////
-      getbatch(Dtrain);
-      /////
-      forward();
-      /////
-      Dtrain->next();
-    }
-  }
-    
-  // VAL
-  if (Dval!=NULL) {
-    testmode();
-    Dval->preparebatch(0);
-    reseterrors();
-    for(i=0;i<Dval->num/Dval->batch;i++) {
-      /////
-      resetLayers();
-      /////
-      getbatch(Dval);
-      /////
-      forward();
-      /////
-      calcerr(Dval);
-      /////
-      Dval->next();
-    }
-    printerrors(Dval);
-  }
-    
-  //TEST
-  if (Dtest!=NULL) {
-    testmode();
-    Dtest->preparebatch(0);
-    reseterrors();
-    for(i=0;i<Dtest->num/Dtest->batch;i++) {
-      /////
-      resetLayers();
-      /////
-      getbatch(Dtest);
-      /////
-      forward();
-      /////
-      calcerr(Dtest);
-      /////
-      Dtest->next();
-    }
-    printerrors(Dtest);
-  }
-    
 }

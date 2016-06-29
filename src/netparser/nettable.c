@@ -647,6 +647,10 @@ char *get_amend_param_ctr(int param, float value)
     sprintf(line,"lambda %f",value);
     break;
   }
+  case noiseb: { 
+    sprintf(line,"noiseb %f",value);
+    break;
+  }
   }
   d = malloc (strlen (line) + 1);
   strcpy (d,line);

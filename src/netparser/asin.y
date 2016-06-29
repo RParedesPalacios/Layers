@@ -22,8 +22,8 @@
  nz_  nr_  nc_  cr_  cc_  numnodes_ 
  nk_  kr_  kc_  rpad_  cpad_ stride_
  sizer_  sizec_  
- mu_  mmu_  drop_  l2_  l1_  maxn_  act_  noiser_  noisesd_  lambda_
- shift_  flip_  brightness_  contrast_  bn_  balance_
+ mu_  mmu_  drop_  l2_  l1_  maxn_  act_  noiser_  noisesd_ lambda_
+ shift_  flip_  brightness_  contrast_  bn_  balance_ noiseb_
 /*****************************************************************  Keywords */
  const_  data_  network_  script_  train_  save_  zscore_  yuv_  printkernels_
  local_  load_  testout_  center_  div_
@@ -553,6 +553,7 @@ param_ctr
        | brightness_    { $$ = brightness; }
        | contrast_      { $$ = contrast;   }
        | lambda_        { $$ = lambda;     }
+       | noiseb_        { $$ = noiseb;     }
        ;
 /*****************************************************************************/
 param_cte

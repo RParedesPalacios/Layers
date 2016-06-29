@@ -63,7 +63,7 @@ class Net {
   void train(int epochs);
   void trainbatch(int b);
   void testOut(FILE *fs);
-  void printOut(Data *Dt,FILE *fs);
+  void printOut(Data *Dt,FILE *fs,int n);
   void preparetrainbatch();
   void calcerr(Data *Dt);
   void printerrors(Data *Dt);
@@ -88,6 +88,7 @@ class Net {
   void setthreads(int l);
   void setnoiser(double n);
   void setnoisesd(double n);
+  void setnoiseb(double n);
   void setdecay(double f);
 
   int isIn(Layer *l);

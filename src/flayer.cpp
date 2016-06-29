@@ -411,7 +411,7 @@ void FLayer::doActivation()
     else fprintf(stderr,"E(%s) = %f\n",name,E.norm());
   }
 
-
+  
   if (!bn) 
     if (trmode) {
       if (noiser>0.0) {
@@ -904,6 +904,18 @@ void IFLayer::getbatch(Data *Dt)
   for(i=0;i<batch;i++) 
     for(j=0;j<din;j++)
       E(i,j)=Dt->M(Dt->getpos(i),j);
+
+
+  //Noise for binary input
+  if (trmode) {
+    if (noiseb>0.0)
+      for(int i=0;i<batch;i++)
+	for(int j=0;j<din;j++)
+	  if (uniform()<noiseb)
+	    if (E(i,j)) E(i,j)=0.0;
+	    else E(i,j)=1.0;
+  }
+
   
 }
 

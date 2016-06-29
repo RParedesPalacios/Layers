@@ -28,6 +28,7 @@ class Layer {
   double maxn;
   double drop;
   double noiser;
+  double noiseb;
   double noisesd;
   int optim;
   int trmode;
@@ -70,6 +71,7 @@ class Layer {
   void setbn(int a);
   void setnoiser(double n);
   void setnoisesd(double n);
+  void setnoiseb(double n);
   void setthreads(int t);
   void setoptim(int i);  
 
