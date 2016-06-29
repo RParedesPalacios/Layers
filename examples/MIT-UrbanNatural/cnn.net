@@ -57,9 +57,9 @@ script {
   D2.zscore(D1)
 
 
-  N1.in.flip=1.0
+  N1.in.flip=1
   N1.l2=0.001
-  N1.bn=1.0
+  N1.bn=1
   
   N1.f41.drop=0.5
 

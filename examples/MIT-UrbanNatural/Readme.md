@@ -13,4 +13,5 @@ Download data:
 * [Training](http://users.dsic.upv.es/~rparedes/DeepLearning/data/MIT/train64x64.bin)
 * [Test](http://users.dsic.upv.es/~rparedes/DeepLearning/data/MIT/test64x64.bin)
 
+thanks to Ramon Baldrich from CVC for providng me this dataset
 
