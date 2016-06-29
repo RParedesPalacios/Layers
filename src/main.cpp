@@ -444,6 +444,7 @@ int main(int argc, char **argv) {
 	net=NTable[i];
 
 	if (!strcmp(arg,"l2")) net->setl2(fv);
+	else if (!strcmp(arg,"l1")) net->setl1(fv);
 	else if (!strcmp(arg,"maxn")) net->setmaxn(fv);
 	else if (!strcmp(arg,"mu")) net->setmu(fv);
 	else if (!strcmp(arg,"mmu")) net->setmmu(fv);
@@ -453,6 +454,7 @@ int main(int argc, char **argv) {
 	else if (!strcmp(arg,"noiser")) net->setnoiser(fv);
 	else if (!strcmp(arg,"noiseb")) net->setnoiseb(fv);
 	else if (!strcmp(arg,"noisesd")) net->setnoisesd(fv);
+	else if (!strcmp(arg,"lambda")) net->setlambda(fv);
 	else if (!strcmp(arg,"flip")) net->setflip(fv);
       }
       else {
@@ -477,6 +479,7 @@ int main(int argc, char **argv) {
 	else if (!strcmp(arg,"noisesd")) l->setnoisesd(fv);
 	else if (!strcmp(arg,"act")) l->setact(fv);
 	else if (!strcmp(arg,"bn")) l->setbn(fv);
+	else if (!strcmp(arg,"lambda")) l->setlambda(fv);
 	else if (!strcmp(arg,"flip")) l->setflip(fv);
 
       }

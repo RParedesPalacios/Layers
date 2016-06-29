@@ -281,6 +281,13 @@ void Net::setl2(double m)
   for(i=0;i<layers;i++) 
     lvec[i]->setl2(m);
 }
+void Net::setl1(double m)
+{
+  int i;
+  fprintf(stderr,"Net %s set l2 regularization to %f\n",name,m);
+  for(i=0;i<layers;i++) 
+    lvec[i]->setl1(m);
+}
 void Net::setoptim(int l)
 {
   int i;
@@ -322,7 +329,13 @@ void Net::setnoisesd(double n)
     lvec[i]->setnoisesd(n);
 
 }
-
+void Net::setlambda(double m)
+{
+  int i;
+  fprintf(stderr,"Net %s set l2 regularization to %f\n",name,m);
+  for(i=0;i<layers;i++) 
+    lvec[i]->setlambda(m);
+}
 void Net::setdrop(double m)
 {
   int i;

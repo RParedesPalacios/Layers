@@ -72,6 +72,7 @@ class Layer {
   void setnoiser(double n);
   void setnoisesd(double n);
   void setnoiseb(double n);
+  void setlambda(double l);
   void setthreads(int t);
   void setoptim(int i);  
 

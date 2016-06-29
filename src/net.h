@@ -83,6 +83,7 @@ class Net {
   void setbn(int a);
   void setmaxn(double m);
   void setl2(double m);
+  void setl1(double m);
   void setdrop(double m);
   void setoptim(int l);
   void setthreads(int l);
@@ -90,6 +91,7 @@ class Net {
   void setnoisesd(double n);
   void setnoiseb(double n);
   void setdecay(double f);
+  void setlambda(double f);
 
   int isIn(Layer *l);
 

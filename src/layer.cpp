@@ -91,6 +91,7 @@ void Layer::setdrop(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting dro
 void Layer::setl2(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting l2 %f\n",name,m);l2=m;}
 void Layer::setl1(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting l1 %f\n",name,m);l1=m;}
 void Layer::setmaxn(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting maxn %f\n",name,m);maxn=m;}
+void Layer::setlambda(double l){ if (VERBOSE) fprintf(stderr,"Layer %s setting lambda %f\n",name,l);lambda=l;}
 void Layer::trainmode(){trmode=1;}
 void Layer::testmode(){trmode=0;}
 void Layer::setact(int i){ if (VERBOSE) fprintf(stderr,"Layer %s setact to %d\n",name,i);act=i;} 

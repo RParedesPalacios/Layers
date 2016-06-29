@@ -523,8 +523,8 @@ script {
   D1.center()
   D2.center(D1)
   
-  D1.div(255)
-  D2.div(255)
+  D1.div(255.0)
+  D2.div(255.0)
   
   D1.zscore()
   D2.zscore(D1) //normalize D2 with D1 statistics
@@ -555,14 +555,12 @@ script {
 	* maxn: maxnorm regularization
 	* noiser: noise ratio after activation function
 	* noisesd: standard deviation of noise ($N(0.0,\sigma)$)
+	* noiseb: ratio of binary noise (only for input layer)
 	* drop: dropout (0<drop<1)
 	* bn: batch normalization ({0,1})
 	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU)
 	* flip: to flip input images ({1,0})
-	* shift: to shift randomly input images 
-
-	* balance: for balancing data classes
-	
+	* shift: to shift randomly input images	* balance: for balancing data classes	
 * Parameters can be modified for one particular layer or data:
 
 ~~~c
@@ -571,7 +569,7 @@ script{
 N1.c2.drop=0.5
 N1.in.flip=1
 N1.in.shift=2
-
+N1.in.noiseb=0.2 
 D1.balance=1
 ...
 }

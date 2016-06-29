@@ -916,7 +916,6 @@ void IFLayer::getbatch(Data *Dt)
 	    else E(i,j)=1.0;
   }
 
-  
 }
 
 void IFLayer::addparent(Layer *l) {
