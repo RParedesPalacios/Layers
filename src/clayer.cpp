@@ -1402,6 +1402,21 @@ void ICLayer::donoise(LMatrix& I,double ratio, double sd)
   
 }
 
+void ICLayer::donoiseb(LMatrix& I,double ratio)
+{
+  int i,j,r,c;
+
+  r=I.rows();
+  c=I.cols();
+
+  for(i=0;i<r;i++)
+    for(j=0;j<c;j++)
+      if (uniform()<ratio)
+	if (I(i,j)) I(i,j)=0.0;
+	else I(i,j)=1.0;
+  
+}
+
   // RANDOM BRIGHTNESS
 double ICLayer::calc_brightness(LMatrix I,double factor) 
 {
@@ -1558,6 +1573,10 @@ void ICLayer::getbatch(Data *Dt)
       if (noiser!=0.0)
 	for(k=0;k<nk;k++) 
 	  donoise(N[b][k],noiser,noisesd);
+
+      if (noiseb!=0.0)
+	for(k=0;k<nk;k++) 
+	  donoiseb(N[b][k],noiseb);
     }//trmode
   }//b
 }

@@ -288,6 +288,7 @@ class ICLayer : public CLayer {
   void doflip(LMatrix& I);
   void doshift(LMatrix& I,int sx,int sy);
   void donoise(LMatrix& I,double ratio, double sd);
+  void donoiseb(LMatrix& I,double ratio);
   double calc_brightness(LMatrix I,double factor);
   void dobrightness(LMatrix& I,double factor); 
   void docontrast(LMatrix& I,double factor); 
