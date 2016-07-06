@@ -81,6 +81,10 @@ Data::Data(int bin,char *fname,int b,char *name)
     if (feof(fe)) {fprintf(stderr,"Error reading line %d\n",i);exit(1);}
     int read=fread(fptr,sizeof(float),dim+out,fe);
     
+    if (read!=(dim+out)) {
+      fprintf(stderr,"Error reading file (%d!=%d)\nCheck format\n",read,dim+out);
+      exit(1);
+    }
     for(j=0;j<dim;j++) {
       M(i,j)=fptr[j];
     }
@@ -124,10 +128,18 @@ Data::Data(char *fname,int b,char *name)
   
   for(i=0;i<num;i++) {
     for(j=0;j<dim;j++) {
+      if (feof(fe)) {
+	fprintf(stderr,"Error reading file\nCheck format\n");
+	exit(1);
+      }
       fsc=fscanf(fe,"%f ",&fv);
       M(i,j)=fv;
     }
     for(j=0;j<out;j++) {
+      if (feof(fe)) {
+	fprintf(stderr,"Error reading file\nCheck format\n");
+	exit(1);
+      }
       fsc=fscanf(fe,"%f ",&fv);
       T(i,j)=fv;
     }

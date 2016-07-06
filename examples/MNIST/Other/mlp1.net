@@ -1,0 +1,55 @@
+const{
+  batch=100
+  threads=8
+  log="mnist.log"
+}
+
+data { 
+  D1 [filename="training.bin", binary]
+  D2 [filename="test.bin", binary]
+}
+
+//784-1000-500-250-250-250-10
+network N1 { 
+
+  data tr D1
+  data ts D2
+
+  // FC de entrada
+  FI in
+
+  F  f1 [numnodes=1000]
+  F  f2 [numnodes=500]
+  F  f3 [numnodes=250]
+  F  f4 [numnodes=250]
+  F  f5 [numnodes=250]
+  FO  outc [classification]		
+ 
+  in->f1
+  f1->f2
+  f2->f3
+  f3->f4
+  f4->f5
+  f5->outc
+}
+
+
+script {
+  
+  D1.div(255.0)
+  D2.div(255.0)
+
+  N1.noiser=1.0
+  N1.noisesd=0.3
+
+  N1.bn=1
+
+  N1.mu=0.01
+  N1.train(100)
+
+  N1.mu=0.001	
+  N1.train(50)
+
+  
+}
+

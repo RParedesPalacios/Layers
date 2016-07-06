@@ -24,9 +24,9 @@ letra 		[_a-zA-Z]
 digito		[0-9]
 nentero		{digito}+
 nreal		({digito}+"."{digito}*)|({digito}*"."{digito}+)
+constante       {nentero}|{nreal}
 identificador	{letra}({letra}|{digito})*
-literal         ("/"|"."|".."|{identificador})+(\.{identificador})?
-namefile        \"{literal}\"
+namefile        \"([^\0 ])+\"
 
 %%	
 {delimitador}   { if (verbosity) ECHO;}
@@ -97,6 +97,7 @@ div             { display(div_);          }
 network         { display(network_);      }
 script          { display(script_);       }
 train           { display(train_);        }
+test            { display(test_);         }
 printkernels    { display(printkernels_); }
 save            { display(save_);         }
 load            { display(load_);         }
@@ -115,8 +116,7 @@ yuv             { display(yuv_);          }
 "="             { display(EQ_);    /* equal                 */ }
 "->"            { display(RAR_);   /* rightarrow            */ }
 
-{nentero}       { yylval.cent  = atoi(yytext);    display(cte_);}
-{nreal}	        { yylval.creal = atof(yytext);    display(ctr_);}
+{constante}	{ yylval.creal = atof(yytext);    display(cte_);}
 {identificador} { yylval.ident = createName();    display(id_); }
 {namefile}      { yylval.ident = createLiteral(); display(nfile_); }
 .               { yyerror("unknown character"); if (verbosity) ECHO;}

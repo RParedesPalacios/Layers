@@ -1120,11 +1120,18 @@ void OFLayer::backward()
 	    T(p,j)=D->T(D->getpos(i),j);
   }
 
-  if (act==10) // Softmax, CrossEnt
-    Delta+=(T-N);
+  if (act==10) {// Softmax, CrossEnt
+    if (lout>0) {
+      for(i=0;i<batch;i++) 
+	for(j=0;j<din;j++)
+	  Delta(i,j)*=(N(i,j)-(N(i,j)*N(i,j))); //deriv softmax w.r.t pre-activation: y_i-(y_i)^2
+    }
+    Delta+=(T-N)*lambda;
+  }
 
   if (act==11) {// Linear, MSE
-    Delta+=(2.0*(T-N))*lambda;
+    //if (lout>0) Delta*=1; //deriv linear w.r.t pre-activation: 1
+    Delta+=2*(T-N)*lambda;
   }
 
   FLayer::backward();

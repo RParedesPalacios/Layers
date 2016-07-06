@@ -95,46 +95,42 @@ void emit (char *s)
 }
 /*****************************************************************************/
 void dump_file()
-{ FILE *fd; char *t; int i; char line[140];
+{ FILE *fd; char *t; int i; 
 
   if(numErrores == 0) {
     fd = fopen ("netparser.run", "w");
     for (i=0; i < pmem; i++) fprintf(fd,"%s\n",mem[i]);
     close(fd);
   }
-  else {
-    sprintf(line,"rm netparser.run 2>/dev/null");
-    system(line);
-  }
 }
 /*****************************************************************************/
 void begin_experiment()
-{ int i;
+{ int i; 
 
   tdn[ptdn] = tdnini;  tdl[ptdl] = tdlini;  tdd[ptdd] = tddini;
 }
 /*****************************************************************************/
-void end_experiment() 
-{ char line[140]; 
+ void end_experiment()
+{ char line[140];
 
   sprintf(line,"END"); emit(line);
 }
 /*****************************************************************************/
-void end_network() 
-{ char line[140]; 
+/* void end_network()  */
+/* { char line[140];  */
 
-  sprintf(line,"END_Network"); emit(line);
-}
+/*   sprintf(line,"END_Network"); emit(line); */
+/* } */
 /*****************************************************************************/
-void insert_gconstants (int ref, int cte1, char *filename)
+void insert_gconstants (int ref, int cte, char *filename)
 {
   switch (ref) {
   case BATCH: { 
-    gconst.batch = cte1;
+    gconst.batch = cte;
     break;
   }
   case THREADS: { 
-    gconst.threads = cte1;
+    gconst.threads = cte;
     break;
   }
   case LOG: { 
@@ -149,7 +145,7 @@ void inser_name_data (char *named)
   if (ptdd == MaxTdD)
     yyerror("Table of data is completely full");
   else {
-    tdd[ptdd].name   = named; tdd[ptdd].level    = leveldata;
+    tdd[ptdd].name = named; tdd[ptdd].level = leveldata;
     ptdd++; tdd[ptdd] = tddini; 
  }
 }
@@ -580,6 +576,8 @@ void get_network()
     get_net_layers(j);
     /*   getting links of network   */
     get_net_links(j, tdn[j].start);
+    /* end network */ 
+    sprintf(line,"END_Network"); emit(line);
   }
 }
 /*****************************************************************************/
@@ -687,10 +685,11 @@ char *get_amend_param_cte(int param, int value)
   return d;
 }
 /*****************************************************************************/
-void get_net_train (int refn, int par) 
-{ char line[140];
- 
-  sprintf(line,"command %s train 1 nepoch %d",tdn[refn].name, par);
+void get_printkernels (int refn, int refl, char *aux)
+{ char line[140]; 
+
+  sprintf(line,"command %s %s printkernels 1 %s", tdn[refn].name, 
+	  tdl[refl].name, aux);
   emit(line);
 }
 /*****************************************************************************/
@@ -708,11 +707,19 @@ void get_train (int par1, int par2, int ref)
   emit(line);
 }
 /*****************************************************************************/
-void get_printkernels (int refn, int refl, char *aux)
-{ char line[140]; 
+void get_net_train (int refn, int par) 
+{ char line[140];
+ 
+  sprintf(line,"command %s train 1 nepoch %d",tdn[refn].name, par);
+  emit(line);
+}
+/*****************************************************************************/
+void get_net_test (int ref1, int ref2) 
+{ char line[140], line2[140]; 
 
-  sprintf(line,"command %s %s printkernels 1 %s", tdn[refn].name, 
-	  tdl[refl].name, aux);
+  if (ref2 < 0) sprintf(line2,"0");
+  else  sprintf(line2,"1 %s",tdd[ref2].name);
+  sprintf(line,"command %s test %s", tdd[ref1].name, line2);
   emit(line);
 }
 /*****************************************************************************/
