@@ -51,7 +51,7 @@ script {
   D2.zscore(D1)
 
 
-  N1.mu=0.1
+  N1.mu=0.01
 
   N1.in.noiser=0.5
   N1.in.noisesd=1.0
