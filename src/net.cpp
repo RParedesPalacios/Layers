@@ -76,6 +76,8 @@ void Net::net2dot()
   fprintf(fs,"digraph %s {\n",name);
   fprintf(fs,"rankdir=LR;\n");
 
+  fprintf(fs,"Data [label=\"%s\",style=filled,fontsize=12,fillcolor=LightBlue,shape=box]\n",Dtrain->name,lvec[i]->din);
+
   for(i=0;i<layers;i++) {
     strcpy(cad,lvec[i]->name);
     pch = strtok (cad,":");
@@ -97,13 +99,23 @@ void Net::net2dot()
     }
     if (lvec[i]->type==3) {
       p=(PLayer *)lvec[i];
-      fprintf(fs,"%s [label=\"%s [%dx%d]\",style=filled,fontsize=12, fillcolor=coral,shape=box]\n",pch,lvec[i]->name,p->sizer,p->sizec);
+      fprintf(fs,"%s [label=\"%s [%dx%d]\",style=filled,fontsize=12, fillcolor=Crimson,shape=box]\n",pch,lvec[i]->name,p->sizer,p->sizec);
     }
     if (lvec[i]->type==4) {
       cat=(CatLayer *)lvec[i];
       fprintf(fs,"%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=darkkhaki,shape=box]\n",pch,lvec[i]->name,cat->nk,cat->outr,cat->outc);
     }
   }
+
+ for(i=0;i<layers;i++) {
+   if (lvec[i]->lin==0) {
+     strcpy(cad,lvec[i]->name);
+     pch = strtok (cad,":");
+     pch = strtok (NULL,":");
+     fprintf(fs,"Data->%s\n",pch,pch);
+   }
+ }
+  
 
   for(i=0;i<layers;i++) {
     strcpy(cad,lvec[i]->name);

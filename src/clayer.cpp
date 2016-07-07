@@ -467,9 +467,22 @@ void CLayer::Convol()
 
 void CLayer::doActivation()
 {
+
+  if (!bn) 
+    if (trmode) {
+      if (noiser>0.0) {
+	for(int i=0;i<batch;i++)
+	  for(int k=0;k<nk;k++)
+	    for(int r=0;r<E[i][k].rows();r++)
+	      for(int c=0;c<E[i][k].cols();c++)
+		if (uniform()<noiser)
+		  E[i][k](r,c)+=gauss(0.0,noisesd);
+	
+      }
+    }
   
+
   if (bn) {
-#pragma omp parallel for
     for(int i=0;i<batch;i++)
       for(int k=0;k<nk;k++) {
 	if (act==0) N[i][k]=BNE[i][k];
@@ -479,7 +492,6 @@ void CLayer::doActivation()
       }
   }
   else {
-#pragma omp parallel for
     for(int i=0;i<batch;i++)
       for(int k=0;k<nk;k++) {
 	if (act==0) N[i][k]=E[i][k];
@@ -498,7 +510,6 @@ void CLayer::fBN()
 
   if (trmode) {
     bnc++;
-#pragma omp parallel for
     for(int i=0;i<nk;i++) {
       int j,k,r,c,b;
       double m,var,eps=0.0001;
@@ -522,6 +533,9 @@ void CLayer::fBN()
 	for(r=0;r<outr;r++)
 	  for(c=0;c<outc;c++) {
 	    bn_E[b][i](r,c)=(E[b][i](r,c)-bn_mean(i))/sqrt(bn_var(i)+eps);
+	    if (noiser>0.0) 
+	      if (uniform()<noiser)
+		bn_E[b][i](r,c)+=gauss(0.0,noisesd);
 	    BNE[b][i](r,c)=(bn_g(i)*bn_E[b][i](r,c))+bn_b(i);
 	  }
 
@@ -530,7 +544,6 @@ void CLayer::fBN()
     bn_gvar+=bn_var;  
   }
   else {
-#pragma omp parallel for
     for(int i=0;i<nk;i++) {
       int j,k,r,c,b;
       double m,var,eps=0.0001;
@@ -648,6 +661,14 @@ void CLayer::load(FILE *fe)
   fsd=fscanf(fe,"\n");
 
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -942,7 +963,7 @@ void CLayer::ConvolB()
   cin=(CLayer *)Lin[0];
 
   if (drop>0.0) 
-    //#pragma omp parallel for
+    #pragma omp parallel for
     for(int j=0;j<nk;j++) 
       for(int r=0;r<outr;r++)
 	for(int c=0;c<outc;c++)
@@ -955,7 +976,7 @@ void CLayer::ConvolB()
     //Delta as it is
   }    
   else if (act==1) { //ReLu Deriv
-#pragma omp parallel for
+    #pragma omp parallel for
     for(int b=0;b<batch;b++) 
       for(int k=0;k<nk;k++) 
 	for(int r=0;r<outr;r++)

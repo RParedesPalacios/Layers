@@ -35,6 +35,7 @@ typedef struct tdlay  /***************************** Elements of layer table */
   char *name;
   int   type;  
   int   refnet;
+  int   ninit;
   int   root;
   int   visit;
   int   visit2;
@@ -63,7 +64,7 @@ TDNET  tdn [MaxTdN];
 TDNET  tdnini = {"",-1,-1,-1,-1,-1,-1};
 int    ptdn = 0;
 TDLAY  tdl [MaxTdL]; 
-TDLAY  tdlini = {"",-1,-1,-1,FALSE,FALSE,-1,-1,-1,-1,-1,-1,0,0,NULL,NULL};
+TDLAY  tdlini = {"",-1,-1,-1,-1,FALSE,FALSE,-1,-1,-1,-1,-1,-1,0,0,NULL,NULL};
 int    ptdl = 0;
 TDDATA tdd [MaxTdD];
 TDDATA tddini = {"",-1,"",-1};
@@ -115,12 +116,6 @@ void begin_experiment()
 
   sprintf(line,"END"); emit(line);
 }
-/*****************************************************************************/
-/* void end_network()  */
-/* { char line[140];  */
-
-/*   sprintf(line,"END_Network"); emit(line); */
-/* } */
 /*****************************************************************************/
 void insert_gconstants (int ref, int cte, char *filename)
 {
@@ -534,37 +529,51 @@ void get_net_links(int n, int l)
 }
 /*****************************************************************************/
 void get_network()
-{ char line[140]; int i, k, j = ptdn-1, nsti = 0, ok = FALSE;
+{ char line[140]; int i, k, j = ptdn-1, nsti = 0, ok = TRUE;
   /*   checking the network: initial, internal and final layers   */
   for (i = tdn[j].belem; i <= tdn[j].eelem; i++) {
     switch (tdl[i].type) {
     case FO: {
-      if ((tdl[i].nsucc >= 0) && (tdl[i].nprev > 0)) ok = TRUE;
-      else yyerror("Error in the accessibility of final layer");
+      if (!((tdl[i].nsucc >= 0) && (tdl[i].nprev > 0))) {
+	ok = FALSE;
+	yyerror("Error in the accessibility of final layer");
+      }
       break;
     }
     case FI: case CI: {
       if ((tdl[i].nsucc > 0) && (tdl[i].nprev == 0))  {
-	tdn[j].start = i;  nsti++;  ok= TRUE;
+	if (nsti == 0) {
+	  tdn[j].start = i;  nsti++;
+	}
+	else {
+	  k = tdn[j].start;
+	  while (tdl[k].ninit > 0) k = tdl[k].ninit;
+	  tdl[k].ninit = i; nsti++;
+	}
       }
-      else yyerror("Error in the accessibility of initial layer");
+      else {
+	ok = FALSE;
+	yyerror("Error in the accessibility of initial layer");
+      }
       break;
     }
     case C: case MP: {
-      if ((tdl[i].nsucc > 0) && (tdl[i].nprev == 1))  ok = TRUE;
-      else yyerror("Error in the accessibility of internal layer1");
+      if (!((tdl[i].nsucc > 0) && (tdl[i].nprev == 1))) {
+	ok = FALSE;
+	yyerror("Error in the accessibility of internal layer1");
+      }
       break;
     }
     case CA: case F: case R: {
-      if ((tdl[i].nsucc > 0) && (tdl[i].nprev > 0))  ok = TRUE;
-      else yyerror("Error in the accessibility of internal layer2");
+      if (!((tdl[i].nsucc > 0) && (tdl[i].nprev > 0))) {
+	ok = FALSE;
+	yyerror("Error in the accessibility of internal layer2");
+      }
       break;
     }
     }
   }
-  if (nsti > 1)
-    yyerror("Error: there can be only an initial layer");
-  else if (nsti == 0)
+  if (nsti == 0)
     yyerror("Error: a network must have an initial layer");
   else if (ok == TRUE) {
     sprintf(line,"Network %s",tdn[j].name); emit(line);
@@ -575,7 +584,12 @@ void get_network()
       yyerror("Error, possible loop in the network");
     get_net_layers(j);
     /*   getting links of network   */
-    get_net_links(j, tdn[j].start);
+    k = tdn[j].start;
+    get_net_links(j, k);
+    while (tdl[k].ninit > 0) {
+      k = tdl[k].ninit;
+      get_net_links(j, k);
+    }
     /* end network */ 
     sprintf(line,"END_Network"); emit(line);
   }
