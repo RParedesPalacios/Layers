@@ -467,7 +467,6 @@ void CLayer::Convol()
 
 void CLayer::doActivation()
 {
-
   if (!bn) 
     if (trmode) {
       if (noiser>0.0) {
@@ -480,8 +479,6 @@ void CLayer::doActivation()
 	
       }
     }
-  
-
   if (bn) {
     for(int i=0;i<batch;i++)
       for(int k=0;k<nk;k++) {
@@ -528,7 +525,7 @@ void CLayer::fBN()
 	    var+=(m-E[b][i](r,c))*(m-E[b][i](r,c));
       var/=((batch*outr*outc)-1);
       bn_var(i)=var;
-    	
+
       for(b=0;b<batch;b++)
 	for(r=0;r<outr;r++)
 	  for(c=0;c<outc;c++) {
@@ -567,7 +564,7 @@ void CLayer::forward()
   if (lout>0) {
    
     Convol();
-
+    
     if (VERBOSE) {
       for(i=0;i<batch;i++)
 	for(k=0;k<nk;k++) 
@@ -618,50 +615,9 @@ void CLayer::forward()
 	  sum+=N[i][k].norm();
       fprintf(stderr,"N(%s %dx%d)=%f\n",name,batch,nk,sum);
     }
+
   }
 }
-
-void CLayer::save(FILE *fe)
-{
-  int i,j,r,c;
-  
-  save_param(fe);
-
-  for(i=0;i<nk;i++) {
-    for(j=0;j<kz;j++) 
-      for(r=0;r<kr;r++)
-	for(c=0;c<kc;c++) 
-	  fprintf(fe,"%f ",K[i][j](r,c));
-    fprintf(fe,"%f ",bias(i));
-  }
-  fprintf(fe,"\n");
-  
-}
-
-void CLayer::load(FILE *fe)
-{
-
-  int i,j,r,c;
-  double fv;
-  int fsd;
-
-  load_param(fe);
- 
-
-  for(i=0;i<nk;i++) {
-    for(j=0;j<kz;j++) 
-      for(r=0;r<kr;r++)
-	for(c=0;c<kc;c++) {
-	  fsd=fscanf(fe,"%lf ",&fv);
-	  K[i][j](r,c)=fv;
-	}
-    fsd=fscanf(fe,"%lf ",&fv);
-    bias(i)=fv;
-  }
-  fsd=fscanf(fe,"\n");
-
-}
-
 
 
 
@@ -855,12 +811,12 @@ void *ConvolB2t(void *threadarg)
  
   if ( ((m->batch>m->kz)&&((m->nt<m->batch)||(m->id<m->batch))) || ((m->batch<=m->kz)&&((m->nt<m->kz)||(m->id<m->kz))) ) {
     // LOWERING
-    //Matrix <double,Dynamic,Dynamic,RowMajor> Del;
+    //Matrix <Ltype,Dynamic,Dynamic,RowMajor> Del;
     //Del.resize(bfin-bini,m->nk);
     LMatrix Del(bfin-bini,m->nk);
 
 
-    //Matrix <double,Dynamic,Dynamic,RowMajor> Kr;
+    //Matrix <Ltype,Dynamic,Dynamic,RowMajor> Kr;
     //Kr.resize(m->nk,m->kr*m->kc);
     LMatrix *Kr;
     Kr=new LMatrix[m->kz];
@@ -1286,6 +1242,50 @@ void CLayer::printkernels( FILE *fe)
   }      
   fclose(fe);
 }
+
+
+
+void CLayer::save(FILE *fe)
+{
+  int i,j,r,c;
+  
+  save_param(fe);
+
+  for(i=0;i<nk;i++) {
+    for(j=0;j<kz;j++) 
+      for(r=0;r<kr;r++)
+	for(c=0;c<kc;c++) 
+	  fprintf(fe,"%f ",K[i][j](r,c));
+    fprintf(fe,"%f ",bias(i));
+  }
+  fprintf(fe,"\n");
+  
+}
+
+void CLayer::load(FILE *fe)
+{
+
+  int i,j,r,c;
+  double fv;
+  int fsd;
+
+  load_param(fe);
+ 
+
+  for(i=0;i<nk;i++) {
+    for(j=0;j<kz;j++) 
+      for(r=0;r<kr;r++)
+	for(c=0;c<kc;c++) {
+	  fsd=fscanf(fe,"%lf ",&fv);
+	  K[i][j](r,c)=fv;
+	}
+    fsd=fscanf(fe,"%lf ",&fv);
+    bias(i)=fv;
+  }
+  fsd=fscanf(fe,"\n");
+
+}
+
 
 
 ///////////////////////////////////////////
