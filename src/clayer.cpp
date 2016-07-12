@@ -472,13 +472,10 @@ void CLayer::doActivation()
       if (noiser>0.0) {
 	for(int i=0;i<batch;i++)
 	  for(int k=0;k<nk;k++)
-	    for(int r=0;r<E[i][k].rows();r++)
-	      for(int c=0;c<E[i][k].cols();c++)
-		if (uniform()<noiser)
-		  E[i][k](r,c)+=gauss(0.0,noisesd);
-	
+	    NoiseG(E[i][k],noiser,noisesd);
       }
     }
+
   if (bn) {
     for(int i=0;i<batch;i++)
       for(int k=0;k<nk;k++) {
@@ -528,14 +525,19 @@ void CLayer::fBN()
 
       for(b=0;b<batch;b++)
 	for(r=0;r<outr;r++)
-	  for(c=0;c<outc;c++) {
+	  for(c=0;c<outc;c++) 
 	    bn_E[b][i](r,c)=(E[b][i](r,c)-bn_mean(i))/sqrt(bn_var(i)+eps);
-	    if (noiser>0.0) 
-	      if (uniform()<noiser)
-		bn_E[b][i](r,c)+=gauss(0.0,noisesd);
-	    BNE[b][i](r,c)=(bn_g(i)*bn_E[b][i](r,c))+bn_b(i);
-	  }
+      
+      if (noiser)
+	for(b=0;b<batch;b++)
+	  NoiseG(bn_E[b][i],noiser,noisesd);
+      
 
+      for(b=0;b<batch;b++)
+	for(r=0;r<outr;r++)
+	  for(c=0;c<outc;c++) 
+	    BNE[b][i](r,c)=(bn_g(i)*bn_E[b][i](r,c))+bn_b(i);
+	  
     }
     bn_gmean+=bn_mean;
     bn_gvar+=bn_var;  

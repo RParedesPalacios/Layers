@@ -11,6 +11,7 @@
 
 #define PI 3.1415926
 
+double gn[LUT];
 
 using namespace Eigen;
 using namespace std;
@@ -23,23 +24,42 @@ double suniform() {
   return (2*uniform())-1;
 }
 
-double gauss(double mean,double sd) {
-  double x,u1,u2;
 
+double gaussgen() {
+  double x,u1,u2;
+  int i;
+  
   u1=uniform();
   u2=uniform();
 
   while (u1==0.0) u1=uniform();
     
   x=sqrt(log(1/u1))*cos(2*PI*u2);
-
-  x*=sd;
-  x+=mean;
-
+  
   return x;
 }
 
+void lut_init()
+{
+  int i;
 
+  //fprintf(stderr,"Initializing gaussian noise LUT\n");
+  for(i=0;i<LUT;i++)
+    gn[i]=gaussgen();
+
+}
+
+
+
+double gauss(double mean,double sd) {
+ 
+  int i;
+  
+  i=rand()%LUT;
+  
+  return (gn[i]*sd)+mean;
+ 
+}
 
 
 
@@ -67,6 +87,20 @@ void Drop(LMatrix &M,double drop)
       if (uniform()<drop) M(i,j)=0;
       else M(i,j)=1;
   
+}
+
+void NoiseG(LMatrix &E,double noiser,double noisesd)
+{
+  if (noiser==1.0) {
+    for(int i=0;i<E.rows();i++)
+      for(int j=0;j<E.cols();j++)
+	E(i,j)+=gauss(0.0,noisesd);
+  }
+  else {
+    for(int i=0;i<E.rows();i++)
+      for(int j=0;j<E.cols();j++)
+	if (uniform()<noiser) E(i,j)+=gauss(0.0,noisesd);
+  }
 }
 
 void ReLu(LMatrix E,LMatrix& N)

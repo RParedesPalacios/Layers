@@ -1,6 +1,7 @@
 #ifndef _UTILS_
 #define _UTILS_
 
+#define LUT 100000
 
 #include "Dense"
 #include "types.h"
@@ -9,6 +10,10 @@
 using namespace Eigen;
 using namespace std;
 
+
+
+void lut_init();
+void NoiseG(LMatrix &E,double noiser,double noisesd);
 void ReLu(LMatrix E,LMatrix &N);
 void Sigmoid(LMatrix E,LMatrix &N);
 void ELU(LMatrix E,LMatrix& N,double alfa);

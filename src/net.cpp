@@ -7,6 +7,7 @@
 #include "net.h"
 #include "layer.h" 
 #include "data.h"
+#include "utils.h"
 
 #define VERBOSE 0
 #define SHOW_TIME 0
@@ -685,11 +686,12 @@ void Net::train(int epochs)
 {
   int i,d;
   int epoch;
-  
+
   
   fprintf(stderr,"Training net %s %d epochs\n",name,epochs);
 
   for(epoch=1;epoch<=epochs;epoch++) {
+    lut_init();
 
     if (PERFORM_GCHECK) gcheckF();
 
