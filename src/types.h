@@ -1,4 +1,4 @@
-#include "Dense"
+#include "Eigen/Dense"
 
 using namespace Eigen;
 
@@ -15,5 +15,3 @@ typedef RowVectorXf LRVector;
 typedef VectorXf LVector;
 typedef float Ltype;
 #endif
-
-

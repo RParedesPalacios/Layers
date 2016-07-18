@@ -2,7 +2,7 @@
 #include <stdlib.h>     /* malloc, free, rand */
 #include <iostream>
 
-#include "Dense"
+#include "Eigen/Dense"
 #include "layer.h"
 #include "utils.h"
 
@@ -17,7 +17,7 @@ using namespace std;
 
 Layer::Layer()
 {
- 
+
 }
 
 Layer::Layer(int batch,char *name)
@@ -25,7 +25,7 @@ Layer::Layer(int batch,char *name)
 
   strcpy(this->name,name);
   this->batch=batch;
-  
+
   din=0;
   lin=0;
   lout=0;
@@ -53,7 +53,7 @@ Layer::Layer(int batch,char *name)
   ab1t=1.0;
   ab2t=1.0;
   aeps=0.00000001;
-    
+
   // GUASSIAN NOISE
   noiser=noisesd=0;
   //Binary noise
@@ -76,7 +76,7 @@ Layer::Layer(int batch,char *name)
   Lin=(Layer **)malloc(MAX_CONNECT*sizeof(Layer *));
   Lout=(Layer **)malloc(MAX_CONNECT*sizeof(Layer *));
 
-  
+
 }
 
 void Layer::setbrightness(double f){ if (VERBOSE) fprintf(stderr,"Layer %s setting brightness %f\n",name,f);brightness=f;}
@@ -94,8 +94,8 @@ void Layer::setmaxn(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting max
 void Layer::setlambda(double l){ if (VERBOSE) fprintf(stderr,"Layer %s setting lambda %f\n",name,l);lambda=l;}
 void Layer::trainmode(){trmode=1;}
 void Layer::testmode(){trmode=0;}
-void Layer::setact(int i){ if (VERBOSE) fprintf(stderr,"Layer %s setact to %d\n",name,i);act=i;} 
-void Layer::setbn(int i){ if (VERBOSE) fprintf(stderr,"Layer %s setting BN %d\n",name,i);bn=i;} 
+void Layer::setact(int i){ if (VERBOSE) fprintf(stderr,"Layer %s setact to %d\n",name,i);act=i;}
+void Layer::setbn(int i){ if (VERBOSE) fprintf(stderr,"Layer %s setting BN %d\n",name,i);bn=i;}
 void Layer::setnoiser(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting noiser %f\n",name,m);noiser=m;}
 void Layer::setnoisesd(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting noisesd %f\n",name,m);noisesd=m;}
 void Layer::setnoiseb(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting binary noise %f\n",name,m);noiseb=m;}
@@ -124,11 +124,11 @@ void Layer::save_param(FILE *fe)
   fprintf(fe,"%f\n",maxn);
   fprintf(fe,"%f\n",brightness);
   fprintf(fe,"%f\n",contrast);
-  
+
   // FOR FUTURE PARAMS
   for(i=0;i<10;i++)
     fprintf(fe,"-1\n");
-  
+
 }
 void Layer::load_param(FILE *fe)
 {
@@ -136,7 +136,7 @@ void Layer::load_param(FILE *fe)
   int ldin,llin,llout;
   int fsd,i;
 
-  
+
   fsd=fscanf(fe,"%s\n",lname);
   if (strcmp(name,lname)) {
     fprintf(stderr,"Error loading layer  %s (name) %s -- %s\n",name,name,lname);
@@ -176,6 +176,6 @@ void Layer::load_param(FILE *fe)
   // FOR FUTURE PARAMS
   for(i=0;i<10;i++)
     fsd=fscanf(fe,"-1\n");
-  
+
 
 }

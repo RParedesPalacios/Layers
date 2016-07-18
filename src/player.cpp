@@ -2,7 +2,7 @@
 #include <stdlib.h>     /* malloc, free, rand */
 #include <iostream>
 
-#include "Dense"
+#include "Eigen/Dense"
 #include "layer.h"
 #include "utils.h"
 
@@ -33,10 +33,10 @@ PLayer::PLayer(int batch,int sizer,int sizec,char *name):CLayer(batch,name)
 void PLayer::addchild(Layer *l)
 {
   int enc=0;
-  
+
   for(int i=0;i<lout;i++)
     if (Lout[i]==l) enc=1;
-  
+
   if (!enc) {
 
     if (l->type==1) {
@@ -80,51 +80,51 @@ void PLayer::addparent(Layer *l)
     }
   }
 
-  
+
   if ((l->type==2)||(l->type==3)||(l->type==4)) {
     CLayer *c=(CLayer *)l;
     Lin[lin++]=l;
-    
+
     nk=outz=c->outz;
     outr=(c->outr/sizer);
     outc=(c->outc/sizec);
-    
+
     maxR=(MatrixXi **)malloc(batch*sizeof(MatrixXi *));
     for(i=0;i<batch;i++) {
       maxR[i]=new MatrixXi[nk];
     }
-    
+
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++)
 	maxR[i][j].resize(outr,outc);
-    
+
     maxC=(MatrixXi **)malloc(batch*sizeof(MatrixXi *));
     for(i=0;i<batch;i++) {
       maxC[i]=new MatrixXi[nk];
     }
-    
+
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++)
 	maxC[i][j].resize(outr,outc);
-    
+
     N=(LMatrix **)malloc(batch*sizeof(LMatrix *));
     for(i=0;i<batch;i++) {
       N[i]=new LMatrix[nk];
     }
-    
+
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++)
 	N[i][j].resize(outr,outc);
-    
+
     De=(LMatrix **)malloc(batch*sizeof(LMatrix *));
     for(i=0;i<batch;i++) {
       De[i]=new LMatrix[nk];
     }
-    
+
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++)
 	De[i][j].resize(outr,outc);
-    
+
     fprintf(stderr,"Creating MaxPool (%dx%d) output %d@%dx%d\n",sizer,sizec,outz,outr,outc);
   }
   else {
@@ -132,16 +132,16 @@ void PLayer::addparent(Layer *l)
     exit(1);
   }
 }
-  
+
 void PLayer::MaxPool()
 {
-  
- 
+
+
   CLayer *c=(CLayer *)Lin[0];
   double sum=0.0;
 
   if (VERBOSE) {
-    for(int b=0;b<batch;b++) 
+    for(int b=0;b<batch;b++)
       for(int i=0;i<c->outz;i++)
 	sum+=c->N[b][i].norm();
     fprintf(stderr,"%s Parent N(%s) = %f\n",name,c->name,sum);
@@ -175,9 +175,9 @@ void PLayer::forward()
   double sum=0.0;
 
   MaxPool();
-    
+
   if (VERBOSE) {
-    for(b=0;b<batch;b++) 
+    for(b=0;b<batch;b++)
       for(i=0;i<outz;i++)
 	sum+=N[b][i].norm();
     fprintf(stderr,"N(%s) = %f\n",name,sum);
@@ -191,7 +191,7 @@ void PLayer::save(FILE *fe)
   save_param(fe);
 
   fprintf(fe,"%d %d\n",sizer,sizec);
-  
+
 }
 
 void PLayer::load(FILE *fe)
@@ -201,7 +201,7 @@ void PLayer::load(FILE *fe)
   load_param(fe);
 
   fsd=fscanf(fe,"%d %d\n",&sizer,&sizec);
-  
+
 }
 
 
@@ -215,8 +215,8 @@ void PLayer::MaxPoolB()
   for(int b=0;b<batch;b++) {
     int i,j,k,z,r;
     for(k=0;k<nk;k++) {
-      for(i=0;i<outr;i++) 
-	for(j=0;j<outc;j++) 
+      for(i=0;i<outr;i++)
+	for(j=0;j<outc;j++)
 	  c->De[b][k](maxR[b][k](i,j),maxC[b][k](i,j))=De[b][k](i,j);
       if (VERBOSE) sum+=De[b][k].norm();
     }
@@ -230,7 +230,7 @@ void PLayer::MaxPoolB()
     for(b=0;b<batch;b++)
       for(k=0;k<nk;k++) {
 	sum+=c->De[b][k].norm();
-       
+
       }
     fprintf(stderr,"DeMPIn=%f\n ",sum);
   }
@@ -238,7 +238,7 @@ void PLayer::MaxPoolB()
 
 void PLayer::backward()
 {
-  
+
   MaxPoolB();
 
 }
@@ -247,7 +247,7 @@ void PLayer::backward()
 void PLayer::initialize(){ }
 void PLayer::applygrads(){ }
 void PLayer::reset()
-{ 
+{
   int i,j;
 
   for(i=0;i<batch;i++)

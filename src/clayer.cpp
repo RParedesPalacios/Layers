@@ -2,7 +2,7 @@
 #include <stdlib.h>     /* malloc, free, rand */
 #include <iostream>
 
-#include "Dense"
+#include "Eigen/Dense"
 #include "layer.h"
 #include "utils.h"
 
@@ -64,7 +64,7 @@ CLayer::CLayer(int batch,char *name):Layer(batch,name)
 
 CLayer::CLayer(int nk,int kr, int kc,int batch,int rp,int cp,int stride,char *name):Layer(batch,name)
 {
-  
+
   this->nk=nk;
   outz=nk;
   this->kr=kr;
@@ -74,7 +74,7 @@ CLayer::CLayer(int nk,int kr, int kc,int batch,int rp,int cp,int stride,char *na
   act=1;
   type=2;
   threads=4;
-  
+
   rpad=rp;
   cpad=cp;
 
@@ -96,10 +96,10 @@ void CLayer::setzpad(int t)
 void CLayer::addchild(Layer *l)
 {
   int enc=0;
-  
+
   for(int i=0;i<lout;i++)
     if (Lout[i]==l) enc=1;
-  
+
   if (!enc) {
     if (l->type==1) {
       Lout[lout++]=l;
@@ -134,7 +134,7 @@ void CLayer::addparent(Layer *l)
   CLayer *c;
   PLayer *p;
   CatLayer *cat;
-  
+
 
   if (lin>0) {
     if (Lin[0]!=l) {
@@ -152,7 +152,7 @@ void CLayer::addparent(Layer *l)
 
     c=(CLayer *)l;
     kz=c->outz;
-    
+
     if (!zpad) {
       outr=((c->outr-kr)/stride)+1;
       outc=((c->outc-kc)/stride)+1;
@@ -166,51 +166,51 @@ void CLayer::addparent(Layer *l)
     }
 
     fprintf(stderr,"Creating Convol (%d@%dx%d) output %d@%dx%d\n",nk,kr,kc,outz,outr,outc);
-    
+
     if ((outr<=0)||(outc<=0)||(outz<=0)||(nk<=0)||(kr<=0)||(kc<=0)) exit(1);
 
     K=(LMatrix **)malloc(nk*sizeof(LMatrix *));
-    for(i=0;i<nk;i++) 
+    for(i=0;i<nk;i++)
       K[i]=new LMatrix[kz];
-     
+
     for(i=0;i<nk;i++)
       for(j=0;j<kz;j++)
 	K[i][j].resize(kr,kc);
 
     bias.resize(nk);
     gbias.resize(nk);
-     
+
     gK=(LMatrix **)malloc(nk*sizeof(LMatrix *));
-    for(i=0;i<nk;i++) 
+    for(i=0;i<nk;i++)
       gK[i]=new LMatrix[kz];
 
-  
+
     for(i=0;i<nk;i++)
       for(j=0;j<kz;j++)
 	gK[i][j].resize(kr,kc);
 
     pgK=(LMatrix **)malloc(nk*sizeof(LMatrix *));
-    for(i=0;i<nk;i++) 
+    for(i=0;i<nk;i++)
       pgK[i]=new LMatrix[kz];
 
-  
+
     for(i=0;i<nk;i++)
       for(j=0;j<kz;j++) {
 	pgK[i][j].resize(kr,kc);
 	pgK[i][j].setZero();
-      }	
-    
+      }
+
 
     E=(LMatrix **)malloc(batch*sizeof(LMatrix *));
     for(i=0;i<batch;i++) {
       E[i]=new LMatrix[nk];
     }
-  
+
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++) {
 	E[i][j].resize(outr,outc);
       }
-   
+
 
     N=(LMatrix **)malloc(batch*sizeof(LMatrix *));
     for(i=0;i<batch;i++) {
@@ -221,12 +221,12 @@ void CLayer::addparent(Layer *l)
       for(j=0;j<nk;j++)
 	N[i][j].resize(outr,outc);
 
-    
+
     De=(LMatrix **)malloc(batch*sizeof(LMatrix *));
     for(i=0;i<batch;i++) {
       De[i]=new LMatrix[nk];
     }
-  
+
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++)
 	De[i][j].resize(outr,outc);
@@ -244,7 +244,7 @@ void CLayer::addparent(Layer *l)
     bn_gvar.resize(nk);
     bn_g.resize(nk);
     bn_b.resize(nk);
-    
+
     gbn_mean.resize(nk);
     gbn_var.resize(nk);
     gbn_g.resize(nk);
@@ -254,33 +254,33 @@ void CLayer::addparent(Layer *l)
     for(i=0;i<batch;i++) {
       BNE[i]=new LMatrix[nk];
     }
-  
+
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++)
 	BNE[i][j].resize(outr,outc);
-  
+
     bn_E=(LMatrix **)malloc(batch*sizeof(LMatrix *));
     for(i=0;i<batch;i++) {
       bn_E[i]=new LMatrix[nk];
     }
-  
+
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++)
 	bn_E[i][j].resize(outr,outc);
-  
+
 
     gbn_E=(LMatrix **)malloc(batch*sizeof(LMatrix *));
     for(i=0;i<batch;i++) {
       gbn_E[i]=new LMatrix[nk];
     }
-  
+
     for(i=0;i<batch;i++)
       for(j=0;j<nk;j++)
 	gbn_E[i][j].resize(outr,outc);
-    
 
 
-    
+
+
   }
   else {
     fprintf(stderr,"Error: %s can not be parent of convol layer %s\n",l->name,name);
@@ -325,17 +325,17 @@ void *Convolt(void *threadarg)
     fin=ini+1;
   }
 
-  if ((m->nt<m->batch)||(m->id<m->batch)) { 
+  if ((m->nt<m->batch)||(m->id<m->batch)) {
     // LOWERING
     LMatrix I(m->kr*m->kc*m->kz,(fin-ini)*m->outr*m->outc);
-    
+
     Matrix<Ltype, Dynamic,Dynamic, RowMajor> K;
     K.resize(m->nk, m->kr*m->kc*m->kz);
 
-    //LMatrix K(m->nk, m->kr*m->kc*m->kz);  
+    //LMatrix K(m->nk, m->kr*m->kc*m->kz);
 
     LMatrix O(m->nk,(fin-ini)*m->outr*m->outc);
-	  
+
     int size=m->outr*m->outc;
     int kr2=m->kr/2;
     int kc2=m->kc/2;
@@ -346,30 +346,30 @@ void *Convolt(void *threadarg)
 
     if (!m->rpad) kr2=0;
     if (!m->cpad) kc2=0;
-    
+
     for(k=0;k<m->nk;k++) {
       b=0;
-      for(z=0;z<m->kz;z++) 
-	for(i=0;i<m->kr;i++) 
-	  for(j=0;j<m->kc;j++,b++) 
+      for(z=0;z<m->kz;z++)
+	for(i=0;i<m->kr;i++)
+	  for(j=0;j<m->kc;j++,b++)
 	    K(k,b)=Kt[k][z](i,j);
     }
-    
+
 
     ib=0;
     for(b=ini;b<fin;b++,ib+=size) {
-      in=0;      
-      for(i=0;i<m->outr;i++) 
+      in=0;
+      for(i=0;i<m->outr;i++)
 	for(j=0;j<m->outc;j++,in++) {
 	  im=0;
 	  for(z=0;z<m->kz;z++) {
 	    si=(i*stride)-kr2;
 	    sj=(j*stride)-kc2;
-	    for(i2=0;i2<m->kr;i2++,si++) 
-	      for(j2=0,sj=(j*stride)-kc2;j2<m->kc;j2++,im++,sj++) 
+	    for(i2=0;i2<m->kr;i2++,si++)
+	      for(j2=0,sj=(j*stride)-kc2;j2<m->kc;j2++,im++,sj++)
 		if ((si<0)||(sj<0)||(si>=inr)||(sj>=inc))
 		  I(im,in+ib)=0.0;
-		else 
+		else
 		  I(im,in+ib)=Nt[b][z](si,sj);
 
 	  }
@@ -383,14 +383,14 @@ void *Convolt(void *threadarg)
     for(b=ini;b<fin;b++,ib+=size) {
       for(k=0;k<m->nk;k++) {
 	z=0;
-	for(i=0;i<m->outr;i++) 
+	for(i=0;i<m->outr;i++)
 	  for(j=0;j<m->outc;j++,z++) {
 	    Et[b][k](i,j)=O(k,z+ib);
 	    if (!bn) Et[b][k](i,j)+=bt(k);
 	  }
       }
     }
-    
+
 
   }
 
@@ -400,7 +400,7 @@ void *Convolt(void *threadarg)
 
 void CLayer::Convol()
 {
-  
+
   void *status;
   int rc;
   int nt=threads;
@@ -409,18 +409,18 @@ void CLayer::Convol()
   CLayer *cin;
   PLayer *pin;
   CatLayer *cat;
-  
+
   ///////////////////
   cin=(CLayer *)Lin[0];
-    
+
   if (VERBOSE) {
-    for(b=0;b<batch;b++) 
-      for(i=0;i<cin->outz;i++) 
+    for(b=0;b<batch;b++)
+      for(i=0;i<cin->outz;i++)
 	sum+=cin->N[b][i].norm();
-    
+
     fprintf(stderr,"(%s) Parent N(%s %dx%d) = %f\n",name,cin->name,batch,cin->outz,sum);
   }
-  
+
 
   for( i=0; i < nt; ++i ){
     td[i].id=i;
@@ -444,7 +444,7 @@ void CLayer::Convol()
     td[i].inr=cin->outr;
     td[i].inc=cin->outc;
     td[i].bn=bn;
-    
+
 
     rc = pthread_create(&thr[i], NULL,Convolt, (void *)(&td[i]));
     if (rc){
@@ -462,12 +462,12 @@ void CLayer::Convol()
     }
   }
 
- 
+
 }
 
 void CLayer::doActivation()
 {
-  if (!bn) 
+  if (!bn)
     if (trmode) {
       if (noiser>0.0) {
 	for(int i=0;i<batch;i++)
@@ -510,37 +510,37 @@ void CLayer::fBN()
       m=0;
       for(b=0;b<batch;b++)
 	for(r=0;r<outr;r++)
-	  for(c=0;c<outc;c++) 
+	  for(c=0;c<outc;c++)
 	    m+=E[b][i](r,c);
       m/=(batch*outr*outc);
       bn_mean(i)=m;
-    
+
       var=0;
       for(b=0;b<batch;b++)
 	for(r=0;r<outr;r++)
-	  for(c=0;c<outc;c++) 
+	  for(c=0;c<outc;c++)
 	    var+=(m-E[b][i](r,c))*(m-E[b][i](r,c));
       var/=((batch*outr*outc)-1);
       bn_var(i)=var;
 
       for(b=0;b<batch;b++)
 	for(r=0;r<outr;r++)
-	  for(c=0;c<outc;c++) 
+	  for(c=0;c<outc;c++)
 	    bn_E[b][i](r,c)=(E[b][i](r,c)-bn_mean(i))/sqrt(bn_var(i)+eps);
-      
+
       if (noiser)
 	for(b=0;b<batch;b++)
 	  NoiseG(bn_E[b][i],noiser,noisesd);
-      
+
 
       for(b=0;b<batch;b++)
 	for(r=0;r<outr;r++)
-	  for(c=0;c<outc;c++) 
+	  for(c=0;c<outc;c++)
 	    BNE[b][i](r,c)=(bn_g(i)*bn_E[b][i](r,c))+bn_b(i);
-	  
+
     }
     bn_gmean+=bn_mean;
-    bn_gvar+=bn_var;  
+    bn_gvar+=bn_var;
   }
   else {
     for(int i=0;i<nk;i++) {
@@ -554,7 +554,7 @@ void CLayer::fBN()
 	  }
     }
   }
-    
+
 }
 
 
@@ -564,23 +564,23 @@ void CLayer::forward()
   double sum=0;
 
   if (lout>0) {
-   
+
     Convol();
-    
+
     if (VERBOSE) {
       for(i=0;i<batch;i++)
-	for(k=0;k<nk;k++) 
+	for(k=0;k<nk;k++)
 	  sum+=E[i][k].norm();
       fprintf(stderr,"Preact E(%s %dx%d)=%f\n",name,batch,nk,sum);
     }
-    
+
     //BN
     if (bn) fBN();
 
     if ((VERBOSE)&&(bn)) {
       sum=0.0;
       for(i=0;i<batch;i++)
-	for(k=0;k<nk;k++) 
+	for(k=0;k<nk;k++)
 	  sum+=BNE[i][k].norm();
       fprintf(stderr,"BNE(%s)=%f\n",name,sum);
     }
@@ -591,19 +591,19 @@ void CLayer::forward()
     // drop-out
     if (drop>0.0) {
       if (trmode) {
-	for(int j=0;j<nk;j++) 
+	for(int j=0;j<nk;j++)
 	  for(int r=0;r<outr;r++)
 	    for(int c=0;c<outc;c++)
 	      if (uniform()<drop) {
 		Dvec[j](r,c)=0.0;
-		for(int i=0;i<batch;i++) 
+		for(int i=0;i<batch;i++)
 		  N[i][j](r,c)=0.0;
 	      }
 	      else Dvec[j](r,c)=1.0;
       }
       else { //testmode
-	for(int i=0;i<batch;i++) 
-	  for(int j=0;j<nk;j++) 
+	for(int i=0;i<batch;i++)
+	  for(int j=0;j<nk;j++)
 	    for(int r=0;r<outr;r++)
 	      for(int c=0;c<outc;c++)
 		N[i][j](r,c)*=(1.0-drop);
@@ -613,7 +613,7 @@ void CLayer::forward()
     if (VERBOSE) {
       sum=0.0;
       for(i=0;i<batch;i++)
-	for(k=0;k<nk;k++) 
+	for(k=0;k<nk;k++)
 	  sum+=N[i][k].norm();
       fprintf(stderr,"N(%s %dx%d)=%f\n",name,batch,nk,sum);
     }
@@ -636,7 +636,7 @@ void CLayer::forward()
 void *ConvolB1t(void *threadarg)
 {
   struct tdata *m;
-  
+
   m = (struct tdata*) threadarg;
 
   int i,j,k,z,b,i2,j2;
@@ -658,14 +658,14 @@ void *ConvolB1t(void *threadarg)
 
   if (!m->rpad) kr2=0;
   if (!m->cpad) kc2=0;
-    
+
   // Compute Grad
   int kini,kfin,zini,zfin;
-  
+
   kini=zini=0;
   kfin=m->nk;
   zfin=m->kz;
-    
+
 
   if (m->nk>m->kz) {
     if (m->nt<m->nk) {
@@ -692,7 +692,7 @@ void *ConvolB1t(void *threadarg)
   }
 
   if ( ((m->nk>m->kz)&&((m->nt<m->nk)||(m->id<m->nk))) || ((m->nk<=m->kz)&&((m->nt<m->kz)||(m->id<m->kz))) ) {
-    
+
     // LOWERING
     Matrix <Ltype,Dynamic,Dynamic,RowMajor> I;
     I.resize((zfin-zini)*m->kr*m->kc,m->batch*m->outr*m->outc);
@@ -704,7 +704,7 @@ void *ConvolB1t(void *threadarg)
 
     // Prepare I
     q=0;
-    for(z=zini;z<zfin;z++) {	
+    for(z=zini;z<zfin;z++) {
       for(i=0;i<m->kr;i++)
 	for(j=0;j<m->kc;j++,q++) {
 	  p=0;
@@ -730,17 +730,17 @@ void *ConvolB1t(void *threadarg)
     }
 
     Res=I*D;
-    
+
     // Reshape to gradient
     for(k=kini;k<kfin;k++) {
       p=0;
-      for(z=zini;z<zfin;z++) {	
+      for(z=zini;z<zfin;z++) {
 	for(i2=0;i2<m->kr;i2++)
-	  for(j2=0;j2<m->kc;j2++,p++) 
+	  for(j2=0;j2<m->kc;j2++,p++)
 	    gKt[k][z](i2,j2)=Res(p,k-kini);
       }
     }
-    
+
 
   }//if
 
@@ -755,9 +755,9 @@ void *ConvolB1t(void *threadarg)
       kini=m->id;
       kfin=kini+1;
     }
- 
+
     if ((m->nt<m->nk)||(m->id<m->nk)) {
-      for(k=kini;k<kfin;k++) 
+      for(k=kini;k<kfin;k++)
 	for(b=0;b<m->batch;b++) {
 	  for(i2=0;i2<m->outr;i2++)
 	    for(j2=0;j2<m->outc;j2++)
@@ -771,22 +771,22 @@ void *ConvolB1t(void *threadarg)
 void *ConvolB2t(void *threadarg)
 {
   struct tdata *m;
-  
+
   m = (struct tdata*) threadarg;
-  
+
   int i,j,k,z,b,r,c,s,im,in,i2,j2,ib;
   int ini,fin;
   LMatrix **Dt=m->D;
   LMatrix **IDt=m->ID;
   LMatrix **Kt=m->K;
-  
+
   int bini,bfin,zini,zfin;
 
-  // BackProp Deltas 
+  // BackProp Deltas
   bini=zini=0;
   bfin=m->batch;
   zfin=m->kz;
-    
+
   if (m->batch>m->kz) {
     if (m->nt<m->batch) {
       bini=(m->id*(m->batch/m->nt));
@@ -810,7 +810,7 @@ void *ConvolB2t(void *threadarg)
     }
 
   }
- 
+
   if ( ((m->batch>m->kz)&&((m->nt<m->batch)||(m->id<m->batch))) || ((m->batch<=m->kz)&&((m->nt<m->kz)||(m->id<m->kz))) ) {
     // LOWERING
     //Matrix <Ltype,Dynamic,Dynamic,RowMajor> Del;
@@ -844,20 +844,20 @@ void *ConvolB2t(void *threadarg)
 	  Kr[z](k,i2)=Kt[k][z](r,c);
 	}
     }
-    
+
     if (m->zpad) {
 
 
       for(i=0;i<m->outr;i++) {
 	for(j=0;j<m->outc;j++) {
 
-	  for(b=bini;b<bfin;b++) 
+	  for(b=bini;b<bfin;b++)
 	    for(k=0;k<m->nk;k++)
 	      Del(b-bini,k)=Dt[b][k](i,j);
 
 	  for(z=zini;z<zfin;z++) {
 	    Res=Del*Kr[z];
-	
+
 	    for(b=bini;b<bfin;b++) {
 	      for(i2=0,r=0,c=0;i2<m->kc*m->kr;i2++,c++) {
 		if (c==m->kc) {c=0;r++;}
@@ -877,19 +877,19 @@ void *ConvolB2t(void *threadarg)
       for(i=0;i<m->outr;i++) {
 	for(j=0;j<m->outc;j++) {
 
-	  for(b=bini;b<bfin;b++) 
+	  for(b=bini;b<bfin;b++)
 	    for(k=0;k<m->nk;k++)
 	      Del(b-bini,k)=Dt[b][k](i,j);
 
 	  for(z=zini;z<zfin;z++) {
 
 	    Res=Del*Kr[z];
-	
+
 	    for(b=bini;b<bfin;b++) {
 	      for(i2=0,r=0,c=0;i2<m->kc*m->kr;i2++,c++) {
 		if (c==m->kc) {c=0;r++;}
 		IDt[b][z](i*stride+r,j*stride+c)+=Res(b-bini,i2);
-		
+
 	      }
 	    }
 
@@ -903,13 +903,13 @@ void *ConvolB2t(void *threadarg)
       Kr[i].resize(0,0);
 
   }
-  
+
 }
 
 
 void CLayer::ConvolB()
 {
-  
+
   void *status;
   int rc;
   int nt=threads;
@@ -920,23 +920,23 @@ void CLayer::ConvolB()
 
   cin=(CLayer *)Lin[0];
 
-  if (drop>0.0) 
+  if (drop>0.0)
     #pragma omp parallel for
-    for(int j=0;j<nk;j++) 
+    for(int j=0;j<nk;j++)
       for(int r=0;r<outr;r++)
 	for(int c=0;c<outc;c++)
-	  if (Dvec[j](r,c)==0.0) 
-	    for(int i=0;i<batch;i++) 
+	  if (Dvec[j](r,c)==0.0)
+	    for(int i=0;i<batch;i++)
 	      De[i][j](r,c)=0.0;
 
-  
+
   if (act==0){
     //Delta as it is
-  }    
+  }
   else if (act==1) { //ReLu Deriv
     #pragma omp parallel for
-    for(int b=0;b<batch;b++) 
-      for(int k=0;k<nk;k++) 
+    for(int b=0;b<batch;b++)
+      for(int k=0;k<nk;k++)
 	for(int r=0;r<outr;r++)
 	  for(int c=0;c<outc;c++)
 	    if (bn) {
@@ -944,13 +944,13 @@ void CLayer::ConvolB()
 	    }
 	    else
 	      if (E[b][k](r,c)<=0) De[b][k](r,c)=0.0;
-		
-	    
+
+
   }
   else if (act==2) { //Sigmoid Deriv
 #pragma omp parallel for
-    for(int b=0;b<batch;b++) 
-      for(int k=0;k<nk;k++) 
+    for(int b=0;b<batch;b++)
+      for(int k=0;k<nk;k++)
 	for(int r=0;r<outr;r++)
 	  for(int c=0;c<outc;c++)
 	    if (bn) De[b][k](r,c)*=dsigm(BNE[b][k](r,c));
@@ -958,8 +958,8 @@ void CLayer::ConvolB()
   }
   else if (act==3) { //ELU
 #pragma omp parallel for
-    for(int b=0;b<batch;b++) 
-      for(int k=0;k<nk;k++) 
+    for(int b=0;b<batch;b++)
+      for(int k=0;k<nk;k++)
 	for(int r=0;r<outr;r++)
 	  for(int c=0;c<outc;c++)
 	    if (bn) {
@@ -967,25 +967,25 @@ void CLayer::ConvolB()
 	    }
 	    else if (E[b][k](r,c)<=0) De[b][k](r,c)*=(N[b][k](r,c)+1);
   }
-  
-  
+
+
 
   if (bn) bBN();
 
 
   if (VERBOSE) {
     sum=0;
-    for(int b=0;b<batch;b++) 
-      for(int k=0;k<nk;k++) 
+    for(int b=0;b<batch;b++)
+      for(int k=0;k<nk;k++)
 	sum+=De[b][k].norm();
     fprintf(stderr,"DeN(%s) %f\n",name,sum);
   }
 
- 
+
   if (VERBOSE) {
     sum=0;
-    for(int k=0;k<nk;k++) 
-      for(int z=0;z<kz;z++) 
+    for(int k=0;k<nk;k++)
+      for(int z=0;z<kz;z++)
 	sum+=K[k][z].norm();
     fprintf(stderr,"KernelN %f\n",sum);
   }
@@ -1016,10 +1016,10 @@ void CLayer::ConvolB()
     td[i].inr=cin->outr;
     td[i].inc=cin->outc;
     td[i].bn=bn;
-    
+
     td[i].IN=cin->N;
     td[i].ID=cin->De;
-    
+
     if (i<nt/2) {
       rc = pthread_create(&thr[i], NULL,ConvolB1t, (void *)(&td[i]));
       if (rc){
@@ -1034,10 +1034,10 @@ void CLayer::ConvolB()
 	exit(-1);
       }
     }
-    
+
   }
 
-  
+
   for( i=0; i < nt; ++i ){
     rc = pthread_join(thr[i], &status);
     if (rc){
@@ -1046,16 +1046,16 @@ void CLayer::ConvolB()
     }
   }
 
-  
+
   if (VERBOSE) {
     double sum=0.0;
-    for(int i=0;i<nk;i++) 
-      for(int j=0;j<kz;j++) 
+    for(int i=0;i<nk;i++)
+      for(int j=0;j<kz;j++)
 	sum+=(gK[i][j].norm());
-    
+
     fprintf(stderr,"grads (%s) %f\n",name,sum);
   }
-  
+
 }
 
 
@@ -1065,41 +1065,41 @@ void CLayer::bBN()
   for(int i=0;i<nk;i++) {
     int j,k,r,c,b;
     double m,var,eps=0.0001;
-    
+
     m=batch*outr*outc;
     //1 Gamma
     gbn_g(i)=0.0;
     for(b=0;b<batch;b++)
       for(r=0;r<outr;r++)
-	for(c=0;c<outc;c++) 
+	for(c=0;c<outc;c++)
 	  gbn_g(i)+=De[b][i](r,c)*bn_E[b][i](r,c);
-  
+
     //2 Beta
 
     gbn_b(i)=0.0;
     for(b=0;b<batch;b++)
       for(r=0;r<outr;r++)
-	for(c=0;c<outc;c++) 
+	for(c=0;c<outc;c++)
 	  gbn_b(i)+=De[b][i](r,c);
-  
+
 
     //3 bnE
 
     for(b=0;b<batch;b++)
       for(r=0;r<outr;r++)
-	for(c=0;c<outc;c++) 
+	for(c=0;c<outc;c++)
 	  gbn_E[b][i](r,c)=De[b][i](r,c)*bn_g(i);
-  
-	  
+
+
     //4 Var
 
     gbn_var(i)=0;
     for(b=0;b<batch;b++)
       for(r=0;r<outr;r++)
-	for(c=0;c<outc;c++) 
+	for(c=0;c<outc;c++)
 	  gbn_var(i)+=-0.5*gbn_E[b][i](r,c)*(E[b][i](r,c)-bn_mean(i))/((bn_var(i)+eps)*sqrt(bn_var(i)+eps));
-    
-  
+
+
     //5 Mean
 
     gbn_mean(i)=0;
@@ -1108,9 +1108,9 @@ void CLayer::bBN()
 	for(c=0;c<outc;c++) {
 	  gbn_mean(i)+=-gbn_E[b][i](r,c)/sqrt(bn_var(i)+eps);
 	  gbn_mean(i)+=-2*gbn_var(i)*(E[b][i](r,c)-bn_mean(i))/m;
-	  
+
 	}
-  
+
     //6 x
 
     for(b=0;b<batch;b++)
@@ -1121,8 +1121,8 @@ void CLayer::bBN()
 	  De[b][i](r,c)+=gbn_mean(i)/m;
 	}
   }
-	  
-  
+
+
 }
 
 
@@ -1152,7 +1152,7 @@ void CLayer::initialize()
     }
 
     for(i=0;i<nk;i++) {
-      bn_g(i)=1.0;      
+      bn_g(i)=1.0;
       bn_b(i)=0.0;
     }
     init=1;
@@ -1170,7 +1170,7 @@ void CLayer::applygrads()
     for(int j=0;j<kz;j++) {
       pgK[i][j]=(mu/batch)*gK[i][j]+mmu*pgK[i][j];
       K[i][j]+=pgK[i][j];
-      if (l2!=0.0) 
+      if (l2!=0.0)
 	K[i][j]-=l2*K[i][j];
       sum+=(gK[i][j].norm());
     }
@@ -1182,24 +1182,24 @@ void CLayer::applygrads()
       bn_g(i)+=(mu/batch)*gbn_g(i);
       bn_b(i)+=(mu/batch)*gbn_b(i);
     }
-  
+
   }
   if (VERBOSE) {
     fprintf(stderr,"%s IncK %f\n",name,sum/(nk*kz));
   }
-  
+
   if (VERBOSE) fprintf(stderr,"grads (%s) %f\n",name,sum);
 }
-	  
+
 void CLayer::resetmomentum()
 {
   int k,z;
 
   if (VERBOSE)  fprintf(stderr,"layer %s reset momentum\n",name);
-  
+
   if (lin>0) //not for CIN
-    for(k=0;k<nk;k++) 
-      for(z=0;z<kz;z++) 
+    for(k=0;k<nk;k++)
+      for(z=0;z<kz;z++)
 	pgK[k][z].setZero();
 
 }
@@ -1213,8 +1213,8 @@ void CLayer::reset()
       De[i][j].setZero();
 
   gbias.setZero();
-  for(k=0;k<nk;k++) 
-    for(z=0;z<kz;z++) 
+  for(k=0;k<nk;k++)
+    for(z=0;z<kz;z++)
       gK[k][z].setZero();
 
 }
@@ -1231,17 +1231,17 @@ void CLayer::resetstats()
 void CLayer::printkernels( FILE *fe)
 {
   int i,j,r,c;
- 
-    
+
+
   for(i=0;i<nk;i++) {
     for(j=0;j<kz;j++) {
       for(r=0;r<kr;r++) {
-	for(c=0;c<kc;c++) 
+	for(c=0;c<kc;c++)
 	  fprintf(fe,"%f ",K[i][j](r,c));
       }
     }
     fprintf(fe,"\n");
-  }      
+  }
   fclose(fe);
 }
 
@@ -1250,18 +1250,18 @@ void CLayer::printkernels( FILE *fe)
 void CLayer::save(FILE *fe)
 {
   int i,j,r,c;
-  
+
   save_param(fe);
 
   for(i=0;i<nk;i++) {
-    for(j=0;j<kz;j++) 
+    for(j=0;j<kz;j++)
       for(r=0;r<kr;r++)
-	for(c=0;c<kc;c++) 
+	for(c=0;c<kc;c++)
 	  fprintf(fe,"%f ",K[i][j](r,c));
     fprintf(fe,"%f ",bias(i));
   }
   fprintf(fe,"\n");
-  
+
 }
 
 void CLayer::load(FILE *fe)
@@ -1272,10 +1272,10 @@ void CLayer::load(FILE *fe)
   int fsd;
 
   load_param(fe);
- 
+
 
   for(i=0;i<nk;i++) {
-    for(j=0;j<kz;j++) 
+    for(j=0;j<kz;j++)
       for(r=0;r<kr;r++)
 	for(c=0;c<kc;c++) {
 	  fsd=fscanf(fe,"%lf ",&fv);
@@ -1319,7 +1319,7 @@ ICLayer::ICLayer(Data *D,int batch,int z,int ir,int ic,int cr,int cc,char *name)
   outc=cc;
   nk=z;
   outz=z;
-  
+
   if ((imr<outr)||(imc<outc)){
     fprintf(stderr,"Error input lower than out (%dx%d)<(%dx%d)\n",imr,imc,outr,outc);
     exit(1);
@@ -1336,18 +1336,18 @@ ICLayer::ICLayer(Data *D,int batch,int z,int ir,int ic,int cr,int cc,char *name)
 
   for(i=0;i<batch;i++) {
     N[i]=new LMatrix[nk];
-    
+
     if (N[i]==NULL) {
       fprintf(stderr,"Error Mem i\n");
       exit(1);
     }
   }
 
-  for(i=0;i<batch;i++) 
-    for(j=0;j<nk;j++) 
+  for(i=0;i<batch;i++)
+    for(j=0;j<nk;j++)
       (N[i][j]).resize(outr,outc);
 
-  
+
   De=(LMatrix **)malloc(batch*sizeof(LMatrix *));
   if (N==NULL) {
     fprintf(stderr,"Error Mem\n");
@@ -1356,18 +1356,18 @@ ICLayer::ICLayer(Data *D,int batch,int z,int ir,int ic,int cr,int cc,char *name)
 
   for(i=0;i<batch;i++) {
     De[i]=new LMatrix[nk];
-    
+
     if (De[i]==NULL) {
       fprintf(stderr,"Error Mem i\n");
       exit(1);
     }
   }
 
-  for(i=0;i<batch;i++) 
-    for(j=0;j<nk;j++) 
+  for(i=0;i<batch;i++)
+    for(j=0;j<nk;j++)
       (De[i][j]).resize(outr,outc);
 
-  
+
   Dvec=new LMatrix[nk];
   for(j=0;j<nk;j++)
     Dvec[j].resize(outr,outc);
@@ -1386,7 +1386,7 @@ void ICLayer::doflip(LMatrix& I)
 
   for(i=0;i<r;i++)
     for(j=0;j<c;j++)
-      I(i,j)=T(i,(c-1)-j);  
+      I(i,j)=T(i,(c-1)-j);
 }
 
 
@@ -1400,11 +1400,11 @@ void ICLayer::doshift(LMatrix& I,int sx,int sy)
   c=I.cols();
 
   I.setZero();
-  
+
   for(i=0;i<r;i++)
     if ((i+sy>=0)&&(i+sy<r))
       for(j=0;j<c;j++)
-	if ((j+sx>=0)&&(j+sx<c)) 
+	if ((j+sx>=0)&&(j+sx<c))
 	  I(i+sy,j+sx)=T(i,j);
 
 }
@@ -1422,7 +1422,7 @@ void ICLayer::donoise(LMatrix& I,double ratio, double sd)
     for(j=0;j<c;j++)
       if (uniform()<ratio)
 	I(i,j)+=gauss(0.0,sd);
-  
+
 }
 
 void ICLayer::donoiseb(LMatrix& I,double ratio)
@@ -1437,11 +1437,11 @@ void ICLayer::donoiseb(LMatrix& I,double ratio)
       if (uniform()<ratio)
 	if (I(i,j)) I(i,j)=0.0;
 	else I(i,j)=1.0;
-  
+
 }
 
   // RANDOM BRIGHTNESS
-double ICLayer::calc_brightness(LMatrix I,double factor) 
+double ICLayer::calc_brightness(LMatrix I,double factor)
 {
   int i,j,r,c;
   double br;
@@ -1460,7 +1460,7 @@ double ICLayer::calc_brightness(LMatrix I,double factor)
   return br;
 }
 
-void ICLayer::dobrightness(LMatrix& I,double b) 
+void ICLayer::dobrightness(LMatrix& I,double b)
 {
   int i,j,r,c;
 
@@ -1475,7 +1475,7 @@ void ICLayer::dobrightness(LMatrix& I,double b)
 
 
   // RANDOM CONTRAST
-void ICLayer::docontrast(LMatrix& I,double factor) 
+void ICLayer::docontrast(LMatrix& I,double factor)
 {
   int i,j,r,c;
   int sc;
@@ -1484,7 +1484,7 @@ void ICLayer::docontrast(LMatrix& I,double factor)
 
   r=I.rows();
   c=I.cols();
-  
+
   smin=1.0/factor;
   u=uniform();
 
@@ -1502,7 +1502,7 @@ void ICLayer::SaveImage(LMatrix R,LMatrix G,LMatrix B,char *name)
   int r,c,i,j;
 
   fs=fopen(name,"wt");
-  
+
 
   r=R.rows();
   c=R.cols();
@@ -1521,7 +1521,7 @@ void ICLayer::SaveImage(LMatrix R,LMatrix G,LMatrix B,char *name)
   }
   fclose(fs);
   fprintf(stderr,"Image saved\n");
-  
+
   getchar();
 }
 
@@ -1532,7 +1532,7 @@ void ICLayer::getbatch(Data *Dt)
   int cr,cc; //crop
 
   for(b=0;b<batch;b++) {
-    
+
     if (trmode) {
       cr=cc=0;
       if (imr!=outr) {
@@ -1558,13 +1558,13 @@ void ICLayer::getbatch(Data *Dt)
     }
 
     //SaveImage(N[b][0],N[b][1],N[b][2],"orig.ppm");
-    
+
     if (trmode) {
       //FLIP
-      if ((flip)&&(rand()%2==0)) 
-	for(k=0;k<nk;k++) 
+      if ((flip)&&(rand()%2==0))
+	for(k=0;k<nk;k++)
 	  doflip(N[b][k]);
-    
+
 
 
       //SHIFT
@@ -1574,7 +1574,7 @@ void ICLayer::getbatch(Data *Dt)
 	sx-=shift;
 	sy-=shift;
 
-	for(k=0;k<nk;k++) 
+	for(k=0;k<nk;k++)
 	  doshift(N[b][k],sx,sy);
       }
 
@@ -1582,23 +1582,23 @@ void ICLayer::getbatch(Data *Dt)
       //BRIGHTNESS
       if (brightness!=0.0) {
 	double br=calc_brightness(N[b][0],brightness);
-	for(k=0;k<nk;k++) 
+	for(k=0;k<nk;k++)
 	  dobrightness(N[b][k],br);
-     
+
       }
       //CONTRAST
       if (contrast!=0.0) {
-	for(k=0;k<nk;k++) 
+	for(k=0;k<nk;k++)
 	  docontrast(N[b][k],contrast);
       }
 
       // NOISE
       if (noiser!=0.0)
-	for(k=0;k<nk;k++) 
+	for(k=0;k<nk;k++)
 	  donoise(N[b][k],noiser,noisesd);
 
       if (noiseb!=0.0)
-	for(k=0;k<nk;k++) 
+	for(k=0;k<nk;k++)
 	  donoiseb(N[b][k],noiseb);
     }//trmode
   }//b

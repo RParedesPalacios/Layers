@@ -2,7 +2,7 @@
 #define _CDATA_
 
 
-#include "Dense"
+#include "Eigen/Dense"
 
 using namespace Eigen;
 using namespace std;
