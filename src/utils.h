@@ -3,7 +3,7 @@
 
 #define LUT 100000
 
-#include "Dense"
+#include "Eigen/Dense"
 #include "types.h"
 
 
