@@ -51,11 +51,11 @@ DONE!
 
 * To compile the netparser, use the MAC CC_LIB flag:
 
-C_LIB = -ll
+  C_LIB = -ll
 
 * Also in the Makefile use the MAC CXXFLAGS:
  
- CXXFLAGS = -I . -O3 
+  CXXFLAGS = -I . -O3 
 
 ### Compiling on Windows:
 
