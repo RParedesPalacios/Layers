@@ -345,6 +345,7 @@ void *Convolt(void *threadarg)
     int bn=m->bn;
 
     if (!m->rpad) kr2=0;
+
     if (!m->cpad) kc2=0;
 
     for(k=0;k<m->nk;k++) {
@@ -354,8 +355,8 @@ void *Convolt(void *threadarg)
 	  for(j=0;j<m->kc;j++,b++)
 	    K(k,b)=Kt[k][z](i,j);
     }
-
-
+    
+    
     ib=0;
     for(b=ini;b<fin;b++,ib+=size) {
       in=0;
@@ -375,7 +376,7 @@ void *Convolt(void *threadarg)
 	  }
 	}
     }
-
+    
 
     O=K*I;
 
@@ -461,8 +462,6 @@ void CLayer::Convol()
       exit(-1);
     }
   }
-
-
 }
 
 void CLayer::doActivation()

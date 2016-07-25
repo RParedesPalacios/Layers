@@ -13,7 +13,7 @@
 #define SHOW_TIME 0
 
 // Comment this line for Mac
-//#define USETIME 
+#define USETIME 
 
 #define PERFORM_GCHECK 0
 
@@ -75,7 +75,7 @@ void Net::net2dot()
   fs=fopen(cad,"wt");
 
   fprintf(fs,"digraph %s {\n",name);
-  fprintf(fs,"rankdir=LR;\n");
+  fprintf(fs,"rankdir=TB;\n");
 
   fprintf(fs,"Data [label=\"%s\",style=filled,fontsize=12,fillcolor=LightBlue,shape=box]\n",Dtrain->name,lvec[i]->din);
 
