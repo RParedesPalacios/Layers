@@ -35,7 +35,7 @@ see some examples of net files in the [examples](https://github.com/RParedesPala
 
 ## Contributors
 
-* Python templating to create easily the .net files by [**Mayte Gimenez**] (https://github.com/maigimenez)
+* Python [**templating**] (https://github.com/RParedesPalacios/Layers/tree/master/templating) to create easily the .net files by [**Mayte Gimenez**] (https://github.com/maigimenez)
 * Some improvements for compiling in Mac and linking Eigen by [**Jordi Mansanet**] (https://github.com/jormansa)
 
 ## Install and compiling
