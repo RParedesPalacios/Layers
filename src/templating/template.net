@@ -1,0 +1,62 @@
+const {
+  threads=4
+  log="{{ cnn_id }}.log"
+}
+
+data {
+  D1 [filename="{{ train_data }}", ascii]
+  D2 [filename="{{ test_data }}", ascii]
+}
+
+
+network {{ cnn_id }} {
+  data tr D1
+  data ts D2
+
+  // Input Covolutional
+  {{ c_in }}
+
+  // Convolutional Layer
+  {% for convolution in conv_layers %}
+  {{ convolution }}
+  {% endfor %}
+
+  // Max pool layers
+  {% for max_pool in mp_layers %}
+  {{ max_pool }}
+  {% endfor %}
+
+
+  // Fully Connected Layer that reshape
+  F   fr []
+
+  // Hidden Layer Fully Connected
+  {% for hidden in fh_layers %}
+  {{ hidden }}
+  {% endfor %}
+
+  // Output Fully Connected
+  {{ fo_layer }}
+
+  // Connections
+  {% for connect in connections %}
+  {{ connect }}
+  {% endfor %}
+
+}
+
+
+script {
+
+  D1.zscore()
+  D2.zscore(D1)
+
+  {{ cnn_id }}.bn=1
+  {{ cnn_id }}.maxn=3.0
+  {{ cnn_id }}.mu=0.001
+  {{ cnn_id }}.train(20)
+
+  {{ cnn_id }}.testout("{{ cnn_id }}.output")
+
+}
+
