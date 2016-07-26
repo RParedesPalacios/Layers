@@ -33,6 +33,10 @@ see some examples of net files in the [examples](https://github.com/RParedesPala
 * Layers core is written by [**Roberto Paredes**](http://users.dsic.upv.es/~rparedes/)
 * The parser is written by [**Jose Miguel Benedí**](http://users.dsic.upv.es/~jbenedi/)
 
+## Contributors
+
+* Python templating to create easily the .net files by [**Mayte Gimenez**] (https://github.com/maigimenez)
+* Some improvements for compiling in Mac and linking Eigen by [**Jordi Mansanet**] (https://github.com/jormansa)
 
 ## Install and compiling
 
