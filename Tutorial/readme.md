@@ -38,15 +38,47 @@ const{
 
 * _samples_ is the number of samples (int)
 * _dim_ is the dimensionality of the samples (int) 
-* _out_ is ths number of output targets, classes in a classification problem (int)
-
-
+* _out_ is the number of output targets, classes in a classification problem (int)
 * each row is a sample (float values)
 
-**Note**: when samples are color images the channels appear separated, firts R, then G and then B and _dim_ must be $3\times rows\times cols$
+**Note**: when samples are color images the channels appear separated, first R, then G and then B and _dim_ must be $3\times rows\times cols$
+
+* An example of a data file (ascii format) with 10 samples. Each sample is represented by a 3-dim vector (feature vector). The targets are vectors of 2-dim values:
+
+~~~c
+10 3 2
+1.0 0.0 2.4 0.1 0.5
+2.3 2.2 1.2 0.5 1.2
+-1.2 2.2 0.6 2.1 -1.0
+1.0 0.0 2.4 0.1 0.5
+2.3 2.2 1.2 0.5 1.2
+-1.2 2.2 0.6 2.1 -1.0
+1.0 0.0 2.4 0.1 0.5
+2.3 2.2 1.2 0.5 1.2
+-1.2 2.2 0.6 2.1 -1.0
+1.0 0.0 2.4 0.1 0.5
+~~~
+
+* In case of being a classification problem the targets are real values but a unique "1" for the correct class and "0" for the rest:
+
+~~~c
+10 3 2
+1.0 0.0 2.4 0 1
+2.3 2.2 1.2 0 1
+1.2 2.2 0.6 1 0
+1.0 0.0 2.4 0 1
+2.3 2.2 1.2 1 0
+1.2 2.2 0.6 0 1
+1.0 0.0 2.4 0 1
+2.3 2.2 1.2 0 1
+1.2 2.2 0.6 1 0
+1.0 0.0 2.4 1 0
+~~~
+
+* **Note:** ascii format can be converted to binary format with the __ascii2bin__ tool provided
 
 
-* An example of data definition:
+* Data file can be used in layers using a data block. An example of data block:
 
 ~~~c
 data {
@@ -58,6 +90,8 @@ data {
 
 * _D1_, _D2_ and _Dval_ are the name of the data variables
 * Full path to file can be used
+
+
 
 ## Networks
 
@@ -97,9 +131,9 @@ network N1 {
 
 * There are different layers that can be created:
 	* **FI**:  Input Fully Connected layer
-	* **CI**:  Input Covolutional layer
+	* **CI**:  Input Convolutional layer
 	* **F**:  Fully Connected layer
-	* **FO**:  Ouput layer
+	* **FO**:  Output layer
 	* **C**:  Convolutional layer
 	* **MP**:  MaxPooling layer
 	* **CA**:  Cat layer
@@ -185,7 +219,7 @@ network N1 {
 
 ### Networks - Layers - FO
 
-* FO has a mandatory parameter _{classification,regression}_ that define the cost error: cross-entropy or mse respectivelly
+* FO has a mandatory parameter _{classification,regression}_ that define the cost error: cross-entropy or mse respectively
 *  For regression, optionally, we can define an _autoencoder_
 
 ~~~c
@@ -403,7 +437,7 @@ network N1 {
   // FC output
   FO f2 [classification]
 
-  // Conecctions
+  // Connections
   in->c0
   c0->p0
   p0->c1
@@ -496,12 +530,12 @@ network N1 {
 		* save(fname): to save the network parameters to file
 		* load(fname): to load the network parameters from file
 
-			Note that __save__ and __load__ do not take into accont the network structure, only the parameters of the layers (learning rate, dropout,...) and weights (and bias). So in order to load a network the network structure must match the network structure used when it was saved.
+			Note that __save__ and __load__ do not take into account the network structure, only the parameters of the layers (learning rate, dropout,...) and weights (and bias). So in order to load a network the network structure must match the network structure used when it was saved.
 		* testout("fname"): writes the output of all the test data in the file. Forward over all data set.
 	
 	* For Layers:
 
-		* printkernels("fname"): save the weights of a paricular layer in the file. 
+		* printkernels("fname"): save the weights of a particular layer in the file. 
 			
 			For convolutional networks printkernels loop over each filter, then over each map (depth) and then over each pixel (rows and cols). For fully connected layers printkernels loop over each unit and then over each connection to next layer units.
 	
@@ -723,7 +757,7 @@ network N1 {
   data tr D1 
   data ts D2
 
-  // Covolutional Input
+  // Convolutional Input
   CI in [nz=3, nr=32, nc=32]
 
   C c0 [nk=16, kr=3, kc=3]	  
