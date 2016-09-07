@@ -1257,8 +1257,11 @@ void CLayer::save(FILE *fe)
       for(r=0;r<kr;r++)
 	for(c=0;c<kc;c++)
 	  fprintf(fe,"%f ",K[i][j](r,c));
-    fprintf(fe,"%f ",bias(i));
   }
+
+  for(i=0;i<nk;i++) 
+    fprintf(fe,"%f ",bias(i));
+  
   fprintf(fe,"\n");
 
 }
