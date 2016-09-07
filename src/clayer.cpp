@@ -1252,13 +1252,12 @@ void CLayer::save(FILE *fe)
 
   save_param(fe);
 
-  for(i=0;i<nk;i++) {
-    for(j=0;j<kz;j++)
-      for(r=0;r<kr;r++)
-	for(c=0;c<kc;c++)
+  for(r=0;r<kr;r++)
+    for(c=0;c<kc;c++)
+      for(i=0;i<nk;i++) 
+	for(j=0;j<kz;j++)
 	  fprintf(fe,"%f ",K[i][j](r,c));
-  }
-
+  
   for(i=0;i<nk;i++) 
     fprintf(fe,"%f ",bias(i));
   
@@ -1275,20 +1274,19 @@ void CLayer::load(FILE *fe)
 
   load_param(fe);
 
-
-  for(i=0;i<nk;i++) {
-    for(j=0;j<kz;j++)
-      for(r=0;r<kr;r++)
-	for(c=0;c<kc;c++) {
+  for(r=0;r<kr;r++)
+    for(c=0;c<kc;c++) 
+      for(i=0;i<nk;i++) 
+	for(j=0;j<kz;j++) {
 	  fsd=fscanf(fe,"%lf ",&fv);
 	  K[i][j](r,c)=fv;
 	}
-  }
 
   for(i=0;i<nk;i++) {
     fsd=fscanf(fe,"%lf ",&fv);
     bias(i)=fv;
   }
+
   fsd=fscanf(fe,"\n");
 
 }
