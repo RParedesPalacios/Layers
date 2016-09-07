@@ -1283,6 +1283,9 @@ void CLayer::load(FILE *fe)
 	  fsd=fscanf(fe,"%lf ",&fv);
 	  K[i][j](r,c)=fv;
 	}
+  }
+
+  for(i=0;i<nk;i++) {
     fsd=fscanf(fe,"%lf ",&fv);
     bias(i)=fv;
   }
