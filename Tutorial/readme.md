@@ -594,7 +594,8 @@ script {
 	* bn: batch normalization ({0,1})
 	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU)
 	* flip: to flip input images ({1,0})
-	* shift: to shift randomly input images	* balance: for balancing data classes	
+	* shift: to shift randomly input images	
+	* balance: for balancing data classes	
 * Parameters can be modified for one particular layer or data:
 
 ~~~c
