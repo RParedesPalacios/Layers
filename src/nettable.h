@@ -56,7 +56,7 @@
 /************************************** External variables defined in the AL */
 extern FILE *yyin;
 extern int   yylineno;
-extern int   yyleng;
+extern yy_size_t  yyleng;
 extern char *yytext;
 /************************************** External variables defined in the AS */
 extern int verbosity;
