@@ -101,7 +101,7 @@ void dump_file()
   if(numErrores == 0) {
     fd = fopen ("netparser.run", "w");
     for (i=0; i < pmem; i++) fprintf(fd,"%s\n",mem[i]);
-    close(fd);
+    fclose(fd);
   }
 }
 /*****************************************************************************/
@@ -807,9 +807,9 @@ int netparser (char *nfich)
       fprintf(stdout,"%3d.- ", yylineno); yyparse ();
       fprintf(stdout,"\n");               dump_file(); 
       exit(1);
-    }  
+    }
+    fclose(fe);
   }
-  exit(0);
 }
 /*****************************************************************************/
 /*****************************************************************************/

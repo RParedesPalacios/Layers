@@ -1,5 +1,5 @@
 ###########################################################################
-OBJ =	nettable.o asin.o alex.o utils.o data.o layer.o flayer.o \
+OBJ =	asin.o alex.o nettable.o utils.o data.o layer.o flayer.o \
 	clayer.o player.o catlayer.o net.o
 
 all:	$(OBJ) ascii2bin layers
@@ -29,7 +29,6 @@ LIBFLAGS = -lpthread -lm -lfl
 CXXFLAGS = -fopenmp -I Eigen -O3
 
 # FOR MAC:
-#LIBFLAGS = -ll
 #CXXFLAGS = -I . -O3
 
 utils:	utils.cpp utils.h
