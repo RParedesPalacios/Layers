@@ -6,34 +6,14 @@
 > you need to have **g++** and **make** installed. For the parser you need Flex library to link (-lfl)
 >
 
-* Enter in the netparser directory
-* Compile the parser
-
+### **Sinve version V.04 the compilation is just straighforward:**
 
 ~~~shell
-cd netparser
+cd src
 make clean
 make
 ~~~
 
-
-* Copy the parser to some PAHT directory (e.g. ~/bin)
-
-~~~shell
-mkdir ~/bin
-export PATH="~/bin:$PATH" >> ~/.bashrc
-cp cmc ~/bin
-source ~/.bashrc
-~~~
-
-* back to layers src and compile layers
-
-~~~shell
-cd ..
-make clean
-make
-cp layers ~/bin
-~~~
 
 DONE!
 
@@ -49,13 +29,8 @@ DONE!
 #define USETIME 
 ~~~
 
-* To compile the netparser, use the MAC CC_LIB flag:
+* To compile the netparser, use the MAC Flags that appear in the Makefile
 
-  C_LIB = -ll
-
-* Also in the Makefile use the MAC CXXFLAGS:
- 
-  CXXFLAGS = -I . -O3 
 
 ### Compiling on Windows:
 
@@ -64,6 +39,11 @@ DONE!
 
 
 ## Changelog
+
+### V0.4 - September 2016
+
+Thanks to [**Jose Miguel Benedí**](http://users.dsic.upv.es/~jbenedi/) now we have a full integration of the parser inside Layers. 
+
 
 ### V0.3 - June 2016
 

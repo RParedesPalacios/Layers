@@ -29,6 +29,7 @@ LIBFLAGS = -lpthread -lm -lfl
 CXXFLAGS = -fopenmp -I Eigen -O3
 
 # FOR MAC:
+#LIBFLAGS = -ll
 #CXXFLAGS = -I . -O3
 
 utils:	utils.cpp utils.h
