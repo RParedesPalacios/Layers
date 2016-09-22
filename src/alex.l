@@ -13,9 +13,9 @@ int numErrores=0;                        /* Counter for number of errors     */
 #define  display(x) {if (verbosity) ECHO; return x;}
 char *createName();
 char *createLiteral();
-
 %}
 
+%option noyywrap
 %option yylineno
 comentario      "//".*\n
 delimitador	[ \t]+

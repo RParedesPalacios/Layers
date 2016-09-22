@@ -5,7 +5,9 @@
 #include "layer.h"
 #include "data.h"
 #include "net.h"
-#include "utils.h"
+#include "utils.h" 
+
+extern "C" int netparser (char *nfich) ;
 
 #define MAX_ITEM 1000
 #define MAX_CHAR 1000
@@ -27,22 +29,11 @@ int main(int argc, char **argv) {
   }
 
   // Call parser
-  sprintf(cad,"cmc %s",argv[1]);
-  system(cad);
+  netparser(argv[1]);
 
   lut_init();
 
-  // Parser returns netparser.run
   FILE *fe;
-  fe=fopen("netparser.run","rt");
-  if (fe==NULL) {
-    // parser failed
-    sprintf(cad,"cmc -v %s",argv[1]);
-    system(cad);
-    exit(1);
-  }  
-
-
   int i;
   char name[MAX_CHAR];
   char fname[MAX_CHAR];

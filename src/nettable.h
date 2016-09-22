@@ -63,6 +63,7 @@ extern int verbosity;
 extern int numErrores;
 /****************************************************** Headers of functions */
 void yyerror(const char * msg) ;
+int  netparser (char *nfich) ;
 void emit (char *str) ;
 void dump_file() ;
 void end_experiment() ;

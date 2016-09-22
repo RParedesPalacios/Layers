@@ -77,7 +77,7 @@ void Net::net2dot()
   fprintf(fs,"digraph %s {\n",name);
   fprintf(fs,"rankdir=TB;\n");
 
-  fprintf(fs,"Data [label=\"%s\",style=filled,fontsize=12,fillcolor=LightBlue,shape=box]\n",Dtrain->name,lvec[i]->din);
+  fprintf(fs,"Data [label=\"%s\",style=filled,fontsize=12,fillcolor=LightBlue,shape=box]\n",Dtrain->name);
 
   for(i=0;i<layers;i++) {
     strcpy(cad,lvec[i]->name);

@@ -82,7 +82,7 @@ int sn [MaxTdN];
 int psn;
 /*****************************************************************************/
 /*****************************************************************************/
-void yyerror(const char * msg)
+void yyerror(const char *msg)
 /*  Error handling.                                                          */
 {
   numErrores++;
@@ -510,7 +510,7 @@ void get_net_links(int n, int l)
   	if (ptq == MaxTdL) /* add item to the end of the queue */
 	  yyerror("Queue of layerss is completely full");
         else { queue[ptq] = s; ptq++; }
-        if (tdl[s].type == R) {
+        if ((tdl[s].type == R) && (tdl[s].refnet == (ptdn -1))) {
 	  if (tdl[s].cte1 == 1) aux ="local 1";
 	  else aux = "local 0";
 	  sprintf(line,"layer %s R 2 prevlayer %s %s %s", tdl[s].name,
@@ -788,6 +788,28 @@ void get_div (int ref1, float aux)
 
   sprintf(line,"command %s div 1 %f",tdd[ref1].name, aux);
   emit(line);
+}
+/*****************************************************************************/
+int netparser (char *nfich) 
+/* Manages the command line and invokes the syntactic-semantic analyzer.     */
+{ int i, n = 0; char line[140]; FILE *fe;
+
+  sprintf(line,"rm netparser.run 2>/dev/null"); system(line);
+  if ((yyin = fopen (nfich, "r")) == NULL) {
+    fprintf (stderr, "Invalid file: %s\n", nfich);
+    exit(1);      
+  }
+  else {        
+    yyparse (); dump_file(); 
+
+    fe=fopen("netparser.run","rt");
+    if (fe == NULL) { /* parser failed */
+      fprintf(stdout,"%3d.- ", yylineno); yyparse ();
+      fprintf(stdout,"\n");               dump_file(); 
+      exit(1);
+    }  
+  }
+  exit(0);
 }
 /*****************************************************************************/
 /*****************************************************************************/

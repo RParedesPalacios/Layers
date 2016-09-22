@@ -577,27 +577,4 @@ param_cte
 /*****************************************************************************/
 %%
 /*****************************************************************************/
-int main (int argc, char **argv) 
-/* Manages the command line and invokes the syntactic-semantic analyzer.     */
-{ int i, n = 0; char line[140];
-
-  sprintf(line,"rm netparser.run 2>/dev/null"); system(line);
-  for (i=0; i<argc; ++i) 
-    if (strcmp(argv[i], "-v")==0) { verbosity = TRUE; n++; }
-  --argc; n++;
-  if (argc == n) 
-    if ((yyin = fopen (argv[argc], "r")) == NULL) {
-      fprintf (stderr, "Invalid file: %s\n", argv[argc]);
-      exit(1);      
-    }
-    else {        
-      if (verbosity == TRUE) fprintf(stdout,"%3d.- ", yylineno);
-      yyparse ();
-      if (verbosity == TRUE) fprintf(stdout,"\n");  
-      dump_file(); 
-      }   
-  else fprintf (stderr, "Use: cmc [-v] fichero\n");
-  exit(0);
-}
-/*****************************************************************************/
 /*****************************************************************************/
