@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 
   lut_init();
 
-  FILE *fe;
+  FILE *fe,*fin;
   int i;
   char name[MAX_CHAR];
   char fname[MAX_CHAR];
@@ -79,9 +79,15 @@ int main(int argc, char **argv) {
 
 
   // Read netparser.run
-  while (!feof(fe)) {
+  fin=fopen("netparser.run","rt");
+  if (fin==NULL) {
+    fprintf(stderr,"Error netparser.run not found!!!\n");
+    exit(1);
+  }
 
-    char *read=fgets(line, MAX_CHAR, fe);
+  while (!feof(fin)) {
+
+    char *read=fgets(line, MAX_CHAR, fin);
 
     fprintf(stderr,"-->%s",line);
 
