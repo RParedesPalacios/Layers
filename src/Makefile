@@ -30,6 +30,7 @@ CXXFLAGS = -fopenmp -I Eigen -O3
 
 # FOR MAC:
 #CXXFLAGS = -I . -O3
+#LIBFLAGS = -ll
 
 utils:	utils.cpp utils.h
 	$(CXX) $(CXXFLAGS) -c utils.cpp
