@@ -48,6 +48,9 @@ struct tdata{
 pthread_t thr[1000];
 struct tdata td[1000];
 
+
+
+//////////////////////////////////////
 CLayer::CLayer()
 {
   type=2;
