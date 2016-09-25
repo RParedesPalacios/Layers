@@ -12,7 +12,7 @@
 #define VERBOSE 0
 
 
-// Eigen
+/// Eigen
 
 using namespace Eigen;
 using namespace std;
