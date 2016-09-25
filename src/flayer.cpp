@@ -11,6 +11,9 @@
 
 #define VERBOSE 0
 
+
+// Eigen
+
 using namespace Eigen;
 using namespace std;
 
