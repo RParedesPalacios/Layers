@@ -11,7 +11,6 @@ using namespace Eigen;
 using namespace std;
 
 
-
 void lut_init();
 void NoiseG(LMatrix &E,double noiser,double noisesd);
 void ReLu(LMatrix E,LMatrix &N);
