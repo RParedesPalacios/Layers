@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  // Call parser
+  // Call new parser
   netparser(argv[1]);
 
   lut_init();
