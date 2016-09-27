@@ -3,7 +3,7 @@
 ## Compile and install
 
 > 
-> you need to have **g++** and **make** installed. For the parser you need Flex library to link (-lfl)
+> you need to have **g++** and **make** installed and Flex library to link (-lfl). In case you want to modify the parser (but this is no needed for normal installation) you would need Bison.
 >
 
 ### **Since version V.04 the compilation is just straightforward:**
