@@ -19,6 +19,9 @@ DONE!
 
 ### Compiling on MAC:
 
+
+* Use the MAC Flags that appear in the Makefile
+
 * You need some alternative to:
  
  clock_gettime and CLOCK_MONOTONIC
@@ -28,9 +31,6 @@ DONE!
 ~~~c
 #define USETIME 
 ~~~
-
-* Use the MAC Flags that appear in the Makefile
-
 
 ### Compiling on Windows:
 
