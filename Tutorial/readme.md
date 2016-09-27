@@ -154,7 +154,7 @@ network N1 {
 }
 ~~~
 * _in_ is the name of the layer
-* The number of units is the dimensionality representation of the data
+* The number of units is the dimensionality of the data
 
 ### Networks - Layers - CI
 
@@ -177,7 +177,6 @@ network N1 {
 ~~~
 * _in_ is the name of the layer
 
-###  Networks - Layers -CI
 
 * Convolutional input has optional parameters:
 	* cr: crop rows
@@ -215,7 +214,7 @@ network N1 {
 }
 ~~~
 * _f1_ is the name of the layer
-* _numnodes_ is a mandatory parameter
+* _numnodes_ is a mandatory parameter in regular hidden layers but can be avoided when defining a **reshape** layer after a convolutional layer
 
 ### Networks - Layers - FO
 
@@ -428,7 +427,7 @@ network N1 {
   C c2 [nk=64, kr=3, kc=3]
   MP p2 [sizer=2,sizec=2]
 
-  // FC reshape
+  // FC reshape, numnodes is not requiered
   F   f0 []
 
   // FC hidden
