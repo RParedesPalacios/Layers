@@ -63,5 +63,4 @@ layers:	main.cpp $(OBJ)
 	$(CXX) $(CXXFLAGS) -o layers main.cpp $(OBJ) $(LIBFLAGS)
 clean:
 	rm *.o
-	rm -f alex.c asin.c asin.h
 ###########################################################################
