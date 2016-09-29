@@ -278,13 +278,13 @@ void check_param_layer (int n)
 { int i=1, ok=TRUE;
   int aux [MaxPar] = {FALSE,FALSE,FALSE,FALSE,FALSE,FALSE}; 
  
-  if (tdl[ptdl].cte1 >= 0) aux[1] = TRUE;
-  if (tdl[ptdl].cte2 >= 0) aux[2] = TRUE;
-  if (tdl[ptdl].cte3 >= 0) aux[3] = TRUE;
-  if (tdl[ptdl].cte4 >= 0) aux[4] = TRUE;
-  if (tdl[ptdl].cte5 >= 0) aux[5] = TRUE;
-  if (tdl[ptdl].cte6 >= 0) aux[6] = TRUE;
-  for (i = 1; ((i<= n) && (ok == TRUE)); i++)
+  if (tdl[ptdl].cte1 >= 0) aux[0] = TRUE;
+  if (tdl[ptdl].cte2 >= 0) aux[1] = TRUE;
+  if (tdl[ptdl].cte3 >= 0) aux[2] = TRUE;
+  if (tdl[ptdl].cte4 >= 0) aux[3] = TRUE;
+  if (tdl[ptdl].cte5 >= 0) aux[4] = TRUE;
+  if (tdl[ptdl].cte6 >= 0) aux[5] = TRUE;
+  for (i = 0; ((i< n) && (ok == TRUE)); i++)
     if (aux[i] != TRUE) ok = FALSE;
   if (ok == FALSE)
     yyerror("Error, mandatory parameters incomplete.");
@@ -486,7 +486,7 @@ int is_acyclic()
 	else { tdl[i].visit2 = TRUE; queue[ptq] = i; ptq++; }
       else ;
   }
-
+ 
   for (i = 0; ((i < ptdl) && ok); i++)
     if (tdl[i].visit2 == FALSE) ok = FALSE;
 
@@ -704,6 +704,14 @@ void get_printkernels (int refn, int refl, char *aux)
 
   sprintf(line,"command %s %s printkernels 1 %s", tdn[refn].name, 
 	  tdl[refl].name, aux);
+  emit(line);
+}
+/*****************************************************************************/
+void get_copy (int refnd, int refld, int refns, int refls)
+{ char line[140]; 
+
+  sprintf(line,"command %s %s copy %s %s", tdn[refnd].name, 
+	  tdl[refld].name, tdn[refns].name, tdl[refls].name);
   emit(line);
 }
 /*****************************************************************************/

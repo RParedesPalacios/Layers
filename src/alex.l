@@ -38,7 +38,7 @@ namefile        \"([^\0 ])+\"
 batch           { display(batch_);    }
 threads         { display(threads_);  }
 log             { display(log_);      }
-filename        { display(filename_); }
+filename        { display(filename_); } 
 tr              { display(tr_);       }
 ts              { display(ts_);       }
 va              { display(va_);       }
@@ -99,6 +99,7 @@ script          { display(script_);       }
 train           { display(train_);        }
 test            { display(test_);         }
 printkernels    { display(printkernels_); }
+copy            { display(copy_);         }
 save            { display(save_);         }
 load            { display(load_);         }
 testout         { display(testout_);      }

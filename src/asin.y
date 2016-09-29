@@ -25,7 +25,7 @@
  shift_  flip_  brightness_  contrast_  bn_  balance_ noiseb_
 /*****************************************************************  Keywords */
  const_  data_  network_  script_  train_  save_  zscore_  yuv_  printkernels_
- local_  load_  testout_  center_  div_  test_
+ copy_   local_  load_  testout_  center_  div_  test_
 /****************************************************************  operators */
  BCB_  ECB_  BSB_  ESB_  BRB_  ERB_  PER_  COM_  EQ_  RAR_
 /**************************************************** tokens with attributes */
@@ -214,7 +214,10 @@ layer  : FI_  id_
        { int k = search_layer(-1, $2);
 	 if (k >= 0) 
 	   yyerror("Layer name already exists in this network");
-	 else if ($4 == TRUE) insert_name_layer($2, F);
+	 else if ($4 == TRUE) {
+	   check_param_layer(1);
+	   insert_name_layer($2, F);
+	 }
 	 else insert_name_layer($2, R);
        }
 
@@ -436,6 +439,19 @@ command
 	     yyerror("The name of the layer does not exist on this network");
 	 }
 	 else yyerror("Network name does not exist");
+       }
+
+       | id_  PER_  id_  PER_  copy_  id_  PER_  id_
+
+       { int d2, d1 =  search_network ($1);
+         int s2, s1 =  search_network ($6);
+
+         d2 = search_layer(d1, $3); s2 = search_layer(s1, $8);
+	 if (d1 < 0) yyerror("Destination network does not exist");
+	 else if (d2 < 0) yyerror("Destination layer does not exist");
+	 else if (s1 < 0) yyerror("Source network does not exist");
+         else if (s2 < 0) yyerror("Source layer does not exist");
+	 else get_copy(d1, d2, s1, s2);
        }
 
        | train_  BRB_  cte_  COM_  cte_  rest_train  ERB_

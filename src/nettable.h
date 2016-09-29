@@ -54,10 +54,14 @@
 #define LAYER   1
 #define DATA    2
 /************************************** External variables defined in the AL */
+/* typedef size_t yy_size_t; */
+/* extern yy_size_t yyleng;  */
+extern int yyleng;
 extern FILE *yyin;
 extern int   yylineno;
-extern int   yyleng;
 extern char *yytext;
+extern int yyparse (void);
+extern int yylex(void);
 /************************************** External variables defined in the AS */
 extern int verbosity;
 extern int numErrores;
@@ -66,6 +70,7 @@ void yyerror(const char * msg) ;
 int  netparser (char *nfich) ;
 void emit (char *str) ;
 void dump_file() ;
+void begin_experiment() ;
 void end_experiment() ;
 
 void insert_gconstants (int ref, int cte, char *filename) ;
@@ -95,6 +100,7 @@ void  get_amendment_data(int ref, int aux) ;
 char *get_amend_param_ctr(int param, float value) ;
 char *get_amend_param_cte(int param, int value) ;
 void  get_printkernels (int refn, int refl, char *aux) ;
+void  get_copy (int refnd, int refld, int refns, int refls) ;
 void  get_train (int par1, int par2, int ref) ;
 void  get_net_train (int refn, int par) ;
 void  get_net_test (int refn, int ref2) ;
