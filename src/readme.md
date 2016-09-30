@@ -26,7 +26,7 @@ DONE!
  
  clock_gettime and CLOCK_MONOTONIC
  
-* See this stackoverflow [post](http://stackoverflow.com/questions/5167269/clock-gettime-alternative-in-mac-os-x) or just *+comment the following line in the net.cpp**
+* See this stackoverflow [post](http://stackoverflow.com/questions/5167269/clock-gettime-alternative-in-mac-os-x) or just **comment the following line in the net.cpp**
 
 ~~~c
 #define USETIME 
