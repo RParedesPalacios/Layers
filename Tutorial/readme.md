@@ -589,7 +589,7 @@ script {
 	* noiser: noise ratio after activation function [0]
 	* noisesd: standard deviation of noise ($N(0.0,\sigma)$) [0]
 	* noiseb: ratio of binary noise (only for input layer) [0.0]
-	* drop: dropout (0<drop<1)<[0.0]
+	* drop: dropout (0<drop<1) [0.0]
 	* bn: batch normalization ({0,1}) [0]
 	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU) [1]
 	* flip: to flip input images ({1,0}) [0]
