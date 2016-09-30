@@ -579,22 +579,22 @@ script {
 
 ## Scripts Parameters
 
-* There are several parameters that can be modified:
+* There are several parameters that can be modified. Parameter[default value]:
 
-	* mu: learning rate
-	* mmu: momentum rate
-	* l2: l2 regularization (weight decay)
-	* l1: l1 regularization		
-	* maxn: maxnorm regularization
-	* noiser: noise ratio after activation function
-	* noisesd: standard deviation of noise ($N(0.0,\sigma)$)
-	* noiseb: ratio of binary noise (only for input layer)
-	* drop: dropout (0<drop<1)
-	* bn: batch normalization ({0,1})
-	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU)
-	* flip: to flip input images ({1,0})
-	* shift: to shift randomly input images	
-	* balance: for balancing data classes	
+	* mu: learning rate [0.0001]
+	* mmu: momentum rate [0.9]
+	* l2: l2 regularization (weight decay) [0.0]
+	* l1: l1 regularization	[0.0]	
+	* maxn: maxnorm regularization [0.0]
+	* noiser: noise ratio after activation function [0]
+	* noisesd: standard deviation of noise ($N(0.0,\sigma)$) [0]
+	* noiseb: ratio of binary noise (only for input layer) [0.0]
+	* drop: dropout (0<drop<1)<[0.0]
+	* bn: batch normalization ({0,1}) [0]
+	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU) [1]
+	* flip: to flip input images ({1,0}) [0]
+	* shift: to shift randomly input images [0]	
+	* balance: for balancing data classes	[0]
 * Parameters can be modified for one particular layer or data:
 
 ~~~c
