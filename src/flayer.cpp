@@ -385,12 +385,13 @@ void FLayer::forward()
   }  
   else {
     // Gaussian Noise
-    if (noiser>0.0) {
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++)
-	  if (uniform()<noiser)
-	    E(i,j)+=gauss(0.0,noisesd);
-    }
+    if (trmode) 
+      if (noiser>0.0) {
+	for(int i=0;i<batch;i++)
+	  for(int j=0;j<din;j++)
+	    if (uniform()<noiser)
+	      E(i,j)+=gauss(0.0,noisesd);
+      }
   }
   
 
@@ -846,10 +847,9 @@ void IFLayer::backward() {
 
 
 
-  ////////////////////////////////////////////////////////////////
-  /// OUTPUT FULLY CONNECTED LAYER
-  ////////////////////////////////////////////////////////////////
-
+////////////////////////////////////////////////////////////////
+/// OUTPUT FULLY CONNECTED LAYER
+////////////////////////////////////////////////////////////////
 OFLayer::OFLayer(Data *D,int b,int act,char *name):FLayer(D->out,b,name)
 {
   this->ae=0;

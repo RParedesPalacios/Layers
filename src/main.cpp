@@ -370,9 +370,10 @@ int main(int argc, char **argv) {
 	  for(i=0;i<nets;i++) 
 	    Nlist[i]->Dtrain->preparebatch(1);
 
-	  for(j=0;j<lepoch;j++)
+	  for(j=0;j<lepoch;j++) {
 	    for(i=0;i<nets;i++) 
-	      Nlist[i]->trainbatch(lbatch);
+	      Nlist[i]->trainbatch(lbatch,j);
+	  }
 
 	  fprintf(stderr,"\n");
 	  for(i=0;i<nets;i++) 

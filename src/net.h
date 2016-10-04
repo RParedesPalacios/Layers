@@ -61,7 +61,7 @@ class Net {
 
   void setvalues();
   void train(int epochs);
-  void trainbatch(int b);
+  void trainbatch(int b,int e);
   void testOut(FILE *fs);
   void printOut(Data *Dt,FILE *fs,int n);
   void preparetrainbatch();
