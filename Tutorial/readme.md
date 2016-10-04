@@ -581,7 +581,7 @@ script {
 
 * There are several parameters that can be modified. Parameter[default value]:
 
-	* mu: learning rate [0.0001]
+	* mu: learning rate. Scaled by batch size [0.0001/batch_size]
 	* mmu: momentum rate [0.9]
 	* l2: l2 regularization (weight decay) [0.0]
 	* l1: l1 regularization	[0.0]	
