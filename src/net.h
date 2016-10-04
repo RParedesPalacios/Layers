@@ -27,9 +27,7 @@ class Net {
   int layers,olayers,ilayers;
   int bn;
   int init;
-  int trit;
-  int trepoch;
-  
+
   double mu;
   double decay;
 
@@ -47,6 +45,8 @@ class Net {
   void gcheckF();
   void initialize();
   void preparebatch(int code);
+  void evaluate();
+
   void resetLayers();
   void resetstats();
   void build_fts();
@@ -92,6 +92,9 @@ class Net {
   void setnoiseb(double n);
   void setdecay(double f);
   void setlambda(double f);
+  void setadv(int i);
+  void setadvf(double m);
+  void setaddelta(int i);
 
   int isIn(Layer *l);
 

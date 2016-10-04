@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
   lut_init();
 
   FILE *fe,*fin;
-  int i;
+  int i,j;
   char name[MAX_CHAR];
   char fname[MAX_CHAR];
   char ftype[MAX_CHAR];
@@ -213,34 +213,17 @@ int main(int argc, char **argv) {
 	//layer f0 R 2 prevlayer N1 p1 local 1
 	int val;
 	sscanf(line,"layer %s R 2 prevlayer %s %s %s %d\n",name,cad,cad2,cad3,&val);
-	if (val==1) {
-	  sprintf(lname,"%s:%s",cad,cad2);
 
-	  for(i=0;i<Lc;i++) {
-	    if (!strcmp(lname,LTable[i]->name)) break;
-	  }
-	  sprintf(lname,"%s:%s",innet,name);
+	sprintf(lname,"%s:%s",cad,cad2);
 
-	  //FLayer::FLayer(lname,int lr,int lc,char *name):Layer(0,name)
-	  CLayer *cnn=(CLayer *)LTable[i];
-	  int lr=cnn->outr/2;
-	  int lc=cnn->outc/2;
-	  LTable[Lc]=new FLayer(LTable[i],lr,lc,lname);
-	  NTable[Nc]->addLayer(LTable[Lc]);
-	  Lc++;
+	for(i=0;i<Lc;i++) {
+	  if (!strcmp(lname,LTable[i]->name)) break;
 	}
-	else {
-	  sprintf(lname,"%s:%s",cad,cad2);
+	sprintf(lname,"%s:%s",innet,name);
 
-	  for(i=0;i<Lc;i++) {
-	    if (!strcmp(lname,LTable[i]->name)) break;
-	  }
-	  sprintf(lname,"%s:%s",innet,name);
-
-	  LTable[Lc]=new FLayer(LTable[i],batch,lname);
-	  NTable[Nc]->addLayer(LTable[Lc]);
-	  Lc++;
-	}
+	LTable[Lc]=new FLayer(LTable[i],batch,lname);
+	NTable[Nc]->addLayer(LTable[Lc]);
+	Lc++;
       }
       ////////////// FO //////////////
       else if (!strcmp(ltype,"FO")) {
@@ -362,21 +345,45 @@ int main(int argc, char **argv) {
 	d->YUV();
       }
       else if (!strcmp(com,"train")) {
-	if (!strcmp(cad,"*")) {
+	if (!strcmp(cad,"list")) {
+	  int nets=par;
+	  int lepoch,lbatch;
+	  Net **Nlist=(Net **)malloc(MAX_ITEM*sizeof(Net *));
+
+	  fprintf(stderr,"Training several nets\n");
+	  for(i=0;i<nets;i++) {
+	    char *read=fgets(line, MAX_CHAR, fin);
+	    fprintf(stderr,"-->%s",line);
+
+	    sscanf(line,"command %s train %d nepoch %d numbatch %d ",cad,&par,&lepoch,&lbatch);
+	    for(j=0;j<Nc;j++) 
+	      if (!strcmp(NTable[j]->name,cad)) break;
+	    Nlist[i]=NTable[j];
+	    	   
+	    fprintf(stderr,"%s\n",Nlist[i]->name);
+	  }
+
+	  char *read=fgets(line, MAX_CHAR, fin);
+	  fprintf(stderr,"-->%s",line);
+	  lut_init();
 	  
-	  for(i=0;i<=Nc;i++) NTable[i]->preparetrainbatch();
-	  for(int it=0;it<1000;it++)
-	    for(i=0;i<=Nc;i++) {
-	      fprintf(stderr,"training %s\n",NTable[i]->name);
-	      NTable[i]->trainbatch(10);
-	    }
+	  for(i=0;i<nets;i++) 
+	    Nlist[i]->Dtrain->preparebatch(1);
+
+	  for(j=0;j<lepoch;j++)
+	    for(i=0;i<nets;i++) 
+	      Nlist[i]->trainbatch(lbatch);
+
+	  fprintf(stderr,"\n");
+	  for(i=0;i<nets;i++) 
+	    Nlist[i]->evaluate();
+	  fprintf(stderr,"\n");
 	}
 	else{
 	  sscanf(line,"command %s train 1 nepoch %d",cad,&par);
 	  for(i=0;i<Nc;i++) 
 	    if (!strcmp(NTable[i]->name,cad)) break;
-	  
-	  
+	 
 	  NTable[i]->train(par);
 
 	}

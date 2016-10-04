@@ -255,7 +255,7 @@ void Net::setact(int a)
   int i;
   fprintf(stderr,"Net %s set activation type to %d\n",name,a);
   for(i=0;i<layers;i++)
-    if ((lvec[i]->lin>0)&&(!lvec[i]->out)&&(!lvec[i]->reshape)&&(!lvec[i]->local))
+    if ((lvec[i]->lin>0)&&(!lvec[i]->out)&&(!lvec[i]->reshape))
       lvec[i]->setact(a);
 }
 void Net::setbn(int a)
@@ -264,7 +264,7 @@ void Net::setbn(int a)
   bn=a;
   fprintf(stderr,"Net %s set BN to %d\n",name,a);
   for(i=0;i<layers;i++)
-    if ((lvec[i]->lin>0)&&(!lvec[i]->reshape)&&(!lvec[i]->local))
+    if ((lvec[i]->lin>0)&&(!lvec[i]->reshape))
       lvec[i]->setbn(a);
 }
 
@@ -365,6 +365,32 @@ void Net::setthreads(int l)
     lvec[i]->setthreads(l);
 }
 
+void Net::setadvf(double n)
+{
+  int i;
+  fprintf(stderr,"Net %s set adversarial factor to %f\n",name,n);
+  for(i=0;i<layers;i++)
+    lvec[i]->setadvf(n);
+
+}
+
+void Net::setadv(int l)
+{
+  int i;
+  fprintf(stderr,"Net %s set adversarial mode to %d\n",name,l);
+
+  for(i=0;i<layers;i++)
+    lvec[i]->setadv(l);
+
+}
+
+void Net::setaddelta(int l)
+{
+  int i;
+  for(i=0;i<layers;i++)
+    if (lvec[i]->adv) lvec[i]->adelta=l;
+
+}
 
 
 int Net::isIn(Layer *l)
@@ -393,7 +419,6 @@ void Net::Init(char *logname)
     build_fts();
     build_bts();
     initialize();
-    trit=0;
 
     init=1;
   }
@@ -681,14 +706,24 @@ void Net::printOut(Data *Dt,FILE *fs,int n)
 }
 
 
-
 void Net::train(int epochs)
 {
   int i,d;
   int epoch;
-
+  int adv=0;
 
   fprintf(stderr,"Training net %s %d epochs\n",name,epochs);
+
+
+  for(i=0;i<layers;i++) 
+    if (lvec[i]->adv) adv=1;
+
+  if (adv) {
+    fprintf(stderr,"Adversarial training\n");
+    for(i=0;i<layers;i++) {
+      if (lvec[i]->adv) fprintf(stderr,"%s layer has adversarial noise type %d with factor %f\n",lvec[i]->name,lvec[i]->adv,lvec[i]->advf);
+    }
+  }
 
   for(epoch=1;epoch<=epochs;epoch++) {
     lut_init();
@@ -704,21 +739,41 @@ void Net::train(int epochs)
     trainmode();
     for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
       fprintf(stderr,"%d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
-      /////
+      /////Layer %s setting noiser %f\n",name,
       resetLayers();
       /////
       getbatch(Dtrain);
       /////
       forward();
       /////
-      calcerr(Dtrain);
-      /////
       backward();
       /////
-      applygrads();
+      if (!adv) {
+	calcerr(Dtrain);
+	applygrads();
+      }
+      else {
+	setaddelta(1);
+	/////
+	resetLayers();
+	/////
+	getbatch(Dtrain);
+	/////
+	forward();
+	/////
+	calcerr(Dtrain);
+	/////
+	backward();
+	/////
+	applygrads();
+	/////
+	setaddelta(0);
+      }
+     
       /////
       Dtrain->next();
       if (VERBOSE) getchar();
+
     }
 
     fprintf(stderr,"---------------------------------------\n");
@@ -800,6 +855,70 @@ void Net::train(int epochs)
   //fclose(flog);
 }
 
+void Net::evaluate()
+{
+  int i;
+  
+  fprintf(stderr,"Evaluating net %s\n",name);
+
+  // BN
+  if (bn) {
+    trainmode();
+    reseterrors();
+    Dtrain->preparebatch(0);
+    resetstats();
+    for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
+      fprintf(stderr,"Forward BN %d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
+      /////
+      resetLayers();
+      /////
+      getbatch(Dtrain);
+      /////
+      forward();
+      /////
+      Dtrain->next();
+    }
+  }
+
+
+  testmode();
+  Dtrain->preparebatch(0);
+  reseterrors();
+  for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
+    /////                                                                                                      
+    resetLayers();
+    /////                                                                                                      
+    getbatch(Dtrain);
+    /////                                                                                                      
+    forward();
+    /////                                                                                                      
+    calcerr(Dtrain);
+    /////                                                                                                      
+    Dtrain->next();
+  }
+  printerrors(Dtrain);
+
+
+  if (Dtest!=NULL) {
+    testmode();
+    Dtest->preparebatch(0);
+    reseterrors();
+    for(i=0;i<Dtest->num/Dtest->batch;i++) {
+      /////                                                                                                      
+      resetLayers();
+      /////                                                                                                      
+      getbatch(Dtest);
+      /////                                                                                                      
+      forward();
+      /////                                                                                                      
+      calcerr(Dtest);
+      /////                                                                                                      
+      Dtest->next();
+    }
+    printerrors(Dtest);
+  }
+
+}
 
 void Net::testOut(FILE *fs)
 {
@@ -832,58 +951,44 @@ void Net::testOut(FILE *fs)
 
 }
 
-void Net::preparetrainbatch()
-{
-  trit=trepoch=0;
-  Dtrain->preparebatch(1);
-}
 
 void Net::trainbatch(int b)
 {
   int i,d;
   int epoch;
+  int adv;
 
-  ftime=0;
-  btime=0;
+  fprintf(stderr,"training %s %d batches\r",name,b);
 
-  setvalues();
+  for(i=0;i<layers;i++) 
+    if (lvec[i]->adv) adv=1;
 
-  trit++;
-  trepoch++;
-  fprintf(stderr,"Train It: %d\n",trit);
-  if (trepoch>(Dtrain->num/(b*Dtrain->batch))){
-    Dtrain->preparebatch(1);
-    trepoch=0;
+  /*if (adv) {
+    fprintf(stderr,"Adversarial training\n");
+    for(i=0;i<layers;i++) {
+      if (lvec[i]->adv) fprintf(stderr,"%s layer has adversarial noise type %d with factor %f\n",lvec[i]->name,lvec[i]->adv,lvec[i]->advf);
+    }
   }
+  */
 
   trainmode();
-  reseterrors();
   for(i=0;i<b;i++) {
-    fprintf(stderr,"%d of %d batches\r",i+1,b);
-    /////
+    /////Layer %s setting noiser %f\n",name,
     resetLayers();
     /////
     getbatch(Dtrain);
     /////
     forward();
     /////
-    calcerr(Dtrain);
+    if (!adv) calcerr(Dtrain);
     /////
     backward();
     /////
-    applygrads();
-    /////
-    Dtrain->next();
-    if (VERBOSE) getchar();
-  }
-  printerrors(Dtrain,i*Dtrain->batch);
-
-  // BN
-  if ((bn)&&((Dval!=NULL)||(Dtest!=NULL))) {
-    trainmode();
-    resetstats();
-    for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
-      fprintf(stderr,"Forward BN %d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
+    if (!adv) {
+      applygrads();
+    }
+    else {
+      setaddelta(1);
       /////
       resetLayers();
       /////
@@ -891,50 +996,22 @@ void Net::trainbatch(int b)
       /////
       forward();
       /////
-      Dtrain->next();
+      calcerr(Dtrain);
+      /////
+      backward();
+      /////
+      applygrads();
+      /////
+      setaddelta(0);
     }
+     
+    /////
+    Dtrain->next();
+    if (VERBOSE) getchar();
+
   }
 
-  // VAL
-  if (Dval!=NULL) {
-    testmode();
-    Dval->preparebatch(0);
-    reseterrors();
-    for(i=0;i<Dval->num/Dval->batch;i++) {
-      /////
-      resetLayers();
-      /////
-      getbatch(Dval);
-      /////
-      forward();
-      /////
-      calcerr(Dval);
-      /////
-      Dval->next();
-    }
-    printerrors(Dval);
-  }
-
-  //TEST
-  if (Dtest!=NULL) {
-    testmode();
-    Dtest->preparebatch(0);
-    reseterrors();
-    for(i=0;i<Dtest->num/Dtest->batch;i++) {
-      /////
-      resetLayers();
-      /////
-      getbatch(Dtest);
-      /////
-      forward();
-      /////
-      calcerr(Dtest);
-      /////
-      Dtest->next();
-    }
-    printerrors(Dtest);
-  }
-
+  decmu(decay);
 }
 
 

@@ -61,9 +61,15 @@ Layer::Layer(int batch,char *name)
 
   dev_done=0;
   reshape=0;
-  local=0;
+
   //BATCH NORM
   bn=0;
+
+  //Adversarial
+  adv=0;
+  advf=1.0;
+  adelta=0;
+
 
   init=0;
 
@@ -101,6 +107,9 @@ void Layer::setnoisesd(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting 
 void Layer::setnoiseb(double m){ if (VERBOSE) fprintf(stderr,"Layer %s setting binary noise %f\n",name,m);noiseb=m;}
 void Layer::setthreads(int t){threads=t;}
 void Layer::setoptim(int t){if (VERBOSE) fprintf(stderr,"Set optimization method layer %s to %d\n",name,t);optim=t;}
+
+void Layer::setadv(int i){ if (VERBOSE) fprintf(stderr,"Set adversarial mode layer %s to %d\n",name,i);adv=i;}
+void Layer::setadvf(double m){ if (VERBOSE) fprintf(stderr,"Set adversarial factor Layer %s to %f\n",name,m);advf=m;}
 
 void Layer::save_param(FILE *fe)
 {

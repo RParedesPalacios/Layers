@@ -36,12 +36,14 @@ class Layer {
   int threads;
   int opt;
   int reshape;
-  int local;
-  int lr,lc,lm,ld;
+
   int bn;
   int init;
   int out;
   double lambda;
+  int adv,adelta;
+  double advf;
+  
 
   int shift,flip;
   double brightness,contrast;
@@ -75,6 +77,8 @@ class Layer {
   void setlambda(double l);
   void setthreads(int t);
   void setoptim(int i);
+  void setadv(int i);
+  void setadvf(double m);
 
   void save_param(FILE *fe);
   void load_param(FILE *fe);
@@ -103,7 +107,6 @@ class FLayer : public Layer {
   FLayer();
   FLayer(int in,int batch,char *name);
   FLayer(Layer *In,int batch,char *name);
-  FLayer(Layer *In,int lr,int lc,char *name);
 
   LMatrix *W;
   LMatrix *gW;
@@ -154,7 +157,6 @@ class FLayer : public Layer {
   void resetstats();
   void resetmomentum();
 
-  void doActivation();
   void dactivation();
 
   void save(FILE *fe);
