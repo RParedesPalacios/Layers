@@ -32,6 +32,12 @@ DONE!
 #define USETIME 
 ~~~
 
+* In case you use a gcc compiler from Homebrew, unlink it and use the default gcc installed:
+
+~~~c
+brew unlink gcc
+~~~
+
 ### Compiling on Windows:
 
 * Try and push it! ...  ¯\\\_(ツ)_/¯ 
