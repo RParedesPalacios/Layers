@@ -888,7 +888,7 @@ N2![N2](./figs/sharingN2.jp2)
 
 ### Training several networks
 
-Note that in the previous example, N1 and N2 could be trained with different data sets. For instance the supervised network (N2) can be trainind with a small data set while the unsupervised (N1) can be trainied with all the available data (with and without labels). In this scenario it could be more interesting to train both netwroks simultaneously, a few bathces each network. To this end we can use a commnand where we specify how many iterations, how many batches per network and a list of networks:
+Note that in the previous example, N1 and N2 could be trained with different data sets. For instance the supervised network (N2) can be trained with a small data set while the unsupervised (N1) can be trained with all the available data (with and without labels). In this scenario it could be more interesting to train both netwroks simultaneously, a few bathces each network. To this end we can use a commnand where we specify how many iterations, how many batches per network and a list of networks:
 
 ~~~c
  train(10,5,N1,N2)
