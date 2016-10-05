@@ -966,7 +966,7 @@ script {
 
 ~~~
 
-**Note** tha there is a new dataset [tinytraining.bin](https://github.com/RParedesPalacios/Layers/blob/master/examples/MNIST/Other/tinytraining.bin) that has only 500 supervised samples. Network N2 use oly this samples for the supervised part while network N1 uses the complete data set, 60000 samples. See the networks:
+**Note** that there is a new dataset [tinytraining.bin](https://github.com/RParedesPalacios/Layers/blob/master/examples/MNIST/Other/tinytraining.bin) that has only 500 supervised samples. Network N2 use oly this samples for the supervised part while network N1 uses the complete data set, 60000 samples. See the networks:
 
 N1![N1](./figs/sharingN1.jp2)
 N2![N2](./figs/simulN2.jp2)
