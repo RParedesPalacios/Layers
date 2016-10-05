@@ -811,13 +811,169 @@ script {
 
 ### Networks sharing layers
 
-TODO
+Layers can be shared among networks. For instance one network can train with an unsupervised data set while other net can share the internal representation from this net and fine-tune training with a supervised dataset later. See for instance this example for MNIST:
+
+~~~c
+data {
+  D1 [filename="training.bin", binary]
+  D2 [filename="test.bin", binary]
+}
+
+// Unsupervised
+network N1 {
+  data tr D1
+
+  // FC de entrada
+  FI in
+
+  F  f1 [numnodes=1000]
+  F  f2 [numnodes=500]
+  F  f1m [numnodes=1000]
+
+  // FC salida
+  FO  out [regression,autoencoder]
+
+  // Conexiones
+  in->f1
+  f1->f2
+  f2->f1m
+  f1m->out
+
+}
+
+//Supervised
+network N2 {
+  data tr D1
+  data ts D2
+
+  // FC salida
+  FO  outd [classification]
+
+  // Conexiones
+  N1.in->N1.f1
+  N1.f1->N1.f2
+  N1.f2->outd
+
+}
+
+script {
+  D1.div(255.0)
+  D2.div(255.0)
+
+  N1.noiser=1.0
+  N1.noisesd=0.3
+
+  // Decoder is clean
+  N1.f1m.noiser=0.0
+  N1.out.noiser=0.0
+
+  // Training N1
+  N1.mu=0.1
+  N1.bn=1
+  N1.train(100)
+
+  // Training N2
+  N2.bn=1
+  N2.mu=0.1
+  N2.train(100)
+}
+
+~~~
+
+These are the network obtained:
+
+
+N1![N1](./figs/sharingN1.jp2)
+N2![N2](./figs/sharingN2.jp2)
 
 ### Training several networks
 
-TODO
+Note that in the previous example, N1 and N2 could be trained with different data sets. For instance the supervised network (N2) can be trainind with a small data set while the unsupervised (N1) can be trainied with all the available data (with and without labels). In this scenario it could be more interesting to train both netwroks simultaneously, a few bathces each network. To this end we can use a commnand where we specify how many iterations, how many batches per network and a list of networks:
 
-...
+~~~c
+ train(10,5,N1,N2)
+~~~
+
+the whole picture:
+
+~~~c
+data {
+  D0 [filename="tinytrain.bin", binary]
+  D1 [filename="training.bin", binary]
+  D2 [filename="test.bin", binary]
+}
+
+// Unsupervised
+network N1 {
+  data tr D1
+
+  // FC de entrada
+  FI in
+
+  F  f1 [numnodes=1000]
+  F  f2 [numnodes=500]
+  F  f1m [numnodes=1000]
+
+  // FC salida
+  FO  out [regression,autoencoder]
+
+  // Conexiones
+  in->f1
+  f1->f2
+  f2->f1m
+  f1m->out
+
+}
+
+//Supervised
+network N2 {
+  data tr D0
+  data ts D2
+
+  // FC salida
+  FO  outd [classification]
+
+  // Conexiones
+  N1.in->N1.f1
+  N1.f1->N1.f2
+  N1.f2->outd
+
+}
+
+script {
+  D0.div(255.0)
+  D1.div(255.0)
+  D2.div(255.0)
+
+  N1.noiser=1.0
+  N1.noisesd=0.3
+
+  // Decoder is clean
+  N1.f1m.noiser=0.0
+  N1.out.noiser=0.0
+
+  N1.mu=0.1
+  N1.bn=1
+
+  // reduce the unsupervised cost part
+  N1.out.lambda=0.1
+
+  N2.bn=1
+  N2.mu=0.1
+
+  train(10,5,N1,N2)
+}
+
+~~~
+
+**Note** tha there is a new dataset [tinytraining.bin](https://github.com/RParedesPalacios/Layers/blob/master/examples/MNIST/Other/tinytraining.bin) that has only 500 supervised samples. Network N2 use oly this samples for the supervised part while network N1 uses the complete data set, 60000 samples. See the networks:
+
+N1![N1](./figs/sharingN1.jp2)
+N2![N2](./figs/simulN2.jp2)
+
+
+In this example Layers will run 10 iterations with 5 batches processed for each network. When all the command is completed Layers will perform an evaluation of the test set (if any) for each network.
+
 
 
 
