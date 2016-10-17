@@ -3,7 +3,7 @@
 #include "types.h"
 
 #define MAX_CONNECT 100
-
+#define GLUT 100000
 
 using namespace Eigen;
 using namespace std;
@@ -30,6 +30,9 @@ class Layer {
   double noiser;
   double noiseb;
   double noisesd;
+  double *gn;
+  double *un;
+
   int optim;
   int trmode;
   int dev_done;
@@ -97,6 +100,7 @@ class Layer {
   virtual void resetmomentum(){}
   virtual void resetstats(){}
   virtual void getbatch(Data *Dt){}
+  virtual void getbatch(Data *Dt,int s){}
 
 };
 
@@ -144,7 +148,7 @@ class FLayer : public Layer {
   LVector gbn_b;
   LMatrix gbn_E;
 
-  void modbatch(int b);
+  void mem();
   void addchild(Layer *l);
   void addparent(Layer *l);
   void forward();
@@ -172,6 +176,7 @@ class IFLayer : public FLayer {
   IFLayer(Data *D,int b,char *name);
 
   void getbatch(Data *Dt);
+  void getbatch(Data *Dt,int s);
   void backward();
   void addparent(Layer *l);
 
@@ -192,6 +197,7 @@ class OFLayer : public FLayer {
   void backward();
   void modbatch(int b);
   double get_err(Data *Dt);
+  double get_err(Data *Dt,int s,int cs);
 };
 
 ////////////////////
@@ -257,7 +263,6 @@ class CLayer : public Layer {
   void Convol();
   void ConvolOMP();
   void MaxPool();
-  void doActivation();
   void ConvolB();
   void MaxPoolB();
   void printkernels(FILE *fe);
@@ -277,6 +282,7 @@ class ICLayer : public CLayer {
   ICLayer(Data *D,int batch,int z,int r,int c,int ir,int ic,char *name);
 
   void getbatch(Data *Dt);
+  void getbatch(Data *Dt,int s);
   void addparent(Layer *l);
 
   void forward();

@@ -26,6 +26,46 @@ FLayer::FLayer()
 
 }
 
+
+void FLayer::mem()
+{
+  W=new LMatrix[MAX_CONNECT];
+  gW=new LMatrix[MAX_CONNECT];
+  pgW=new LMatrix[MAX_CONNECT];
+  b=new LRVector[MAX_CONNECT];
+  // SGD+MOMENTUM
+  gb=new LRVector[MAX_CONNECT];
+  pgb=new LRVector[MAX_CONNECT];
+  // ADAM
+  MT=new LMatrix[MAX_CONNECT];
+  VT=new LMatrix[MAX_CONNECT];
+  MTs=new LMatrix[MAX_CONNECT];
+  VTs=new LMatrix[MAX_CONNECT];
+
+  N.resize(batch,din);
+  E.resize(batch,din);
+  dE.resize(batch,din);
+  Delta.resize(batch,din);
+  dvec.resize(din);
+
+  //BN
+  bn_mean.resize(din);
+  bn_var.resize(din);
+  bn_gmean.resize(din);
+  bn_gvar.resize(din);
+  bn_g.resize(din);
+  bn_b.resize(din);
+  bn_E.resize(batch,din);
+  BNE.resize(batch,din);
+
+  gbn_mean.resize(din);
+  gbn_var.resize(din);
+  gbn_g.resize(din);
+  gbn_b.resize(din);
+  gbn_E.resize(batch,din);
+
+}
+
 FLayer::FLayer(int in,int batch,char *name):Layer(batch,name)
 {
 
@@ -38,40 +78,7 @@ FLayer::FLayer(int in,int batch,char *name):Layer(batch,name)
     exit(1);
   }
 
-  W=new LMatrix[MAX_CONNECT];
-  gW=new LMatrix[MAX_CONNECT];
-  pgW=new LMatrix[MAX_CONNECT];
-  b=new LRVector[MAX_CONNECT];
-  gb=new LRVector[MAX_CONNECT];
-  pgb=new LRVector[MAX_CONNECT];
-  MT=new LMatrix[MAX_CONNECT];
-  VT=new LMatrix[MAX_CONNECT];
-  MTs=new LMatrix[MAX_CONNECT];
-  VTs=new LMatrix[MAX_CONNECT];
-
-  N.resize(batch,in);
-  E.resize(batch,in);
-  dE.resize(batch,in);
-  Delta.resize(batch,in);
-  dvec.resize(in);
-
-  //BN
-
-  bn_mean.resize(in);
-  bn_var.resize(in);
-  bn_gmean.resize(in);
-  bn_gvar.resize(in);
-  bn_g.resize(in);
-  bn_b.resize(in);
-  bn_E.resize(batch,in);
-  BNE.resize(batch,in);
-
-  gbn_mean.resize(in);
-  gbn_var.resize(in);
-  gbn_g.resize(in);
-  gbn_b.resize(in);
-  gbn_E.resize(batch,in);
-
+  mem();
 
   fprintf(stderr,"Creating FC layer (%s) with %d neurons\n",name,in);
 
@@ -100,39 +107,7 @@ FLayer::FLayer(Layer *In,int batch,char *name):Layer(batch,name)
   // Linear
   act=0;
 
-  W=new LMatrix[MAX_CONNECT];
-  gW=new LMatrix[MAX_CONNECT];
-  pgW=new LMatrix[MAX_CONNECT];
-  b=new LRVector[MAX_CONNECT];
-  gb=new LRVector[MAX_CONNECT];
-  pgb=new LRVector[MAX_CONNECT];
-  MT=new LMatrix[MAX_CONNECT];
-  VT=new LMatrix[MAX_CONNECT];
-  MTs=new LMatrix[MAX_CONNECT];
-  VTs=new LMatrix[MAX_CONNECT];
-
-  N.resize(batch,din);
-  E.resize(batch,din);
-  dE.resize(batch,din);
-  Delta.resize(batch,din);
-  dvec.resize(din);
-
-  //BN
-
-  bn_mean.resize(din);
-  bn_var.resize(din);
-  bn_gmean.resize(din);
-  bn_gvar.resize(din);
-  bn_g.resize(din);
-  bn_b.resize(din);
-  bn_E.resize(batch,din);
-  BNE.resize(batch,din);
-
-  gbn_mean.resize(din);
-  gbn_var.resize(din);
-  gbn_g.resize(din);
-  gbn_b.resize(din);
-  gbn_E.resize(batch,din);
+  mem();
 
   fprintf(stderr,"Creating Reshape layer (%s) with %d neurons\n",name,din);
 
@@ -252,9 +227,16 @@ void FLayer::resetmomentum()
 
 void FLayer::reset()
 {
-  int k;
+  int i,k;
 
   if (VERBOSE) fprintf(stderr,"RESET Layers\n");
+
+  for(i=0;i<GLUT;i++)
+    gn[i]=gaussgen();
+
+  for(i=0;i<GLUT;i++)
+    un[i]=uniform();
+
 
   E.setZero();
   N.setZero();
@@ -288,9 +270,8 @@ void FLayer::fBN()
 
   if (trmode) {
     bnc++;
-    //#pragma omp parallel for
     for(int i=0;i<din;i++) {
-      int b;
+      int b,cn=rand()%GLUT;
       double m,var,eps=0.00001;
 
       m=0;
@@ -307,9 +288,10 @@ void FLayer::fBN()
 
       for(b=0;b<batch;b++) {
 	bn_E(b,i)=(E(b,i)-bn_mean(i))/sqrt(bn_var(i)+eps); //this is \hat{x}
-	if (noiser>0.0)
-	  if (uniform()<noiser)
-	    bn_E(b,i)+=gauss(0.0,noisesd);
+	if (noiser>0.0) {
+	  if (noiser>=un[(cn++)%GLUT])
+	    bn_E(b,i)+=noisesd*gn[(cn++)%GLUT];
+	}
 	BNE(b,i)=(bn_g(i)*bn_E(b,i))+bn_b(i);
       }
     }
@@ -317,7 +299,6 @@ void FLayer::fBN()
     bn_gvar+=bn_var;
   }
   else { // testmode
-    //#pragma omp parallel for
     for(int i=0;i<din;i++) {
       int b;
       double var,eps=0.00001;
@@ -336,7 +317,6 @@ void FLayer::forward()
   FLayer *l;
   CLayer *cin;
 
-  setNbThreads(threads);
 
   if (reshape) {
     cin=(CLayer *)Lin[0];
@@ -455,7 +435,6 @@ void FLayer::forward()
       }
     }
   }
-  setNbThreads(1);
 }
 
 
@@ -469,25 +448,19 @@ void FLayer::save(FILE *fe)
     for(i=0;i<din;i++)
       for(j=0;j<Lout[k]->din;j++)
 	fprintf(fe,"%f ",W[k](i,j));
+    
     for(j=0;j<Lout[k]->din;j++)
       fprintf(fe,"%f ",b[k](j));
+    
     fprintf(fe,"\n");
   }
-
-}
-
-void FLayer::printkernels(FILE *fe)
-{
-  int k,i,j;
-
-  for(k=0;k<lout;k++) {
-    for(i=0;i<din;i++)
-      for(j=0;j<Lout[k]->din;j++)
-	fprintf(fe,"%f ",W[k](i,j));
+  
+  if (bn) {
+    for(j=0;j<din;j++)
+      fprintf(fe,"%f %f ",bn_g(j),bn_b(j));
     fprintf(fe,"\n");
   }
-
-  fclose(fe);
+  
 }
 
 void FLayer::load(FILE *fe)
@@ -504,9 +477,20 @@ void FLayer::load(FILE *fe)
 	fsd=fscanf(fe,"%lf ",&fv);
 	W[k](i,j)=fv;
       }
-    for(j=0;j<Lout[k]->din;j++) {
+    
+      for(j=0;j<Lout[k]->din;j++) {
+	fsd=fscanf(fe,"%lf ",&fv);
+	b[k](j)=fv;
+      }
+    fsd=fscanf(fe,"\n");
+  }
+
+  if (bn) {
+    for(j=0;j<din;j++) {
       fsd=fscanf(fe,"%lf ",&fv);
-      b[k](j)=fv;
+      bn_g(j)=fv;
+      fsd=fscanf(fe,"%lf ",&fv);
+      bn_b(j)=fv;
     }
     fsd=fscanf(fe,"\n");
   }
@@ -514,13 +498,30 @@ void FLayer::load(FILE *fe)
 }
 
 
+void FLayer::printkernels(FILE *fe)
+{
+  int k,i,j;
+
+  for(k=0;k<lout;k++) {
+    for(i=0;i<din;i++)
+      for(j=0;j<Lout[k]->din;j++)
+	fprintf(fe,"%f ",W[k](i,j));
+    fprintf(fe,"\n");
+  }
+
+  fclose(fe);
+}
+
+
+
 //////////////////////////////////////////
 ///// BACKWARD
 //////////////////////////////////////////
 void FLayer::bBN()
 {
-  //#pragma omp parallel for
-  for(int i=0;i<din;i++) {
+
+#pragma omp parallel for
+for(int i=0;i<din;i++) {
     int b;
     double m,var,eps=0.00001;
     double sqvar,var32;
@@ -690,7 +691,6 @@ void FLayer::backward()
 
     if (bn) bBN();
 
-    setNbThreads(threads);
     for(i=0;i<lin;i++) {
       if (rnet->isIn(Lin[i])) {
 	if (Lin[i]->type==1) { // Fully connected
@@ -712,8 +712,9 @@ void FLayer::backward()
 	    fprintf(stderr,"gW %s = %f\n",l->name,l->gW[ind].norm());
 	  }
 
-	  for(j=0;j<l->gb[ind].cols();j++)
-	    l->gb[ind](j)+=Delta.col(j).sum();
+	  if (!bn)
+	    for(j=0;j<l->gb[ind].cols();j++)
+	      l->gb[ind](j)+=Delta.col(j).sum();
 
 	  // back-propagate Delta
 	  //noalias
@@ -721,7 +722,6 @@ void FLayer::backward()
 	}
       }
     }
-    setNbThreads(1);
   }
 }
 
@@ -811,6 +811,8 @@ IFLayer::IFLayer(Data *D,int b,char *name):FLayer(D->dim,b,name)
 
 }
 
+void IFLayer::getbatch(Data *Dt,int s){}
+
 void IFLayer::getbatch(Data *Dt)
 {
   int i,j,c;
@@ -878,6 +880,65 @@ OFLayer::OFLayer(Data *D,int b,int act,int ae,char *name):FLayer(D->dim,b,name)
   }
 }
 
+
+double OFLayer::get_err(Data *Dt,int s,int cs)
+{
+  int i,j,k,p;
+  int rindex;
+  int nindex;
+  double err;
+
+
+  if (ae)
+    for(j=0;j<din;j++)
+      T(0,j)=Dt->M(s,j);
+  else
+    for(j=0;j<din;j++)
+      T(0,j)=Dt->T(s,j);
+
+  if (act==10) {
+    if (cs>batch) cs=batch;
+    for(i=1;i<cs;i++) 
+      for(j=0;j<din;j++) 
+	N(0,j)+=N(i,j);
+    
+    for(j=0;j<din;j++) 
+      N(0,j)/=cs;
+
+    T.row(0).maxCoeff(&rindex);
+    N.row(0).maxCoeff(&nindex);
+    if (rindex!=nindex) 
+      cerr++;
+    fprintf(stderr," %f.2%%\r",(cerr*100)/(s+1));
+
+    for(j=0;j<din;j++) {
+      if (j==rindex) {if (N(i,j)!=0.0) ent+=log(N(i,j));}
+      else if (N(i,j)!=1.0) ent+=log(1-N(i,j));
+    }
+  }
+  else{
+    if (cs>batch) cs=batch;
+    for(i=1;i<cs;i++) 
+      for(j=0;j<din;j++) 
+	N(0,j)+=N(i,j);
+    for(j=0;j<din;j++) 
+      N(0,j)/=cs;
+
+    for(j=0;j<din;j++)
+      mse+=(T(0,j)-N(0,j))*(T(0,j)-N(0,j))/din;
+
+    rmse+=sqrt(((T.row(0)-N.row(0)).squaredNorm())/din);
+
+    for(j=0;j<din;j++)
+      mae+=fabs(T(0,j)-N(0,j))/din;
+
+    fprintf(stderr," %f\r",rmse/(s+1));
+
+  }
+
+  return 0.0;
+
+}
 
 double OFLayer::get_err(Data *Dt)
 {

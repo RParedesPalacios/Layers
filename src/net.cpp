@@ -15,7 +15,6 @@
 // Comment this line for Mac
 #define USETIME 
 
-#define PERFORM_GCHECK 0
 
 ////////////////////////////////////
 ///// NET CLASS
@@ -28,6 +27,8 @@ Net::Net(char *name)
   strcpy(this->name,name);
   bn=0;
   init=0;
+  cropmode=0;
+  crops=1;
   decay=0.999;
 
   Dtrain=NULL;
@@ -113,7 +114,7 @@ void Net::net2dot()
      strcpy(cad,lvec[i]->name);
      pch = strtok (cad,":");
      pch = strtok (NULL,":");
-     fprintf(fs,"Data->%s\n",pch,pch);
+     fprintf(fs,"Data->%s\n",pch);
    }
  }
 
@@ -178,6 +179,16 @@ void Net::getbatch(Data *Dt)
   for(i=0;i<layers;i++)
     if (lvec[i]->lin==0)
       lvec[i]->getbatch(Dt);
+
+}
+
+void Net::getbatch(Data *Dt,int s)
+{
+  int i;
+
+  for(i=0;i<layers;i++)
+    if (lvec[i]->lin==0)
+      lvec[i]->getbatch(Dt,s);
 
 }
 
@@ -404,12 +415,13 @@ int Net::isIn(Layer *l)
 }
 
 
-void Net::Init(char *logname)
+void Net::Init(FILE *f)
 {
   int i;
 
   if (!init) {
-    flog=fopen(logname,"wt");
+    flog=f;
+
     olayers=0;
     for(i=0;i<layers;i++)
       if (lvec[i]->out) {
@@ -642,10 +654,8 @@ void Net::reseterrors()
     o->cerr=0.0;
     o->ent=0.0;
   }
-
-
-
 }
+
 
 void Net::printerrors(Data *Dt)
 {
@@ -689,6 +699,17 @@ void Net::calcerr(Data *Dt)
     o->get_err(Dt);
   }
 }
+void Net::calcerr(Data *Dt,int s)
+{
+  int i;
+  OFLayer *o;
+
+  for(i=0;i<olayers;i++) {
+    o=(OFLayer *)out[i];
+    o->get_err(Dt,s,crops);
+  }
+}
+
 
 void Net::printOut(Data *Dt,FILE *fs,int n)
 {
@@ -733,8 +754,6 @@ void Net::train(int epochs)
   for(epoch=1;epoch<=epochs;epoch++) {
     lut_init();
 
-    if (PERFORM_GCHECK) gcheckF();
-
     reseterrors();
     fprintf(stderr,"Epoch %d:\n",epoch);
 
@@ -742,6 +761,7 @@ void Net::train(int epochs)
     ftime=0;
     btime=0;
     trainmode();
+    if (bn) resetstats();
     for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
       fprintf(stderr,"%d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
       /////Layer %s setting noiser %f\n",name,
@@ -793,123 +813,71 @@ void Net::train(int epochs)
 
     printerrors(Dtrain);
 
-    // BN
-    if ((bn)&&((Dval!=NULL)||(Dtest!=NULL))) {
-      trainmode();
-      reseterrors();
-      Dtrain->preparebatch(0);
-      resetstats();
-      for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
-	fprintf(stderr,"Forward BN %d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
-	/////
-	resetLayers();
-	/////
-	getbatch(Dtrain);
-	/////
-	forward();
-	/////
-	Dtrain->next();
-      }
-    }
-
     // VAL
-    if (Dval!=NULL) {
-      testmode();
-      Dval->preparebatch(0);
-      reseterrors();
-      for(i=0;i<Dval->num/Dval->batch;i++) {
-	/////
-	resetLayers();
-	/////
-	getbatch(Dval);
-	/////
-	forward();
-	/////
-	calcerr(Dval);
-	/////
-	Dval->next();
-      }
-      printerrors(Dval);
-    }
+    if (Dval!=NULL)  evaluate(Dval);
 
     //TEST
-    if (Dtest!=NULL) {
-      testmode();
-      Dtest->preparebatch(0);
-      reseterrors();
-      for(i=0;i<Dtest->num/Dtest->batch;i++) {
-	/////
-	resetLayers();
-	/////
-	getbatch(Dtest);
-	/////
-	forward();
-	/////
-	calcerr(Dtest);
-	/////
-	Dtest->next();
-      }
-      printerrors(Dtest);
-    }
+    if (Dtest!=NULL) evaluate(Dtest);
 
     decmu(decay);
-
-
   }
 
   //fclose(flog);
 }
 
-void Net::evaluate()
+
+void Net::evaluate(Data *Dt)
 {
   int i;
-  
-  fprintf(stderr,"Evaluating net %s\n",name);
-
-  if (Dtest!=NULL) {
-  
-    // BN
-    if (bn) {
-      trainmode();
-      reseterrors();
-      Dtrain->preparebatch(0);
-      resetstats();
-      for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
-	fprintf(stderr,"Forward BN %d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
-	/////
-	resetLayers();
-	/////
-	getbatch(Dtrain);
-	/////
-	forward();
-	/////
-	Dtrain->next();
-      }
-    }
-
-
-    testmode();
-    Dtest->preparebatch(0);
+  // BN                                                                                     
+  if (bn) {
+    trainmode();
     reseterrors();
-    for(i=0;i<Dtest->num/Dtest->batch;i++) {
-      /////                                                                                                      
+    Dtrain->preparebatch(0);
+    resetstats();
+    for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
+      fprintf(stderr,"Forward BN %d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
       resetLayers();
-      /////                                                                                                      
-      getbatch(Dtest);
-      /////                                                                                                      
+      getbatch(Dtrain);
       forward();
-      /////                                                                                                      
-      calcerr(Dtest);
-      /////                                                                                                      
-      Dtest->next();
+      Dtrain->next();
     }
-    printerrors(Dtest);
-  }
-  else {
-    fprintf(stderr,"No test set in %s, nothing to evaluate\n",name);
   }
 
+  //////////////////////////////
+  testmode();
+  Dt->preparebatch(0);
+  reseterrors();
+
+  for(i=0;i<Dt->num/Dt->batch;i++) {
+    resetLayers();
+    getbatch(Dt);
+    forward();
+    calcerr(Dt);
+    Dt->next();
+  }
+  printerrors(Dt);
+  
+  //////////////////////////////
+  if (cropmode) {
+    testmode();
+    Dt->preparebatch(0);
+    reseterrors();
+    for(i=0;i<Dt->num;i++) {
+      fprintf(stderr,"Evaluate in cropmode (%d) %d of %d ",crops,i,Dt->num);
+      resetLayers();
+      getbatch(Dt,i);
+      forward();
+      calcerr(Dt,i);
+    }
+    fprintf(stderr,"\n");
+    printerrors(Dt);
+  }
+
+  
 }
+
+
 
 void Net::testOut(FILE *fs)
 {
@@ -997,245 +965,8 @@ void Net::trainbatch(int b,int epoch)
     if (VERBOSE) getchar();
 
   }
-
+  
   decmu(decay);
 }
 
 
-
-
-
-////////////////////////////////////////
-//////      Gradient check        //////
-////////////////////////////////////////
-
-
-//gcheck
-void Net::gcheck()
-{
-  int i,j;
-  double g,ge,eps=0.0001,f1,f2,f;
-  CLayer *cl;
-  OFLayer *o;
-  double a,a1,a2;
-  double n,n1,n2;
-
-
-  cl=(CLayer *)lvec[1];
-  o=(OFLayer *)out[0];
-
-  fprintf(stderr,"GCheck %s\n",cl->name);
-
-  Dtrain->preparebatch(0);
-
-
-
-  int b,k,r,c;
-  int tot=250;
-  for(int it=0;it<tot;it++) {
-    trainmode();
-    /////
-    resetLayers();
-    /////
-    getbatch(Dtrain);
-    /////
-    forward();
-    /////
-    backward();
-
-    b=rand()%cl->batch;
-    k=rand()%cl->nk;
-    r=rand()%cl->outr;
-    c=rand()%cl->outc;
-    while(cl->N[b][k](r,c)<=0) {
-      ///fprintf(stderr,".");
-      b=rand()%cl->batch;
-      k=rand()%cl->nk;
-      r=rand()%cl->outr;
-      c=rand()%cl->outc;
-    }
-    fprintf(stderr,"%d of %d [%d %d %d %d] ... ",it,tot,b,k,r,c);
-
-    f=((o->T.row(b)-o->N.row(b)).squaredNorm());
-
-    n=cl->N[b][k](r,c);
-    g=cl->De[b][k](r,c);
-
-    //+eps
-    /////
-    resetLayers();
-    /////
-    getbatch(Dtrain);
-
-    a=cl->E[b][k](r,c);
-    cl->E[b][k](r,c)+=eps;
-    a1=cl->E[b][k](r,c);
-
-    //fprintf(stderr,"+epss %f\n",cl->N[b][k](r,c));
-
-    for(i=2;i<layers;i++) {
-      cl->doActivation();
-      n1=cl->N[b][k](r,c);
-      fts[i]->rnet=this;
-      fts[i]->forward();
-    }
-    backward();
-
-    /*f1=0;
-      for(i=0;i<o->din;i++)
-      f1+=(o->T(b,i)-o->N(b,i))*(o->T(b,i)-o->N(b,i));*/
-    f1=((o->T.row(b)-o->N.row(b)).squaredNorm());
-
-    //-eps
-    /////
-    resetLayers();
-    /////
-    getbatch(Dtrain);
-
-    cl->E[b][k](r,c)-=eps;
-    cl->E[b][k](r,c)-=eps;
-    a2=cl->E[b][k](r,c);
-
-    //fprintf(stderr,"-epss %f\n",cl->N[b][k](r,c));
-
-    for(i=2;i<layers;i++) {
-      cl->doActivation();
-      n2=cl->N[b][k](r,c);
-      fts[i]->rnet=this;
-      fts[i]->forward();
-    }
-    backward();
-
-    f2=0;
-    /*
-      for(i=0;i<o->din;i++)
-      f2+=(o->T(b,i)-o->N(b,i))*(o->T(b,i)-o->N(b,i));
-    */
-    f2=((o->T.row(b)-o->N.row(b)).squaredNorm());
-
-    ge=(f2-f1)/(2*eps);
-    if ((ge-g>0.0001)||(ge-g<-0.0001)) {
-      fprintf(stderr,"Gradient check fail\n");
-      fprintf(stderr,"g=%f ge=%f (%f %f %f)  (%f %f %f) (%f,%f,%f)\n",g,ge,a,a1,a2,n,n1,n2,f,f1,f2);
-    }
-    else {
-      fprintf(stderr,"%f %f\r",g,ge);
-    }
-    Dtrain->next();
-  }
-
-
-
-}
-
-
-void Net::gcheckF()
-{
-  int i,j;
-  double g,ge,eps=0.0001,f1,f2,f;
-  FLayer *cl;
-  OFLayer *o;
-  double a,a1,a2;
-  double n,n1,n2;
-
-
-  cl=(FLayer *)lvec[1];
-  o=(OFLayer *)out[0];
-
-  fprintf(stderr,"GCheck %s\n",cl->name);
-
-  Dtrain->preparebatch(0);
-
-
-
-  int b,k;
-  int tot=10;
-  for(int it=0;it<tot;it++) {
-
-
-    b=rand()%cl->batch;
-    k=rand()%cl->din;
-
-    fprintf(stderr,"%d of %d [%d %d] ... ",it,tot,b,k);
-
-    trainmode();
-    /////
-    resetLayers();
-    /////
-    getbatch(Dtrain);
-    /////
-    forward();
-    /////
-    backward();
-
-    n=cl->N(b,k);
-
-    f=((o->T.row(b)-o->N.row(b)).squaredNorm());
-
-    g=cl->Delta(b,k);
-
-    //+eps
-    /////
-    resetLayers();
-    /////
-    getbatch(Dtrain);
-
-    //fprintf(stderr,"+epss %f\n",cl->N[b][k](r,c));
-
-    for(i=0;i<layers;i++) {
-      fts[i]->rnet=this;
-      if (i==1) {
-	a=cl->E(b,k);
-	cl->E(b,k)+=eps;
-	a1=cl->E(b,k);
-      }
-
-      fts[i]->forward();
-    }
-    backward();
-
-
-    n1=cl->N(b,k);
-    f1=0;
-    for(i=0;i<o->din;i++)
-      f1+=(o->T(b,i)-o->N(b,i))*(o->T(b,i)-o->N(b,i));
-    //f1=((o->T.row(b)-o->N.row(b)).squaredNorm());
-
-    //-eps
-    /////
-    resetLayers();
-    /////
-    getbatch(Dtrain);
-
-    //fprintf(stderr,"-epss %f\n",cl->N[b][k](r,c));
-
-    for(i=0;i<layers;i++) {
-      fts[i]->rnet=this;
-      if (i==1) {
-	cl->E(b,k)-=eps;
-	a2=cl->E(b,k);
-      }
-      fts[i]->forward();
-    }
-    backward();
-    n2=cl->N(b,k);
-
-    f2=0;
-
-    for(i=0;i<o->din;i++)
-      f2+=(o->T(b,i)-o->N(b,i))*(o->T(b,i)-o->N(b,i));
-
-    //f2=((o->T.row(b)-o->N.row(b)).squaredNorm());
-
-    ge=(f2-f1)/(2*eps);
-    if ((ge-g>0.0001)||(ge-g<-0.0001)) {
-      fprintf(stderr,"Gradient check fail\n");
-      fprintf(stderr,"g=%f gf=%f (%f %f %f) (%f %f %f) (%f,%f,%f)\n",g,ge,a,a1,a2,n,n1,n2,f,f1,f2);
-      getchar();
-    }
-    else fprintf(stderr,"%f %f\r",g,ge);
-    //getchar();
-  }
-
-
-}

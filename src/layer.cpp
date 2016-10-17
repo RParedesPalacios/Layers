@@ -69,9 +69,15 @@ Layer::Layer(int batch,char *name)
   adv=0;
   advf=1.0;
   adelta=0;
-
-
   init=0;
+
+  gn=(double *)malloc(GLUT*sizeof(double));
+  for(int i=0;i<GLUT;i++)
+    gn[i]=gaussgen();
+
+  un=(double *)malloc(GLUT*sizeof(double));
+  for(int i=0;i<GLUT;i++)
+    un[i]=uniform();
 
   // IMAGE TRANSFORMS
   shift=flip=0;

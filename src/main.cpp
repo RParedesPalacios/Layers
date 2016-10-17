@@ -11,6 +11,7 @@ extern "C" int netparser (char *nfich) ;
 
 #define MAX_ITEM 1000
 #define MAX_CHAR 1000
+#define GPU 0
 
 int main(int argc, char **argv) {
   int batch=100;
@@ -34,6 +35,7 @@ int main(int argc, char **argv) {
   lut_init();
 
   FILE *fe,*fin;
+  FILE *flog;
   int i,j;
   char name[MAX_CHAR];
   char fname[MAX_CHAR];
@@ -102,7 +104,7 @@ int main(int argc, char **argv) {
       if (!strcmp(cad,"threads")) {
 	sscanf(line,"Const %s %d\n",cad,&threads);
 	fprintf(stderr,"setting threads to %d\n",threads);      
-	setNbThreads(1);
+	setNbThreads(threads);
       }
       if (!strcmp(cad,"batch")) {
 	sscanf(line,"Const %s %d\n",cad,&batch);
@@ -111,6 +113,8 @@ int main(int argc, char **argv) {
       if (!strcmp(cad,"log")) {
 	sscanf(line,"Const %s %s\n",cad,logname);
 	fprintf(stderr,"setting logfile %s\n",logname);
+	flog=fopen(logname,"wt");
+	fprintf(flog,"Start\n");
       }
     }
     ///////////////////////////
@@ -167,6 +171,11 @@ int main(int argc, char **argv) {
 	sprintf(lname,"%s:%s",innet,name);
 	LTable[Lc]=new ICLayer(NTable[Nc]->Dtrain,batch,kz,kr,kc,cr,cc,lname);
 	NTable[Nc]->addLayer(LTable[Lc]);
+	if ((kr!=cr)||(kc!=cc)) {
+	  NTable[Nc]->crops=((kr-cr)+1)*((kc-cc)+1);
+	  fprintf(stderr,"Input with %d crops\n",NTable[Nc]->crops);
+	}
+
 	Lc++;
       }
       ////////////// FI //////////////
@@ -274,7 +283,7 @@ int main(int argc, char **argv) {
       l1->addchild(l2);
     }
     else if (!strcmp(cad,"END_Network")) {
-      NTable[Nc]->Init(logname);
+      NTable[Nc]->Init(flog);
       NTable[Nc]->net2dot();
       NTable[Nc]->setthreads(threads);
 
@@ -376,8 +385,10 @@ int main(int argc, char **argv) {
 	  }
 
 	  fprintf(stderr,"\n");
-	  for(i=0;i<nets;i++) 
-	    Nlist[i]->evaluate();
+	  for(i=0;i<nets;i++) {
+	    if (Nlist[i]->Dval!=NULL) Nlist[i]->evaluate(Nlist[i]->Dval);
+	    if (Nlist[i]->Dtest!=NULL) Nlist[i]->evaluate(Nlist[i]->Dtest);
+	  }
 	  fprintf(stderr,"\n");
 	}
 	else{

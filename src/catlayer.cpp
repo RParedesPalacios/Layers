@@ -136,7 +136,7 @@ void CatLayer::forward()
 
     for(j=ini;j<catvec[i];j++) {
 	c=(CLayer *)Lin[i];
-	for(b=0;b<batch;b++)
+	for(int b=0;b<batch;b++)
 	  N[b][j]=c->N[b][j-ini];
       }
   }
@@ -160,6 +160,8 @@ void CatLayer::backward()
   CLayer *c;
   PLayer *p;
 
+
+
   for(i=0;i<lin;i++) {
     if (i==0) ini=0;
     else ini=catvec[i-1];
@@ -167,7 +169,8 @@ void CatLayer::backward()
 
     for(j=ini;j<catvec[i];j++){
 	c=(CLayer *)Lin[i];
-	for(b=0;b<batch;b++)
+        #pragma omp parallel for
+	for(int b=0;b<batch;b++)
 	  c->De[b][j-ini]=De[b][j];
     }
   }

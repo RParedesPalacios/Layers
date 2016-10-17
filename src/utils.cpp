@@ -105,7 +105,6 @@ void NoiseG(LMatrix &E,double noiser,double noisesd)
 
 void ReLu(LMatrix E,LMatrix& N)
 {
-
   for(int i=0;i<E.rows();i++)
     for(int j=0;j<E.cols();j++)
       if (E(i,j)<=0) N(i,j)=0;

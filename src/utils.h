@@ -26,6 +26,7 @@ double sigm(double x);
 double uniform();
 double suniform();
 double gauss(double mean,double sd);
+double gaussgen();
 
 
 #endif

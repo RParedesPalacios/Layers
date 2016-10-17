@@ -27,6 +27,8 @@ class Net {
   int layers,olayers,ilayers;
   int bn;
   int init;
+  int cropmode;
+  int crops;
 
   double mu;
   double decay;
@@ -40,12 +42,11 @@ class Net {
 
   void getbatch();
   void getbatch(Data *Dt);
+  void getbatch(Data *Dt,int s);
   void next();
-  void gcheck();
-  void gcheckF();
   void initialize();
   void preparebatch(int code);
-  void evaluate();
+  void evaluate(Data *dt);
 
   void resetLayers();
   void resetstats();
@@ -66,11 +67,12 @@ class Net {
   void printOut(Data *Dt,FILE *fs,int n);
   void preparetrainbatch();
   void calcerr(Data *Dt);
+  void calcerr(Data *Dt,int s);
   void printerrors(Data *Dt);
   void printerrors(Data *Dt,int num);
   
   void reseterrors();
-  void Init(char *logname);
+  void Init(FILE *flog);
 
   void setmu(double m);
   void setmmu(double m);
@@ -103,9 +105,3 @@ class Net {
 
 };
 
-class MLP : public Net {
- public:
-
-  MLP(Data *D,int batch,int h,int hv[]);
-  
-};
