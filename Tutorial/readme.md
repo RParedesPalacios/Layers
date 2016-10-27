@@ -591,8 +591,6 @@ script {
 	* noiseb: ratio of binary noise (only for input layer) [0.0]
 	* drop: dropout (0<drop<=1) [0.0]
 	* bn: batch normalization ({0,1}) [0]
-	* adv: adversarial noise [0] {0:No, 1:gradient, 2: sign, 3: gradient norm}
-	* advf: adversarial noise scale
 	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU) [1]
 	* flip: to flip input images ({1,0}) [0]
 	* shift: to shift randomly input images [0]	
