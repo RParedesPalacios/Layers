@@ -203,6 +203,56 @@ void Data::SaveBin(char *fname)
 
 }
 
+//D1.save("name")    ==> en reaidad D1.store("name"
+
+void Data::maxmin()
+{
+  int i,j;
+  double max,min;
+
+  fprintf(stderr,"Maxmin of %s\n",name);
+
+
+  for(j=0;j<dim;j++) {
+
+    max=M(0,j);
+    min=M(0,j);
+    for(i=0;i<num;i++) {
+      if (M(i,j)>max) max=M(i,j);
+      if (M(i,j)<min) min=M(i,j);
+    }
+
+    if (max!=min) 
+      for(i=0;i<num;i++)
+	M(i,j)=(M(i,j)-min)/(max-min);
+    else
+      for(i=0;i<num;i++)
+        M(i,j)=0.0;
+    
+  }
+
+}
+
+void Data::add(double val)
+{
+  int i,j;
+
+  fprintf(stderr,"Add %s %f\n",name,val);
+
+  if (val!=0.0)
+    for(i=0;i<num;i++)
+      for(j=0;j<dim;j++)
+	M(i,j)+=val;
+}
+
+void Data::sub(double val)
+{
+  int i,j;
+
+  fprintf(stderr,"Sub %s %f\n",name,val);
+  add(-val);
+}
+
 void Data::div(double val)
 {
   int i,j;
@@ -213,6 +263,18 @@ void Data::div(double val)
     for(i=0;i<num;i++)
       for(j=0;j<dim;j++)
 	M(i,j)/=val;
+}
+
+void Data::mul(double val)
+{
+  int i,j;
+
+  fprintf(stderr,"Div %s %f\n",name,val);
+
+  if (val!=0.0)
+    for(i=0;i<num;i++)
+      for(j=0;j<dim;j++)
+	M(i,j)*=val;
 }
 
 void Data::zscore()

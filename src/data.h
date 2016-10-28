@@ -37,6 +37,10 @@ class Data {
   void center(Data *D);
   void YUV();
   void div(double val);
+  void add(double val);
+  void sub(double val);
+  void mul(double val);
+  void maxmin();
   void shuffle();
   void preparebatch(int code);
   void next();

@@ -201,6 +201,14 @@ void Net::applygrads()
 
 }
 
+void Net::setcropmode(int f)
+{
+  int i;
+
+  fprintf(stderr,"Net %s set cropmode to %d\n",name,f);
+  cropmode=f;
+}
+
 void Net::setshift(int f)
 {
   int i;

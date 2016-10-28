@@ -13,6 +13,9 @@ extern "C" int netparser (char *nfich) ;
 #define MAX_CHAR 1000
 #define GPU 0
 
+int seed;
+int gpu;
+
 int main(int argc, char **argv) {
   int batch=100;
   int threads=4;
@@ -116,12 +119,23 @@ int main(int argc, char **argv) {
 	flog=fopen(logname,"wt");
 	fprintf(flog,"Start\n");
       }
+      if (!strcmp(cad,"seeds")) {
+	sscanf(line,"Const %s %d\n",cad,&seed);
+	fprintf(stderr,"setting random seed to %d\n",seed);      
+	srand(seed);
+      }
+      if (!strcmp(cad,"GPU")) {
+	sscanf(line,"Const %s %d\n",cad,&gpu);
+	fprintf(stderr,"setting gpu devices to %d\n",gpu);      
+	
+      }
+
     }
     ///////////////////////////
     // Data
     ///////////////////////////
     else if (!strcmp(cad,"Data")) {
-      sscanf(line,"Data %s filename %s %s\n",name,fname,ftype);
+      sscanf(line,"Data %s 2 filename %s filetype %s\n",name,fname,ftype);
       if (!strcmp(ftype,"ascii")) 
 	DTable[Dc]=new Data(fname, batch,name);
       else 
@@ -338,6 +352,15 @@ int main(int argc, char **argv) {
 	  d->center(DTable[i]);
 	}
       }
+      if (!strcmp(com,"store")) {
+        sscanf(line,"command %s %s 1 %s ",cad,com,cad2);
+        for(i=0;i<Dc;i++)
+          if (!strcmp(DTable[i]->name,cad)) break;
+        d=DTable[i];
+
+        d->SaveBin(cad2);
+      }
+
       if (!strcmp(com,"div")) {
 	sscanf(line,"command %s %s 1 %f ",cad,com,&fv);
 	for(i=0;i<Dc;i++) 
@@ -346,6 +369,37 @@ int main(int argc, char **argv) {
 	
 	d->div(fv);
       }
+      if (!strcmp(com,"mul")) {
+	sscanf(line,"command %s %s 1 %f ",cad,com,&fv);
+	for(i=0;i<Dc;i++) 
+	  if (!strcmp(DTable[i]->name,cad)) break;
+	d=DTable[i];
+	
+	d->mul(fv);
+      }
+      if (!strcmp(com,"add")) {
+	sscanf(line,"command %s %s 1 %f ",cad,com,&fv);
+	for(i=0;i<Dc;i++) 
+	  if (!strcmp(DTable[i]->name,cad)) break;
+	d=DTable[i];
+	
+	d->add(fv);
+      }
+      if (!strcmp(com,"sub")) {
+	sscanf(line,"command %s %s 1 %f ",cad,com,&fv);
+	for(i=0;i<Dc;i++) 
+	  if (!strcmp(DTable[i]->name,cad)) break;
+	d=DTable[i];
+	
+	d->sub(fv);
+      }
+      if (!strcmp(com,"maxmin")) {
+        for(i=0;i<Dc;i++)
+          if (!strcmp(DTable[i]->name,cad)) break;
+        d=DTable[i];
+        d->maxmin();
+      }
+
       //command D1 yuv 0
       if (!strcmp(com,"yuv")) {
 	for(i=0;i<Dc;i++) 
@@ -355,11 +409,13 @@ int main(int argc, char **argv) {
       }
       else if (!strcmp(com,"train")) {
 	if (!strcmp(cad,"list")) {
-	  int nets=par;
-	  int lepoch,lbatch;
+	  int nets;
+	  int lepoch,lbatch,liter;
 	  Net **Nlist=(Net **)malloc(MAX_ITEM*sizeof(Net *));
 
-	  fprintf(stderr,"Training several nets\n");
+	  sscanf(line,"command list train numiter %d numnet %d",&liter,&nets);
+
+	  fprintf(stderr,"Training %d nets %d iter\n",nets,liter);
 	  for(i=0;i<nets;i++) {
 	    char *read=fgets(line, MAX_CHAR, fin);
 	    fprintf(stderr,"-->%s",line);
@@ -421,6 +477,15 @@ int main(int argc, char **argv) {
 	FILE *fe=fopen(cad2,"wt");
 	NTable[i]->testOut(fe);
       }
+      else if (!strcmp(com,"evaluate")) {
+	sscanf(line,"command %s evaluate 1 %s",cad,cad2);
+	for(i=0;i<Nc;i++) 
+	  if (!strcmp(NTable[i]->name,cad)) break;
+
+	for(j=0;j<Dc;j++) 
+	  if (!strcmp(DTable[j]->name,cad2)) break;
+	NTable[i]->evaluate(DTable[j]);
+      }
       // script over a particular layer
       else {
 	sscanf(line,"command %s %s %s ",cad,cad2,com);
@@ -474,6 +539,9 @@ int main(int argc, char **argv) {
 	else if (!strcmp(arg,"noisesd")) net->setnoisesd(fv);
 	else if (!strcmp(arg,"lambda")) net->setlambda(fv);
 	else if (!strcmp(arg,"flip")) net->setflip(fv);
+	else if (!strcmp(arg,"adv")) net->setadv(fv);
+	else if (!strcmp(arg,"advf")) net->setadvf(fv);
+	else if (!strcmp(arg,"cropmode")) net->setcropmode(fv);
       }
       else {
 	
@@ -499,6 +567,8 @@ int main(int argc, char **argv) {
 	else if (!strcmp(arg,"bn")) l->setbn(fv);
 	else if (!strcmp(arg,"lambda")) l->setlambda(fv);
 	else if (!strcmp(arg,"flip")) l->setflip(fv);
+	else if (!strcmp(arg,"adv")) l->setadv(fv);
+	else if (!strcmp(arg,"advf")) l->setadvf(fv);
 
       }
 

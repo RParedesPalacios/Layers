@@ -219,7 +219,7 @@ network N1 {
 ### Networks - Layers - FO
 
 * FO has a mandatory parameter _{classification,regression}_ that define the cost error: cross-entropy or mse respectively
-*  For regression, optionally, we can define an _autoencoder_
+*  For regression, optionally, we can define an _autoencoder_, and also _autoencoder_ as a shotcut
 
 ~~~c
 network N1 {  
@@ -232,6 +232,7 @@ network N1 {
 
   // Targets are the same input in data
   FO  out3 [regression,autoencoder]	// mse over input
+  //  FO  out3 [autoencoder]	// as a shortcut
  ...
 }
 ~~~
@@ -288,7 +289,7 @@ network N1 {
 }
 ~~~
 
-###  Networks - Layers - CA
+###  Networks - Layers - CAT
 
 * Cat layers does not require any parameter
 
@@ -296,7 +297,7 @@ network N1 {
 network N1 { 
   ...
   // CAT Layer
-  CA cat
+  CAT cat
   ...
 }
 ~~~
@@ -468,7 +469,7 @@ network N1 {
   C c15 [nk=32, kr=5, kc=50,rpad=1]       
   MP p1 [sizer=2,sizec=1]        
 
-  CA cat 
+  CAT cat 
   
   // FC reshape
   F   fr1 []    
@@ -522,8 +523,13 @@ network N1 {
 	* For Data:
 		* zscore(): To normalize Data	
 		* yuv(): to convert RGB Maps to YUV maps
-		* center(): To center Data (mean=0)
-		* div(x): To div all the data
+		* center(): To center Data (mean=0, )
+		* div(x): To divide all the data by factor x
+		* mul(x): To multiply all the data by factor x
+		* div(x): To sum all the data quantity x
+		* div(x): To substract all the data quantity x
+		* maxmin(): To perform a max-min normalization 
+		* store("filename"): to save the data to file (binary format)
 	* For Networks:
 		* train(epochs): to train networks
 		* save(fname): to save the network parameters to file
@@ -593,8 +599,11 @@ script {
 	* bn: batch normalization ({0,1}) [0]
 	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU) [1]
 	* flip: to flip input images ({1,0}) [0]
-	* shift: to shift randomly input images [0]	
+	* shift: to shift randomly input images [0]
 	* balance: for balancing data classes	[0]
+	* cropmode: is a **network** parameter {0,1}. When a convolutional input performs random crops, with this parameter we indicate that all the crops must be used in the evaluation. It leads to a slower evaluation but with a better performance. If cropmode is not active (0, default) then only the central crop is evaluated
+	
+	
 * Parameters can be modified for one particular layer or data:
 
 ~~~c
@@ -604,6 +613,8 @@ N1.c2.drop=0.5
 N1.in.flip=1
 N1.in.shift=2
 N1.in.noiseb=0.2 
+N1.cropmode=1
+
 D1.balance=1
 ...
 }
@@ -898,11 +909,14 @@ N2![N2](./figs/sharingN2.jp2)
 
 ### Training several networks
 
-Note that in the previous example, N1 and N2 could be trained with different data sets. For instance the supervised network (N2) can be trained with a small data set while the unsupervised (N1) can be trained with all the available data (with and without labels). In this scenario it could be more interesting to train both netwroks simultaneously, a few bathces each network. To this end we can use a commnand where we specify how many iterations, how many batches per network and a list of networks:
+Note that in the previous example, N1 and N2 could be trained with different data sets. For instance the supervised network (N2) can be trained with a small data set while the unsupervised (N1) can be trained with all the available data (with and without labels). In this scenario it could be more interesting to train both netwroks simultaneously, a few bathces each network. To this end we can use a commnand where we specify how many repetitions, iterations and batches per network and a list of networks:
 
 ~~~c
- train(10,5,N1,N2)
+ train(30,10,5,N1,N2)
 ~~~
+
+In this case layers will run 30 repetitions of 10 iterations for each repetition and in each iteration will process 5 batches. The mechanism is the following, after 5 batches with network N1, layers run 5 batches with network N2, this entails one iteration. After 10 iterations layers will perform an evaluation with test data (if any), this entails one repetition. After 30 repetitions layers will end this command.
+
 
 the whole picture:
 

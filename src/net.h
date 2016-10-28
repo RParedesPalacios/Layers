@@ -74,6 +74,7 @@ class Net {
   void reseterrors();
   void Init(FILE *flog);
 
+  void setcropmode(int f);
   void setmu(double m);
   void setmmu(double m);
   void setshift(int f);
