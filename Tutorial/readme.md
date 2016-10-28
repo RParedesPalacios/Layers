@@ -15,12 +15,14 @@
 	* threads: number of threads for parallelization (4)	
 	* batch size: size of the batch for the network (100)	
 	* log: log file where some messages are saved (netparser.log)
+	* seed: random seed (1234)
 
 ~~~c
 const{
   threads=4
   batch=10
   log="mnist.log"
+  sed=1234
 }
 ~~~
 
