@@ -14,18 +14,19 @@
 } /***************************************************************************/
 %token
 /**************************************************************** Parameters */
- batch_  threads_  log_   
+ batch_  threads_  log_  seed_  gpu_
  filename_  tr_  ts_  va_  ascii_  binary_
- F_  FI_  FO_  C_  CI_  MP_  CA_  
+ F_  FI_  FO_  C_  CI_  MP_  CAT_  ADD_  
  classification_  regression_  autoencoder_
  nz_  nr_  nc_  cr_  cc_  numnodes_ 
  nk_  kr_  kc_  rpad_  cpad_ stride_
  sizer_  sizec_  
- mu_  mmu_  drop_  l2_  l1_  maxn_  act_  noiser_  noisesd_  lambda_
- shift_  flip_  brightness_  contrast_  bn_  balance_ noiseb_
+ mu_  mmu_  l2_  l1_  maxn_  drop_  noiser_  noisesd_  brightness_  contrast_
+ lambda_  noiseb_  advf_  bn_  act_  shift_  flip_  adv_  balance_  cropmode_
 /*****************************************************************  Keywords */
- const_  data_  network_  script_  train_  save_  zscore_  yuv_  printkernels_
- copy_   local_  load_  testout_  center_  div_  test_
+ const_  data_  network_  script_  train_  evaluate_  save_  zscore_  yuv_  
+ printkernels_  copy_  local_  load_  testout_  center_  div_  test_  add_  
+ sub_  mul_ maxmin_  store_
 /****************************************************************  operators */
  BCB_  ECB_  BSB_  ESB_  BRB_  ERB_  PER_  COM_  EQ_  RAR_
 /**************************************************** tokens with attributes */
@@ -71,6 +72,14 @@ def_const
        | log_  EQ_  nfile_
 
        { insert_gconstants(LOG, 0, $3); }
+
+       | seed_  EQ_  cte_
+
+       { insert_gconstants(SEED, (int)$3, ""); }
+
+       | gpu_  EQ_  cte_
+
+       { insert_gconstants(GPU, (int)$3, ""); }
        ;
 /*****************************************************************************/
 list_definitions
@@ -117,11 +126,31 @@ param_data
 def_param          
        : filename_  EQ_  nfile_
 
-       { inser_param_data($3, NONE); }
+       { inser_param_data($3, -1, -1); }
 
        | filetype 
 
-       { inser_param_data("", $1);   }
+       { inser_param_data("", $1, -1); }
+
+       | id_  PER_  id_  id_  PER_  id_
+
+       { int kf2, kt2, kf1 = search_network($1), kt1 = search_network($4);
+
+	 if (kf1 >= 0) {
+	   kf2 = search_layer(kf1, $3);
+	   if (kf2 >= 0)
+	     if (kt1 >= 0) {
+	       kt2 = search_layer(kt1, $6);
+	       if (kt2 >= 0)
+		 if (kf1 == kt1)  inser_param_data("", kf2, kt2); 
+		 else yyerror("Network name must be unique");
+	       else yyerror("Layer name does not exist on this network");
+	     }
+	     else yyerror("Network name does not exist");
+	   else yyerror("Layer name does not exist on this network");
+	 }
+         else yyerror("Network name does not exist");
+       }
        ;
 /*****************************************************************************/
 filetype
@@ -243,12 +272,20 @@ layer  : FI_  id_
 	 }
        }
 
-       | CA_  id_ 
+       | CAT_  id_ 
 
        { int k = search_layer(-1, $2);
 	 if (k >= 0) 
 	   yyerror("Layer name already exists in this network");
-	 else insert_name_layer($2, CA);
+	 else insert_name_layer($2, CAT);
+       }
+
+       | ADD_  id_ 
+
+       { int k = search_layer(-1, $2);
+	 if (k >= 0) 
+	   yyerror("Layer name already exists in this network");
+	 else insert_name_layer($2, ADD);
        }
        ;
 /*****************************************************************************/
@@ -268,7 +305,20 @@ fo_param
 
        | autoencoder_ 
 
-       { insert_param_layer(2, AUTOENCODER); }
+       { insert_param_layer(1, AUTOENCODER); }
+
+       | id_  PER_  id_
+
+       { int k2, k1 =  search_network ($1);
+	 if (k1 >= 0) {
+           k2 = search_layer(k1, $3);
+	   if (k2 >= 0) 
+	     insert_param_layer(2, k2);
+	   else 
+	     yyerror("The name of the layer does not exist on this network");
+	 }
+	 else yyerror("Network name does not exist");
+       }
        ;
 /*****************************************************************************/
 ci_lparam          
@@ -419,6 +469,13 @@ amendment
 	 else yyerror("Network name does not exist");
        }
 
+       | id_  PER_  cropmode_  EQ_  cte_
+
+       { int k = search_network ($1);
+	 if (k >= 0)  get_amendment_onlynet(k, (int)$5);
+	 else yyerror("Network name does not exist");
+       }
+
        | id_  PER_  balance_  EQ_  cte_
 
        { int k = search_data ($1);
@@ -454,9 +511,9 @@ command
 	 else get_copy(d1, d2, s1, s2);
        }
 
-       | train_  BRB_  cte_  COM_  cte_  rest_train  ERB_
+       | train_  BRB_  cte_  COM_  cte_  COM_  cte_  rest_train  ERB_
 
-       { get_train((int)$3, (int)$5, $6); }
+       { get_train((int)$3, (int)$5, (int)$7, $8); }
 
        | id_  PER_  train_  BRB_  cte_  ERB_
 
@@ -475,6 +532,17 @@ command
 	     else yyerror("Data name does not exist");
 	   }
 	   else  get_net_test(k1,-1);
+	 else yyerror("Network name does not exist");
+       }
+
+       | id_  PER_  evaluate_  BRB_  id_  ERB_
+
+       { int k2, k1 = search_network ($1);
+	 if (k1 >= 0) {
+	   k2 = search_data ($5);
+	   if (k2 >= 0) get_net_evaluate(k1, k2);
+	   else yyerror("Data name does not exist");
+	 }
 	 else yyerror("Network name does not exist");
        }
 
@@ -541,17 +609,58 @@ command
 	 if (k >= 0) get_div(k, $5);
 	 else yyerror("Data name does not exist");
        }
+
+       | id_  PER_  add_  BRB_  cte_  ERB_
+
+       { int k = search_data ($1);
+	 if (k >= 0) get_add(k, $5);
+	 else yyerror("Data name does not exist");
+       }
+
+       | id_  PER_  sub_  BRB_  cte_  ERB_
+
+       { int k = search_data ($1);
+	 if (k >= 0) get_sub(k, $5);
+	 else yyerror("Data name does not exist");
+       }
+
+       | id_  PER_  maxmin_  BRB_  ERB_
+
+       { int k = search_data ($1);
+	 if (k >= 0) get_maxmin(k);
+	 else yyerror("Data name does not exist");
+       }
+
+       | id_  PER_  store_  BRB_  nfile_  ERB_
+
+       { int k = search_data ($1);
+	 if (k >= 0) get_store(k, $5);
+	 else yyerror("Data name does not exist");
+       }
+
+       | id_  PER_  mul_  BRB_  cte_  ERB_
+
+       { int k = search_data ($1);
+	 if (k >= 0) get_mul(k, $5);
+	 else yyerror("Data name does not exist");
+       }
+
+
+
        ;
 /*****************************************************************************/
 rest_train
        : /* cadena vacia */
 
-       { $$ = insert_net_stack(-1, ""); }
+       { $$ = insert_net_stack(-1, -1); }
 
        | rest_train  COM_  id_  
 
-       { $$ = insert_net_stack($1, $3); }
+       { int k = search_network($3); $$ = $1;
 
+	 if (k >= 0) $$ = insert_net_stack($1, k); 
+	 else yyerror("The name of network does not exist");
+       }
        ;
 /*****************************************************************************/
 other_data
@@ -582,6 +691,7 @@ param_ctr
        | contrast_      { $$ = contrast;   }
        | lambda_        { $$ = lambda;     }
        | noiseb_        { $$ = noiseb;     }
+       | advf_          { $$ = advf;       }
        ;
 /*****************************************************************************/
 param_cte
@@ -589,6 +699,7 @@ param_cte
        | act_           { $$ = act;        }  /*  1       */ 
        | shift_         { $$ = shift;      }
        | flip_          { $$ = flip;       }
+       | adv_           { $$ = adv;        }
        ;
 /*****************************************************************************/
 %%

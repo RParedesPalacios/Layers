@@ -55,7 +55,9 @@ typedef struct tddata  /**************************** Elements of data table  */
 {
   char *name;
   int   level;
-  char *filein;
+  int   lfrom;
+  int   lto;
+  char *namefile;
   int   filetype;                   
 }TDDATA;
 /*****************************************************************************/
@@ -67,16 +69,18 @@ TDLAY  tdl [MaxTdL];
 TDLAY  tdlini = {"",-1,-1,-1,-1,FALSE,FALSE,-1,-1,-1,-1,-1,-1,0,0,NULL,NULL};
 int    ptdl = 0;
 TDDATA tdd [MaxTdD];
-TDDATA tddini = {"",-1,"",-1};
+TDDATA tddini = {"",-1,-1,-1,"",NONE};
 int    ptdd = 0;
 int    pmem = 0;
-
 int leveldata = 0;
+
 struct Gconst {
   int batch  ;
   int threads;
+  int seed;
+  int gpu;
   char *log;
-} gconst = {100, 4, "netparser.log"};
+} gconst = {100, 4, 1234, 0, "netparser.log"};
 
 int sn [MaxTdN];
 int psn;
@@ -128,6 +132,14 @@ void insert_gconstants (int ref, int cte, char *filename)
     gconst.threads = cte;
     break;
   }
+  case SEED: { 
+    gconst.seed = cte;
+    break;
+  }
+  case GPU: { 
+    gconst.gpu = cte;
+    break;
+  }
   case LOG: { 
     gconst.log = filename;
     break;
@@ -145,13 +157,16 @@ void inser_name_data (char *named)
  }
 }
 /*****************************************************************************/
-void inser_param_data (char *namef, int ft)
-{ int j =ptdd-1;
+void inser_param_data (char *namef, int cte1, int cte2)
+{ int j = ptdd-1;
 
-  if (strlen(namef) == 0) tdd[j].filetype = ft;  
-  else tdd[j].filein = namef; 
+  if (strlen(namef) == 0) 
+    if (cte2 >= 0) { 
+      tdd[j].lfrom = cte1;   tdd[j].lto = cte2;
+    }
+    else tdd[j].filetype = cte1;  
+  else tdd[j].namefile = namef; 
 }
-
 /*****************************************************************************/
 void insert_name_network (char *name)
 { 
@@ -257,20 +272,11 @@ void insert_link (int a, int b)
   }
 }
 /*****************************************************************************/
-int insert_net_stack (int numnet, char *namenet)
+int insert_net_stack (int numnet, int refnet)
 { int i, k, ok = TRUE;
 
   if (numnet < 0) psn = 0;
-  else {
-    for (i = 0; ((i < ptdn) && ok); i++) {
-      k = search_network(namenet);
-      if (k >= 0) {
-	sn[numnet] = k; psn++; ok = FALSE;
-      }
-    }
-    if ((i == ptdn) && (ok == TRUE))
-      yyerror("The name of network does not exist");
-  }
+  else { sn[numnet] = refnet; psn++;  }
   return psn;
 }
 /*****************************************************************************/
@@ -357,6 +363,8 @@ void get_gconstants()
   sprintf(line,"Const batch %d", gconst.batch);     emit(line);  
   sprintf(line,"Const threads %d", gconst.threads); emit(line);  
   sprintf(line,"Const log %s", gconst.log);         emit(line);  
+  sprintf(line,"Const seed %d", gconst.seed);       emit(line);  
+  sprintf(line,"Const gpu %d", gconst.gpu);         emit(line);  
 }
 /*****************************************************************************/
 void get_data()
@@ -364,16 +372,34 @@ void get_data()
 
   for (i = 0; (i < ptdd); i++) 
     if (tdd[i].level == leveldata) {
-      if ((strlen(tdd[i].filein) == 0) || (tdd[i].filetype == NONE))
-	yyerror("Error, mandatory parameters incomplete.");
-      else {
-	if (tdd[i].filetype == ASCII) aux = "ascii";
-	else aux = "binary";
-	sprintf(line,"Data %s filename %s %s", tdd[i].name, 
-		tdd[i].filein, aux);
+      if (tdd[i].filetype == ASCII) aux = "ascii";
+      else aux = "binary";
+
+      if (strlen(tdd[i].namefile) >= 0) {
+	if ((tdd[i].lfrom >= 0) && (tdd[i].lto >= 0))
+	  if (tdd[i].filetype != NONE)
+	    sprintf(line,
+		    "Data %s 3 creadata %s %s %s %s filename %s filetype %s",
+		    tdd[i].name, tdn[tdl[tdd[i].lfrom].refnet].name,
+		    tdl[tdd[i].lfrom].name, tdn[tdl[tdd[i].lto].refnet].name,
+		    tdl[tdd[i].lto].name, tdd[i].namefile, aux);
+	  else
+	    sprintf(line,"Data %s 2 creadata %s %s %s %s filename %s",
+		    tdd[i].name, tdn[tdl[tdd[i].lfrom].refnet].name,
+		    tdl[tdd[i].lfrom].name, tdn[tdl[tdd[i].lto].refnet].name,
+		    tdl[tdd[i].lto].name, tdd[i].namefile);
+	else
+	  if (tdd[i].filetype != NONE)
+	    sprintf(line,"Data %s 2 filename %s filetype %s",
+		    tdd[i].name, tdd[i].namefile, aux);
+	  else
+	    sprintf(line,"Data %s 1 filename %s",
+		    tdd[i].name, tdd[i].namefile);
 	emit(line);
       }
+      else yyerror("File name is a mandatory parameters.");
     }
+
   leveldata++;
 }
 /*****************************************************************************/
@@ -388,7 +414,7 @@ void get_net_data(int n)
 }
 /*****************************************************************************/
 void get_net_layers (int n)
-{ char line[140], line2[140]; char *aux,*aux2; int i;
+{ char line[140], line2[140]; char *aux,*aux2; int i,j;
 
   for (i=tdn[n].belem; (i <= tdn[n].eelem); i++) 
     if (n == tdl[i].refnet) {
@@ -406,16 +432,36 @@ void get_net_layers (int n)
 	emit(line);
         break;
       }
+
       case FO: { 
-	if (tdl[i].cte1 == CLASSIFICATION)
-          aux = "criterion classification";
-        else  aux = "criterion regression";
-        if (tdl[i].cte2 == AUTOENCODER) aux2 = "autoencoder 1";
-        else aux2 = "autoencoder 0"; 
-	sprintf(line,"layer %s FO 2 %s %s", tdl[i].name, aux, aux2);
+	sprintf(line,"layer %s FO ", tdl[i].name);
+	switch (tdl[i].cte1) {
+	case CLASSIFICATION: {
+	  sprintf(line2,"1 criterion classification");
+	  break;
+	}
+	case REGRESSION:{
+	  j = tdl[i].cte2;
+	  if (j >= 0) 
+	    if (tdl[j].refnet < ptdn-1)
+	      sprintf(line2,"2 criterion regression %s %s", 
+		      tdn[tdl[j].refnet].name, tdl[j].name);
+	    else 
+              yyerror ("The network must be different from the current one.");
+	  else sprintf(line2,"1 criterion regression");
+	  break;
+	}
+	case AUTOENCODER:{
+	  sprintf(line2,"2 criterion regression autoencoder 1");
+	  break;
+	}
+	}
+	strcat(line,line2);
 	emit(line);
         break;
       }
+
+
       case C:  {
         sprintf(line,"layer %s C 6 nk %d kr %d kc %d", tdl[i].name, 
 		tdl[i].cte1, tdl[i].cte2, tdl[i].cte3);
@@ -449,8 +495,13 @@ void get_net_layers (int n)
 	emit(line);
         break;
       }
-      case CA: {
-        sprintf(line,"layer %s CA 0",tdl[i].name);
+      case CAT: {
+        sprintf(line,"layer %s CAT 0",tdl[i].name);
+	emit(line);
+        break;
+      }
+      case ADD: {
+        sprintf(line,"layer %s ADD 0",tdl[i].name);
 	emit(line);
         break;
       }
@@ -564,7 +615,7 @@ void get_network()
       }
       break;
     }
-    case CA: case F: case R: {
+    case CAT: case ADD: case F: case R: {
       if (!((tdl[i].nsucc > 0) && (tdl[i].nprev > 0))) {
 	ok = FALSE;
 	yyerror("Error in the accessibility of internal layer2");
@@ -602,6 +653,15 @@ void get_amendment(int type, int ref, char *aux)
     sprintf(line,"amendment %s %s %s", tdn[tdl[ref].refnet].name,
 	    tdl[ref].name, aux);
   else sprintf(line,"amendment %s * %s", tdn[ref].name, aux);
+  emit(line);
+}
+/*****************************************************************************/
+void get_amendment_onlynet(int ref, int aux)
+{ char line[140];
+ 
+  if (aux == 0)
+    sprintf(line,"amendment %s * cropmode 0", tdn[ref].name);
+  else sprintf(line,"amendment %s * cropmode 1", tdn[ref].name);
   emit(line);
 }
 /*****************************************************************************/
@@ -663,6 +723,10 @@ char *get_amend_param_ctr(int param, float value)
     sprintf(line,"noiseb %f",value);
     break;
   }
+  case advf: { 
+    sprintf(line,"advf %f",value);
+    break;
+  }
   }
   d = malloc (strlen (line) + 1);
   strcpy (d,line);
@@ -687,6 +751,10 @@ char *get_amend_param_cte(int param, int value)
   }
   case flip: { 
     sprintf(line,"flip %d",value);
+    break;
+  }
+  case adv: { 
+    sprintf(line,"adv %d",value);
     break;
   }
   case balance: { 
@@ -715,14 +783,14 @@ void get_copy (int refnd, int refld, int refns, int refls)
   emit(line);
 }
 /*****************************************************************************/
-void get_train (int par1, int par2, int ref)
+void get_train (int par1, int par2, int par3, int ref)
 { char line[140]; int i;
 
-  sprintf(line,"command list train %d", ref);
+  sprintf(line,"command list train numiter %d numnet %d", par1, ref);
   emit(line);
   for (i = 0; (i < ref); i++) {
     sprintf(line,"command %s train 2 nepoch %d numbatch %d", 
-	    tdn[sn[i]].name, par1, par2);
+	    tdn[sn[i]].name, par2, par3);
     emit(line);
   }
   sprintf(line,"command list train start");
@@ -742,6 +810,13 @@ void get_net_test (int ref1, int ref2)
   if (ref2 < 0) sprintf(line2,"0");
   else  sprintf(line2,"1 %s",tdd[ref2].name);
   sprintf(line,"command %s test %s", tdd[ref1].name, line2);
+  emit(line);
+}
+/*****************************************************************************/
+void get_net_evaluate (int ref1, int ref2) 
+{ char line[140];
+
+  sprintf(line,"command %s evaluate 1 %s", tdn[ref1].name, tdd[ref2].name);
   emit(line);
 }
 /*****************************************************************************/
@@ -795,6 +870,41 @@ void get_div (int ref1, float aux)
 { char line[140]; 
 
   sprintf(line,"command %s div 1 %f",tdd[ref1].name, aux);
+  emit(line);
+}
+/*****************************************************************************/
+void get_add (int ref1, float aux)
+{ char line[140]; 
+
+  sprintf(line,"command %s add 1 %f",tdd[ref1].name, aux);
+  emit(line);
+}
+/*****************************************************************************/
+void get_sub (int ref1, float aux)
+{ char line[140]; 
+
+  sprintf(line,"command %s sub 1 %f",tdd[ref1].name, aux);
+  emit(line);
+}
+/*****************************************************************************/
+void get_mul (int ref1, float aux)
+{ char line[140]; 
+
+  sprintf(line,"command %s mul 1 %f",tdd[ref1].name, aux);
+  emit(line);
+}
+/*****************************************************************************/
+void get_maxmin (int ref1)
+{ char line[140]; 
+
+  sprintf(line,"command %s maxmin 0",tdd[ref1].name);
+  emit(line);
+}
+/*****************************************************************************/
+void get_store (int ref1, char *aux)
+{ char line[140]; 
+
+  sprintf(line,"command %s store 1 %s",tdd[ref1].name, aux);
   emit(line);
 }
 /*****************************************************************************/

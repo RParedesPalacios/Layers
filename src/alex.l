@@ -38,6 +38,9 @@ namefile        \"([^\0 ])+\"
 batch           { display(batch_);    }
 threads         { display(threads_);  }
 log             { display(log_);      }
+seed            { display(seed_);     }
+gpu             { display(gpu_);      }
+
 filename        { display(filename_); } 
 tr              { display(tr_);       }
 ts              { display(ts_);       }
@@ -46,13 +49,14 @@ ascii           { display(ascii_);    }
 binary          { display(binary_);   }
 local           { display(local_);   }
 
-F               { display(F_);  }
-FI              { display(FI_); }
-FO              { display(FO_); }
-C               { display(C_);  }
-CI              { display(CI_); }
-MP              { display(MP_); }
-CA              { display(CA_); }
+F               { display(F_);   } 
+FI              { display(FI_);  }
+FO              { display(FO_);  }
+C               { display(C_);   }
+CI              { display(CI_);  }
+MP              { display(MP_);  }
+CAT             { display(CAT_); }
+ADD             { display(ADD_); }
 
 classification  { display(classification_); }
 regression      { display(regression_);     }
@@ -74,21 +78,24 @@ sizec           { display(sizec_);          }
 
 mu              { display(mu_);         }
 mmu             { display(mmu_);        }
-drop            { display(drop_);       }      
 l2              { display(l2_);         }      
 l1              { display(l1_);         }       
 maxn            { display(maxn_);       }       
-act             { display(act_);        }       
+drop            { display(drop_);       }      
 noiser          { display(noiser_);     }      
 noisesd         { display(noisesd_);    }     
-shift           { display(shift_);      }     
-flip            { display(flip_);       }     
 brightness      { display(brightness_); }     
 contrast        { display(contrast_);   }     
-bn              { display(bn_);         } 
-balance         { display(balance_);    } 
-noiseb          { display(noiseb_);     } 
 lambda          { display(lambda_);     } 
+noiseb          { display(noiseb_);     } 
+advf            { display(advf_);       } 
+bn              { display(bn_);         } 
+act             { display(act_);        }       
+shift           { display(shift_);      }     
+flip            { display(flip_);       }     
+adv             { display(adv_);        } 
+balance         { display(balance_);    } 
+cropmode        { display(cropmode_);   } 
 
 center          { display(center_);       }
 const           { display(const_);        }
@@ -98,6 +105,7 @@ network         { display(network_);      }
 script          { display(script_);       }
 train           { display(train_);        }
 test            { display(test_);         }
+evaluate        { display(evaluate_);     }
 printkernels    { display(printkernels_); }
 copy            { display(copy_);         }
 save            { display(save_);         }
@@ -105,6 +113,11 @@ load            { display(load_);         }
 testout         { display(testout_);      }
 zscore          { display(zscore_);       }
 yuv             { display(yuv_);          }
+add             { display(add_);          }
+sub             { display(sub_);          }
+mul             { display(mul_);          }
+maxmin          { display(maxmin_);       }
+store           { display(store_);        }
 
 "{"             { display(BCB_);   /* Begin Curly  Brackets */ }
 "}"             { display(ECB_);   /* End   Curly  Brackets */ }
