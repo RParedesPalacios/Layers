@@ -985,7 +985,7 @@ script {
   N2.bn=1
   N2.mu=0.1
 
-  train(10,5,N1,N2)
+  train(30,10,5,N1,N2)
 }
 
 ~~~
