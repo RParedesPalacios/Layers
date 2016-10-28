@@ -22,7 +22,7 @@ const{
   threads=4
   batch=10
   log="mnist.log"
-  sed=1234
+  seed=1234
 }
 ~~~
 
