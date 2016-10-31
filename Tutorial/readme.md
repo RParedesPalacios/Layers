@@ -998,8 +998,6 @@ N1![N1](./figs/sharingN1.jp2)
 N2![N2](./figs/simulN2.jp2)
 
 
-In this example Layers will run 10 iterations with 5 batches processed for each network. When all the command is completed Layers will perform an evaluation of the test set (if any) for each network.
-
 
 
 
