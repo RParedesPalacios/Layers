@@ -575,6 +575,32 @@ void CLayer::forward()
       fprintf(stderr,"Preact E(%s %dx%d)=%f\n",name,batch,nk,sum);
     }
 
+    if (trmode) {
+      // Adversarial Noise                                                                                             
+      if ((act<10)&&(adelta)) {
+#pragma omp parallel for      
+	for(int i=0;i<batch;i++)
+	  for(int k=0;k<nk;k++) {
+	    
+	    if (adv==1) E[i][k]=E[i][k]-advf*De[i][k]; // gradient as it is 
+	    if (adv==2) { // sign                                                                                                                     
+	      for(r=0;r<E[i][k].rows();r++)
+		for(c=0;c<E[i][k].cols();c++)
+		  if (De[i][k](r,c)>0) De[i][k](r,c)=1;
+		  else De[i][k](r,c)=-1;
+	      E[i][k]=E[i][k]-advf*De[i][k];
+	    }
+	    if (adv==3) { // normalize gradient
+	      for(r=0;r<E[i][k].rows();r++)
+		E[i][k].row(i)=E[i][k].row(i)-advf*(De[i][k].row(r)/De[i][k].row(r).norm());
+	    }
+	    De[i][k].setZero();
+	  }
+      }
+    }
+  
+
+    
     //POST-ACTIVATION
 
     if (bn) {
@@ -1230,9 +1256,10 @@ void CLayer::reset()
   for(i=0;i<GLUT;i++)
     un[i]=uniform();
 
-  for(i=0;i<batch;i++)
-    for(j=0;j<nk;j++)
-      De[i][j].setZero();
+  if (!adelta) 
+    for(i=0;i<batch;i++)
+      for(j=0;j<nk;j++)
+	De[i][j].setZero();
 
   gbias.setZero();
   for(k=0;k<nk;k++)
