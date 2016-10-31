@@ -138,7 +138,7 @@ network N1 {
 	* **FO**:  Output layer
 	* **C**:  Convolutional layer
 	* **MP**:  MaxPooling layer
-	* **CA**:  Cat layer
+	* **CAT**:  Cat layer
 
 ### Networks - Layers - FI
 
