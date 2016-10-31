@@ -141,7 +141,9 @@ void Layer::save_param(FILE *fe)
   fprintf(fe,"%f\n",contrast);
 
   // FOR FUTURE PARAMS
-  for(i=0;i<10;i++)
+  fprintf(fe,"%d\n",adv);
+  fprintf(fe,"%f\n",advf);
+  for(i=0;i<8;i++)
     fprintf(fe,"-1\n");
 
 }
@@ -189,7 +191,12 @@ void Layer::load_param(FILE *fe)
   fsd=fscanf(fe,"%lf\n",&contrast);
 
   // FOR FUTURE PARAMS
-  for(i=0;i<10;i++)
+  fsd=fscanf(fe,"%d\n",&adv);
+  if (adv==-1) adv=0;
+  fsd=fscanf(fe,"%lf\n",&advf);  
+  if (advf==-1) advf=1.0;
+
+  for(i=0;i<8;i++)
     fsd=fscanf(fe,"-1\n");
 
 
