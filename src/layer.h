@@ -51,7 +51,10 @@ class Layer {
   int shift,flip;
   double brightness,contrast;
 
+  int lt;
+
   Data *D;
+  Layer *target;
   Layer **Lin;
   Layer **Lout;
   Net *rnet;
@@ -101,6 +104,8 @@ class Layer {
   virtual void resetstats(){}
   virtual void getbatch(Data *Dt){}
   virtual void getbatch(Data *Dt,int s){}
+  virtual void fillData(Data *D,int p) {}
+  virtual void fillTarget(Data *D,int p){}
 
 };
 
@@ -167,6 +172,8 @@ class FLayer : public Layer {
   void load(FILE *fe);
 
   void printkernels(FILE *fe);
+  void fillData(Data *D,int p);
+  void fillTarget(Data *D,int p);
 
 };
 
@@ -188,11 +195,12 @@ class OFLayer : public FLayer {
 
   int ae;
   double landa;
-
+  
   double rmse,mse,mae,cerr,ent;
 
   OFLayer(Data *D,int b,int act,int ae,char *name);
   OFLayer(Data *D,int b,int act,char *name);
+  OFLayer(FLayer *t,int b,char *name);
 
   void backward();
   void modbatch(int b);
@@ -266,6 +274,7 @@ class CLayer : public Layer {
   void ConvolB();
   void MaxPoolB();
   void printkernels(FILE *fe);
+  void filldata(Data *D,int p);
 
   void save(FILE *fe);
   void load(FILE *fe);

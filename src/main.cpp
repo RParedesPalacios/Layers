@@ -135,12 +135,44 @@ int main(int argc, char **argv) {
     // Data
     ///////////////////////////
     else if (!strcmp(cad,"Data")) {
+      //Data D4 2 creadata N0 k0 N0 k4 filename ./lola.tr
+      sscanf(line,"Data %s %d %s\n",name,&iv,cad);
+      if (!strcmp(cad,"creadata")) {
+	sscanf(line,"Data %s 2 creadata %s %s %s %s filename %s\n",name,net1,layer1,net2,layer2,fname);
+	
+	for(i=0;i<Nc;i++)
+	  if (!strcmp(NTable[i]->name,net1)) break;
+	Net *n=NTable[i];
+	
+	sprintf(cad,"%s:%s",net1,layer1);
+	for(i=0;i<Lc;i++) {
+	  if (!strcmp(cad,LTable[i]->name)) break;
+	}
+	Layer *l1=LTable[i];
+
+	sprintf(cad,"%s:%s",net1,layer2);
+	for(i=0;i<Lc;i++) {
+	  if (!strcmp(cad,LTable[i]->name)) break;
+	}
+	Layer *l2=LTable[i];
+
+	if (l1->lin==0) l1->din=n->Dtrain->dim;
+
+	fprintf(stderr,"New data %s from %s,%d->%s,%d\n",name,l1->name,l1->din,l2->name,l2->din);
+
+	DTable[Dc]=new Data(n->Dtrain->num,l1->din,l2->din,batch,name);
+
+	n->fillData(DTable[Dc],l1,l2);
+
+	DTable[Dc]->Save(fname);
+      }
+      else {
       sscanf(line,"Data %s 2 filename %s filetype %s\n",name,fname,ftype);
       if (!strcmp(ftype,"ascii")) 
 	DTable[Dc]=new Data(fname, batch,name);
       else 
 	DTable[Dc]=new Data(1,fname, batch,name);
-
+      }
       Dc++;
     }
     ///////////////////////////
@@ -252,15 +284,29 @@ int main(int argc, char **argv) {
       else if (!strcmp(ltype,"FO")) {
 	sscanf(line,"layer %s FO %d criterion %s autoencoder %d\n",name,&val,crit,&ae);
 	sprintf(lname,"%s:%s",innet,name);
+
 	if (!strcmp(crit,"classification")) act=10;
-	else act=11;
-	if (ae) 
-	  LTable[Lc]=new OFLayer(NTable[Nc]->Dtrain,batch,act,ae,lname);
-	else 
-	  LTable[Lc]=new OFLayer(NTable[Nc]->Dtrain,batch,act,lname);
-	
+	else act=0;
+
+	if (val==2) {
+	  sscanf(line,"layer %s FO 2 criterion regression %s %s\n",name,net1,layer1);
+	  sprintf(cad,"%s:%s",net1,layer1);
+	  for(i=0;i<Lc;i++) {
+	    if (!strcmp(cad,LTable[i]->name)) break;
+	  }
+	  LTable[Lc]=new OFLayer((FLayer*)LTable[i],batch,lname);
+	}
+	else {
+	  if (ae) 
+	    LTable[Lc]=new OFLayer(NTable[Nc]->Dtrain,batch,act,ae,lname);
+	  else 
+	    LTable[Lc]=new OFLayer(NTable[Nc]->Dtrain,batch,act,lname);
+	}	
+	 
 	NTable[Nc]->addLayer(LTable[Lc]);
 	Lc++;
+
+	
       
       }
       //F
@@ -300,7 +346,6 @@ int main(int argc, char **argv) {
       NTable[Nc]->Init(flog);
       NTable[Nc]->net2dot();
       NTable[Nc]->setthreads(threads);
-
     }
 
     ///////////////////////////
@@ -310,6 +355,35 @@ int main(int argc, char **argv) {
       int par,par2;
       Data *d;
    
+      //command Nd ld copy Ns ls
+      sscanf(line,"command %s %s %s ",cad,cad2,com);
+      if (!strcmp(com,"copy")) {
+	sscanf(line,"command %s %s copy %s %s\n",net1,layer1,net2,layer2);
+
+        for(i=0;i<Nc;i++)
+          if (!strcmp(NTable[i]->name,net1)) break;
+        Net *n1=NTable[i];
+
+        for(i=0;i<Nc;i++)
+          if (!strcmp(NTable[i]->name,net1)) break;
+        Net *n2=NTable[i];
+
+        sprintf(cad,"%s:%s",net1,layer1);
+        for(i=0;i<Lc;i++) {
+          if (!strcmp(cad,LTable[i]->name)) break;
+        }
+        Layer *l1=LTable[i];
+
+        sprintf(cad,"%s:%s",net1,layer2);
+        for(i=0;i<Lc;i++) {
+          if (!strcmp(cad,LTable[i]->name)) break;
+        }
+        Layer *l2=LTable[i];
+	
+	n1->copy(l1,l2);
+
+      }
+
       sscanf(line,"command %s %s %d ",cad,com,&par);
       if (!strcmp(com,"zscore")) {
 	for(i=0;i<Dc;i++) 
@@ -432,20 +506,24 @@ int main(int argc, char **argv) {
 	  fprintf(stderr,"-->%s",line);
 	  lut_init();
 	  
-	  for(i=0;i<nets;i++) 
-	    Nlist[i]->Dtrain->preparebatch(1);
+	  for (int it=0;it<liter;it++) {
 
-	  for(j=0;j<lepoch;j++) {
 	    for(i=0;i<nets;i++) 
-	      Nlist[i]->trainbatch(lbatch,j);
+	      Nlist[i]->Dtrain->preparebatch(1);
+	    	    
+	    for(j=0;j<lepoch;j++) {
+	      for(i=0;i<nets;i++) 
+		Nlist[i]->trainbatch(lbatch,j);
+	    }
+	    
+	    fprintf(stderr,"\n");
+	    for(i=0;i<nets;i++) {
+	      if (Nlist[i]->Dval!=NULL) Nlist[i]->evaluate(Nlist[i]->Dval);
+	      if (Nlist[i]->Dtest!=NULL) Nlist[i]->evaluate(Nlist[i]->Dtest);
+	    }
+	    fprintf(stderr,"\n");
 	  }
 
-	  fprintf(stderr,"\n");
-	  for(i=0;i<nets;i++) {
-	    if (Nlist[i]->Dval!=NULL) Nlist[i]->evaluate(Nlist[i]->Dval);
-	    if (Nlist[i]->Dtest!=NULL) Nlist[i]->evaluate(Nlist[i]->Dtest);
-	  }
-	  fprintf(stderr,"\n");
 	}
 	else{
 	  sscanf(line,"command %s train 1 nepoch %d",cad,&par);

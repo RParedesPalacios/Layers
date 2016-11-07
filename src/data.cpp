@@ -203,6 +203,17 @@ void Data::SaveBin(char *fname)
 
 }
 
+void Data::fillData(Data *D,int p)
+{
+  int i,j;
+
+  for(i=0;i<batch;i++)
+    for(j=0;j<dim;j++)
+      D->M((p*batch)+i,j)=M(getpos(i),j);
+
+}
+
+
 //D1.save("name")    ==> en reaidad D1.store("name"
 
 void Data::maxmin()

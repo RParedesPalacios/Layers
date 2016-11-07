@@ -31,6 +31,7 @@ class Data {
   Data(char *fname,int batch,char *name);
   Data(int bin,char *fname,int batch,char *name);
 
+
   void zscore();
   void zscore(Data *D);
   void center();
@@ -47,7 +48,7 @@ class Data {
   int gethead();
   int getpos(int p);
   void setbalance(int b);
-
+  void fillData(Data *D,int p);
   void Save(char *fname);
   void SaveBin(char *fname);
 

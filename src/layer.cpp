@@ -84,7 +84,9 @@ Layer::Layer(int batch,char *name)
   brightness=contrast=0;
 
   D=NULL;
-
+  target=NULL;
+  lt=0;
+  
   Lin=(Layer **)malloc(MAX_CONNECT*sizeof(Layer *));
   Lout=(Layer **)malloc(MAX_CONNECT*sizeof(Layer *));
 

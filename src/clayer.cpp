@@ -575,32 +575,6 @@ void CLayer::forward()
       fprintf(stderr,"Preact E(%s %dx%d)=%f\n",name,batch,nk,sum);
     }
 
-    if (trmode) {
-      // Adversarial Noise                                                                                             
-      if ((act<10)&&(adelta)) {
-#pragma omp parallel for      
-	for(int i=0;i<batch;i++)
-	  for(int k=0;k<nk;k++) {
-	    
-	    if (adv==1) E[i][k]=E[i][k]-advf*De[i][k]; // gradient as it is 
-	    if (adv==2) { // sign                                                                                                                     
-	      for(r=0;r<E[i][k].rows();r++)
-		for(c=0;c<E[i][k].cols();c++)
-		  if (De[i][k](r,c)>0) De[i][k](r,c)=1;
-		  else De[i][k](r,c)=-1;
-	      E[i][k]=E[i][k]-advf*De[i][k];
-	    }
-	    if (adv==3) { // normalize gradient
-	      for(r=0;r<E[i][k].rows();r++)
-		E[i][k].row(i)=E[i][k].row(i)-advf*(De[i][k].row(r)/De[i][k].row(r).norm());
-	    }
-	    De[i][k].setZero();
-	  }
-      }
-    }
-  
-
-    
     //POST-ACTIVATION
 
     if (bn) {
@@ -1256,10 +1230,9 @@ void CLayer::reset()
   for(i=0;i<GLUT;i++)
     un[i]=uniform();
 
-  if (!adelta) 
-    for(i=0;i<batch;i++)
-      for(j=0;j<nk;j++)
-	De[i][j].setZero();
+  for(i=0;i<batch;i++)
+    for(j=0;j<nk;j++)
+      De[i][j].setZero();
 
   gbias.setZero();
   for(k=0;k<nk;k++)
@@ -1314,9 +1287,9 @@ void CLayer::save(FILE *fe)
   }
   else {
     for(i=0;i<nk;i++) 
-      fprintf(fe,"%f %f ",bn_g(i),bn_b(i));
+      fprintf(fe,"%f %f %f %f ",bn_g(i),bn_b(i),bn_gmean(i),bn_gvar(i));
   }
-  fprintf(fe,"\n");
+  fprintf(fe,"%d\n",bnc);
 
 }
 
@@ -1349,24 +1322,45 @@ void CLayer::load(FILE *fe)
       bn_g(i)=fv;
       fsd=fscanf(fe,"%f ",&fv);
       bn_b(i)=fv;
+      fsd=fscanf(fe,"%f ",&fv);
+      bn_gmean(i)=fv;
+      fsd=fscanf(fe,"%f ",&fv);
+      bn_gvar(i)=fv;
     }
   }
 
-  fsd=fscanf(fe,"\n");
+  fsd=fscanf(fe,"%d\n",&bnc);
 
+}
+
+void CLayer::filldata(Data *D,int p)
+{
+  int i,j,r,c,k;
+
+  for(i=0;i<batch;i++) {
+    k=0;
+    for(i=0;i<outz;i++) {
+      for(r=0;r<outr;r++) {
+	for(c=0;c<outc;c++,k++) 
+	  D->M((p*batch)+k,j)=N[i][j](r,c);
+      }
+    }
+  }
 }
 
 
 
-    ///////////////////////////////////////////
-    /// Input Convol Layer
-    ///////////////////////////////////////////
+
+///////////////////////////////////////////
+/// Input Convol Layer
+///////////////////////////////////////////
 ICLayer::ICLayer(Data *D,int batch,int z,int ir,int ic,int cr,int cc,char *name):CLayer(batch,name)
 {
   int i,j;
 
   this->batch=batch;
   this->D=D;
+
   act=1;
   shift=0;
   flip=0;
@@ -1444,7 +1438,8 @@ ICLayer::ICLayer(Data *D,int batch,int z,int ir,int ic,int cr,int cc,char *name)
   fprintf(stderr,"Creating Convol output %d@%dx%d\n",outz,outr,outc);
 }
 
-    // RANDOM FLIP
+
+// RANDOM FLIP
 void ICLayer::doflip(LMatrix& I)
 {
   int i,j,r,c;

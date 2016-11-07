@@ -59,11 +59,12 @@ class Net {
   void net2dot();
   void trainmode();
   void testmode();  
-
+  void copy(Layer *ld,Layer *ls);
   void setvalues();
   void train(int epochs);
   void trainbatch(int b,int e);
   void testOut(FILE *fs);
+  void fillData(Data *D,Layer *l1,Layer *l2);
   void printOut(Data *Dt,FILE *fs,int n);
   void preparetrainbatch();
   void calcerr(Data *Dt);
