@@ -103,31 +103,30 @@
      zscore_ = 321,
      yuv_ = 322,
      printkernels_ = 323,
-     copy_ = 324,
-     local_ = 325,
-     load_ = 326,
-     testout_ = 327,
-     center_ = 328,
-     div_ = 329,
-     test_ = 330,
-     add_ = 331,
-     sub_ = 332,
-     mul_ = 333,
-     maxmin_ = 334,
-     store_ = 335,
-     BCB_ = 336,
-     ECB_ = 337,
-     BSB_ = 338,
-     ESB_ = 339,
-     BRB_ = 340,
-     ERB_ = 341,
-     PER_ = 342,
-     COM_ = 343,
-     EQ_ = 344,
-     RAR_ = 345,
-     id_ = 346,
-     nfile_ = 347,
-     cte_ = 348
+     local_ = 324,
+     load_ = 325,
+     testout_ = 326,
+     center_ = 327,
+     div_ = 328,
+     test_ = 329,
+     add_ = 330,
+     sub_ = 331,
+     mul_ = 332,
+     maxmin_ = 333,
+     store_ = 334,
+     BCB_ = 335,
+     ECB_ = 336,
+     BSB_ = 337,
+     ESB_ = 338,
+     BRB_ = 339,
+     ERB_ = 340,
+     PER_ = 341,
+     COM_ = 342,
+     EQ_ = 343,
+     RAR_ = 344,
+     id_ = 345,
+     nfile_ = 346,
+     cte_ = 347
    };
 #endif
 
@@ -147,7 +146,7 @@ typedef union YYSTYPE
 
 
 /* Line 2068 of yacc.c  */
-#line 151 "asin.h"
+#line 150 "asin.h"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

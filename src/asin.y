@@ -25,8 +25,8 @@
  lambda_  noiseb_  advf_  bn_  act_  shift_  flip_  adv_  balance_  cropmode_
 /*****************************************************************  Keywords */
  const_  data_  network_  script_  train_  evaluate_  save_  zscore_  yuv_  
- printkernels_  copy_  local_  load_  testout_  center_  div_  test_  add_  
- sub_  mul_ maxmin_  store_
+ printkernels_  local_  load_  testout_  center_  div_  test_  add_  sub_  
+ mul_ maxmin_  store_
 /****************************************************************  operators */
  BCB_  ECB_  BSB_  ESB_  BRB_  ERB_  PER_  COM_  EQ_  RAR_
 /**************************************************** tokens with attributes */
@@ -498,12 +498,12 @@ command
 	 else yyerror("Network name does not exist");
        }
 
-       | id_  PER_  id_  PER_  copy_  id_  PER_  id_
+       | id_  PER_  id_  EQ_  id_  PER_  id_
 
        { int d2, d1 =  search_network ($1);
-         int s2, s1 =  search_network ($6);
+         int s2, s1 =  search_network ($5);
 
-         d2 = search_layer(d1, $3); s2 = search_layer(s1, $8);
+         d2 = search_layer(d1, $3); s2 = search_layer(s1, $7);
 	 if (d1 < 0) yyerror("Destination network does not exist");
 	 else if (d2 < 0) yyerror("Destination layer does not exist");
 	 else if (s1 < 0) yyerror("Source network does not exist");

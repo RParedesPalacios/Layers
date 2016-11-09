@@ -432,7 +432,6 @@ void get_net_layers (int n)
 	emit(line);
         break;
       }
-
       case FO: { 
 	sprintf(line,"layer %s FO ", tdl[i].name);
 	switch (tdl[i].cte1) {
@@ -442,12 +441,8 @@ void get_net_layers (int n)
 	}
 	case REGRESSION:{
 	  j = tdl[i].cte2;
-	  if (j >= 0) 
-	    if (tdl[j].refnet < ptdn-1)
-	      sprintf(line2,"2 criterion regression %s %s", 
-		      tdn[tdl[j].refnet].name, tdl[j].name);
-	    else 
-              yyerror ("The network must be different from the current one.");
+	  if (j >= 0) sprintf(line2,"2 criterion regression %s %s",
+			      tdn[tdl[j].refnet].name, tdl[j].name);
 	  else sprintf(line2,"1 criterion regression");
 	  break;
 	}
@@ -460,8 +455,6 @@ void get_net_layers (int n)
 	emit(line);
         break;
       }
-
-
       case C:  {
         sprintf(line,"layer %s C 6 nk %d kr %d kc %d", tdl[i].name, 
 		tdl[i].cte1, tdl[i].cte2, tdl[i].cte3);

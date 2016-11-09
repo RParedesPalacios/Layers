@@ -107,7 +107,6 @@ train           { display(train_);        }
 test            { display(test_);         }
 evaluate        { display(evaluate_);     }
 printkernels    { display(printkernels_); }
-copy            { display(copy_);         }
 save            { display(save_);         }
 load            { display(load_);         }
 testout         { display(testout_);      }
