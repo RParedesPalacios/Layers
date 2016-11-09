@@ -22,7 +22,6 @@ class Layer {
   int act;
   double mu;
   double mmu;
-  double ab1,ab2,ab1t,ab2t,aeps;
   double l2;
   double l1;
   double maxn;
@@ -40,6 +39,7 @@ class Layer {
   int opt;
   int reshape;
 
+  int nobias;
   int bn;
   int init;
   int out;
@@ -120,10 +120,6 @@ class FLayer : public Layer {
   LMatrix *W;
   LMatrix *gW;
   LMatrix *pgW;
-  LMatrix *MT;
-  LMatrix *VT;
-  LMatrix *MTs;
-  LMatrix *VTs;
 
   LRVector *b;
   LRVector *gb;

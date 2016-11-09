@@ -45,14 +45,6 @@ Layer::Layer(int batch,char *name)
   //ReLU
   act=1;
   optim=1; // SGD+MOM
-  //optim=2; // ADAM
-
-  //ADAM
-  ab1=0.9;
-  ab2=0.999;
-  ab1t=1.0;
-  ab2t=1.0;
-  aeps=0.00000001;
 
   // GUASSIAN NOISE
   noiser=noisesd=0;
@@ -64,6 +56,8 @@ Layer::Layer(int batch,char *name)
 
   //BATCH NORM
   bn=0;
+
+  nobias=0;
 
   //Adversarial
   adv=0;

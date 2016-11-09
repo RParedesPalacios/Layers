@@ -29,6 +29,8 @@ FLayer::FLayer()
 
 void FLayer::mem()
 {
+  int i;
+
   W=new LMatrix[MAX_CONNECT];
   gW=new LMatrix[MAX_CONNECT];
   pgW=new LMatrix[MAX_CONNECT];
@@ -36,12 +38,7 @@ void FLayer::mem()
   // SGD+MOMENTUM
   gb=new LRVector[MAX_CONNECT];
   pgb=new LRVector[MAX_CONNECT];
-  // ADAM
-  MT=new LMatrix[MAX_CONNECT];
-  VT=new LMatrix[MAX_CONNECT];
-  MTs=new LMatrix[MAX_CONNECT];
-  VTs=new LMatrix[MAX_CONNECT];
-
+  
   N.resize(batch,din);
   E.resize(batch,din);
   dE.resize(batch,din);
@@ -57,6 +54,11 @@ void FLayer::mem()
   bn_b.resize(din);
   bn_E.resize(batch,din);
   BNE.resize(batch,din);
+
+  for(i=0;i<din;i++) {
+    bn_g(i)=1.0;
+    bn_b(i)=0.0;
+  }
 
   gbn_mean.resize(din);
   gbn_var.resize(din);
@@ -120,8 +122,9 @@ FLayer::FLayer(Layer *In,int batch,char *name):Layer(batch,name)
 void FLayer::addchild(Layer *li)
 {
 
-  int enc=0;
-  for(int i=0;i<lout;i++)
+  int enc=0,i,j;
+
+  for(i=0;i<lout;i++)
     if (Lout[i]==li) enc=1;
 
   if (enc) {
@@ -136,17 +139,30 @@ void FLayer::addchild(Layer *li)
 
       W[lout].resize(din,l->din);
       b[lout].resize(l->din);
+
+      // initialice here!
+      double s=sqrt(2.0/W[lout].cols());
+      for(i=0;i<W[lout].rows();i++)
+	for(j=0;j<W[lout].cols();j++)
+	  W[lout](i,j)=s*gauss(0,1);
+
+      if (nobias) {
+	fprintf(stderr,"================ %s BIAS 0  ==================\n",name);
+	for(j=0;j<b[lout].cols();j++)
+	  b[lout](j)=0.0;
+      }
+      else {
+	for(j=0;j<b[lout].cols();j++)
+	  b[lout](j)=0.1;
+      }
+
       gW[lout].resize(din,l->din);
-
-      MT[lout].resize(din,l->din);
-      VT[lout].resize(din,l->din);
-      MTs[lout].resize(din,l->din);
-      VTs[lout].resize(din,l->din);
-
+      gW[lout].setZero();
       pgW[lout].resize(din,l->din);
       pgW[lout].setZero();
 
       gb[lout].resize(l->din);
+      gb[lout].setZero();
       pgb[lout].resize(l->din);
       pgb[lout].setZero();
 
@@ -179,42 +195,7 @@ void FLayer::addparent(Layer *l)
 
 void FLayer::initialize()
 {
-  int i,j;
-  int k;
-  double s;
-
-  fprintf(stderr,"Initializing %s\n",name);
-
-  for(k=0;k<lout;k++) {
-    s=sqrt(2.0/W[k].cols());
-    for(j=0;j<W[k].cols();j++)
-      for(i=0;i<W[k].rows();i++)
-	W[k](i,j)=s*gauss(0,1);
-
-    for(j=0;j<b[k].cols();j++)
-      b[k](j)=0.1;
-
-    MT[k].setZero();
-    VT[k].setZero();
-    MTs[k].setZero();
-    VTs[k].setZero();
-    ab1t=1.0;
-    ab2t=1.0;
-  }
-
-  if (!reshape)
-    for(i=0;i<din;i++) {
-      bn_g(i)=1.0;
-      bn_b(i)=0.0;
-    }
-  
-  if (!reshape)
-    for(i=0;i<din;i++) {
-      bn_g(i)=1.0;
-      bn_b(i)=0.0;
-    }
-
-
+  //nothing here
 }
 
 void FLayer::resetmomentum()
@@ -739,9 +720,10 @@ void FLayer::backward()
 	    fprintf(stderr,"gW %s = %f\n",l->name,l->gW[ind].norm());
 	  }
 
-	  if (!bn)
-	    for(j=0;j<l->gb[ind].cols();j++)
-	      l->gb[ind](j)+=Delta.col(j).sum();
+	  if (!l->nobias) 
+	    if (!l->bn)
+	      for(j=0;j<l->gb[ind].cols();j++)
+		l->gb[ind](j)+=Delta.col(j).sum();
 
 	  // back-propagate Delta
 	  //noalias
@@ -769,20 +751,6 @@ void FLayer::applygrads()
       W[k]+=pgW[k];
 
     }
-    else if (optim==2) { //ADAM
-      ab1t*=ab1;
-      ab2t*=ab2;
-      for(i=0;i<W[k].rows();i++)
-	for(j=0;j<W[k].cols();j++) {
-	  MT[k](i,j)=(ab1*MT[k](i,j))+(1-ab1)*gW[k](i,j);
-	  VT[k](i,j)=(ab2*VT[k](i,j))+(1-ab2)*(gW[k](i,j)*gW[k](i,j));
-	  MTs[k](i,j)=MT[k](i,j)/(1-ab1t);
-	  VTs[k](i,j)=VT[k](i,j)/(1-ab2t);
-	}
-      for(i=0;i<W[k].rows();i++)
-	for(j=0;j<W[k].cols();j++)
-	  W[k](i,j)+=(mu/batch)*MTs[k](i,j)/(sqrt(VTs[k](i,j))+aeps);
-    }
 
     // REGULARIZATION
     if (l2!=0.0)
@@ -804,7 +772,9 @@ void FLayer::applygrads()
 
     // BIAS
     pgb[k]=(mu/batch)*gb[k]+mmu*pgb[k];
-    b[k]+=pgb[k];
+    if (!nobias) {
+      b[k]+=pgb[k];
+    }
 
     gW[k].setZero();
     gb[k].setZero();

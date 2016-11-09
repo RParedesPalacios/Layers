@@ -333,6 +333,7 @@ int main(int argc, char **argv) {
       l1=LTable[i];
       NTable[Nc]->addLayer(l1);
       
+
       sprintf(lname,"%s:%s",net2,layer2);
       for(i=0;i<Lc;i++) {
 	if (!strcmp(lname,LTable[i]->name)) break;
@@ -365,7 +366,7 @@ int main(int argc, char **argv) {
         Net *n1=NTable[i];
 
         for(i=0;i<Nc;i++)
-          if (!strcmp(NTable[i]->name,net1)) break;
+          if (!strcmp(NTable[i]->name,net2)) break;
         Net *n2=NTable[i];
 
         sprintf(cad,"%s:%s",net1,layer1);
@@ -374,7 +375,7 @@ int main(int argc, char **argv) {
         }
         Layer *l1=LTable[i];
 
-        sprintf(cad,"%s:%s",net1,layer2);
+        sprintf(cad,"%s:%s",net2,layer2);
         for(i=0;i<Lc;i++) {
           if (!strcmp(cad,LTable[i]->name)) break;
         }

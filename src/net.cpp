@@ -56,7 +56,7 @@ void Net::initialize()
   int i;
   fprintf(stderr,"Net %s initializing layers\n",name);
 
-  for(i=0;i<layers;i++)
+  for(i=0;i<layers;i++) 
     lvec[i]->initialize();
 }
 
@@ -454,13 +454,17 @@ void Net::Init(FILE *f)
   int i;
 
   if (!init) {
+
+    fprintf(stderr,"**** Initializing Net %s\n",name);
     flog=f;
 
     olayers=0;
-    for(i=0;i<layers;i++)
+    for(i=0;i<layers;i++) {
       if (lvec[i]->out) {
 	out[olayers++]=lvec[i];
       }
+      lvec[i]->rnet=this;
+    }
 
     build_fts();
     build_bts();
@@ -515,64 +519,64 @@ void Net::build_fts()
 
 }
 
-  void Net::forward()
-  {
-    int i;
-    struct timespec t0, t1,ft0,ft1;
-    double e;
+void Net::forward()
+{
+  int i;
+  struct timespec t0, t1,ft0,ft1;
+  double e;
 
 #ifdef USETIME
 
+  if (SHOW_TIME) {
+    fprintf(stderr,"===== FORWARD ======\n");
+  }
+  clock_gettime(CLOCK_MONOTONIC, &ft0);
+
+  for(i=0;i<layers;i++) {
     if (SHOW_TIME) {
-      fprintf(stderr,"===== FORWARD ======\n");
+      fprintf(stderr,"\t %s Ftime=",fts[i]->name);
+      clock_gettime(CLOCK_MONOTONIC, &t0);
     }
-    clock_gettime(CLOCK_MONOTONIC, &ft0);
-
-    for(i=0;i<layers;i++) {
-      if (SHOW_TIME) {
-	fprintf(stderr,"\t %s Ftime=",fts[i]->name);
-	clock_gettime(CLOCK_MONOTONIC, &t0);
-      }
-      fts[i]->rnet=this;
-      fts[i]->forward();
-      if (SHOW_TIME) {
-	clock_gettime(CLOCK_MONOTONIC, &t1);
-	e = (t1.tv_sec - t0.tv_sec);
-	e += (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
-	fprintf(stderr,"%g\n",e);
-      }
-    }
-
-    clock_gettime(CLOCK_MONOTONIC, &ft1);
-    e = (ft1.tv_sec - ft0.tv_sec);
-    e += (ft1.tv_nsec - ft0.tv_nsec) / 1000000000.0;
-    ftime+=e;
-
+    fts[i]->rnet=this;
+    fts[i]->forward();
     if (SHOW_TIME) {
-      fprintf(stderr,"Total Forward=%g acum=%g\n",e,ftime);
-      fprintf(stderr,"===================\n\n");
+      clock_gettime(CLOCK_MONOTONIC, &t1);
+      e = (t1.tv_sec - t0.tv_sec);
+      e += (t1.tv_nsec - t0.tv_nsec) / 1000000000.0;
+      fprintf(stderr,"%g\n",e);
     }
+  }
+
+  clock_gettime(CLOCK_MONOTONIC, &ft1);
+  e = (ft1.tv_sec - ft0.tv_sec);
+  e += (ft1.tv_nsec - ft0.tv_nsec) / 1000000000.0;
+  ftime+=e;
+
+  if (SHOW_TIME) {
+    fprintf(stderr,"Total Forward=%g acum=%g\n",e,ftime);
+    fprintf(stderr,"===================\n\n");
+  }
 #else
-    for(i=0;i<layers;i++) {
-      fts[i]->rnet=this;
-      fts[i]->forward();
-    }
+  for(i=0;i<layers;i++) {
+    fts[i]->rnet=this;
+    fts[i]->forward();
+  }
 
 #endif
 
+}
+
+void Net::save(FILE *fe)
+{
+  int i;
+
+  fprintf(stderr,"Saving Network %s\n",name);
+
+  for(i=0;i<layers;i++) {
+    fts[i]->save(fe);
   }
-
-  void Net::save(FILE *fe)
-  {
-    int i;
-
-    fprintf(stderr,"Saving Network %s\n",name);
-
-    for(i=0;i<layers;i++) {
-      fts[i]->save(fe);
-    }
-    fclose(fe);
-  }
+  fclose(fe);
+}
 
   void Net::load(FILE *fe)
   {
@@ -603,6 +607,14 @@ void Net::copy(Layer *ld,Layer *ls)
 
       fd->W[0]=fs->W[0];
       fd->b=fs->b;
+      
+      for(int j=0;j<fd->din;j++) {
+	fd->bn_g(j)=fs->bn_g(j);
+	fd->bn_b(j)=fs->bn_b(j);
+	fd->bn_gmean(j)=fs->bn_gmean(j);
+	fd->bn_gvar(j)=fs->bn_gvar(j);
+      }
+      fd->bnc=fs->bnc;
     }
 }
 
@@ -744,49 +756,50 @@ void Net::printerrors(Data *Dt,int num)
 
 
 
-  void Net::calcerr(Data *Dt)
-  {
-    int i;
-    OFLayer *o;
+void Net::calcerr(Data *Dt)
+{
+  int i;
+  OFLayer *o;
 
+  for(i=0;i<olayers;i++) {
+    o=(OFLayer *)out[i];
+    o->get_err(Dt);
+  }
+}
+
+void Net::calcerr(Data *Dt,int s)
+{
+  int i;
+  OFLayer *o;
+
+  for(i=0;i<olayers;i++) {
+    o=(OFLayer *)out[i];
+    o->get_err(Dt,s,crops);
+  }
+}
+
+
+void Net::printOut(Data *Dt,FILE *fs,int n)
+{
+  int i,j,b;
+  OFLayer *o;
+
+  for(b=0;b<n;b++) {
     for(i=0;i<olayers;i++) {
       o=(OFLayer *)out[i];
-      o->get_err(Dt);
+      for(j=0;j<o->din;j++)
+	fprintf(fs,"%f ",o->N(b,j));
     }
+    fprintf(fs,"\n");
   }
-  void Net::calcerr(Data *Dt,int s)
-  {
-    int i;
-    OFLayer *o;
-
-    for(i=0;i<olayers;i++) {
-      o=(OFLayer *)out[i];
-      o->get_err(Dt,s,crops);
-    }
-  }
-
-
-  void Net::printOut(Data *Dt,FILE *fs,int n)
-  {
-    int i,j,b;
-    OFLayer *o;
-
-    for(b=0;b<n;b++) {
-      for(i=0;i<olayers;i++) {
-	o=(OFLayer *)out[i];
-	for(j=0;j<o->din;j++)
-	  fprintf(fs,"%f ",o->N(b,j));
-      }
-      fprintf(fs,"\n");
-    }
-  }
+}
 
 
 
 
-  /////////////////////////////////
-  // TRAINING NETS
-  /////////////////////////////////
+/////////////////////////////////
+// TRAINING NETS
+/////////////////////////////////
 void Net::train(int epochs)
 {
   int i,d;
@@ -897,7 +910,9 @@ void Net::evaluate(Data *Dt)
     calcerr(Dt);
     Dt->next();
   }
+
   printerrors(Dt);
+
   
   //////////////////////////////
   if (cropmode) {
@@ -912,7 +927,10 @@ void Net::evaluate(Data *Dt)
       calcerr(Dt,i);
     }
     fprintf(stderr,"\n");
+
     printerrors(Dt);
+
+    
   }
 
   
@@ -975,9 +993,9 @@ void Net::testOut(FILE *fs)
 }
 
 
-  ///////////////////////////////////////////
-  // FOR TRAINIG SEVERAL NETS FROM MAIN
-  ///////////////////////////////////////////
+///////////////////////////////////////////
+// FOR TRAINIG SEVERAL NETS FROM MAIN
+///////////////////////////////////////////
 void Net::trainbatch(int b,int epoch)
 {
   int i,d;
