@@ -525,7 +525,7 @@ network N1 {
 	* For Data:
 		* zscore(): To normalize Data	
 		* yuv(): to convert RGB Maps to YUV maps
-		* center(): To center Data (mean=0, )
+		* center(): To center Data (mean=0)
 		* div(x): To divide all the data by factor x
 		* mul(x): To multiply all the data by factor x
 		* sum(x): To sum all the data quantity x
@@ -602,7 +602,7 @@ script {
 	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU) [1]
 	* flip: to flip input images ({1,0}) [0]
 	* shift: to shift randomly input images [0]
-	* balance: for balancing data classes	[0]
+	* balance: for balancing data classes [0]
 	* cropmode: is a **network** parameter {0,1}. When a convolutional input performs random crops, with this parameter we indicate that all the crops must be used in the evaluation. It leads to a slower evaluation but with a better performance. If cropmode is not active (0, default) then only the central crop is evaluated
 	
 	
