@@ -528,10 +528,10 @@ network N1 {
 		* center(): To center Data (mean=0, )
 		* div(x): To divide all the data by factor x
 		* mul(x): To multiply all the data by factor x
-		* div(x): To sum all the data quantity x
-		* div(x): To substract all the data quantity x
+		* sum(x): To sum all the data quantity x
+		* sub(x): To substract all the data quantity x
 		* maxmin(): To perform a max-min normalization 
-		* store("filename"): to save the data to file (binary format)
+		* store("filename"): to save the data to file (binary) format)
 	* For Networks:
 		* train(epochs): to train networks
 		* save(fname): to save the network parameters to file
