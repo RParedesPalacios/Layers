@@ -156,7 +156,7 @@ int main(int argc, char **argv) {
 	}
 	Layer *l2=LTable[i];
 
-	if (l1->lin==0) l1->din=n->Dtrain->dim;
+	//if (l1->lin==0) l1->din=n->Dtrain->dim;
 
 	fprintf(stderr,"New data %s from %s,%d->%s,%d\n",name,l1->name,l1->din,l2->name,l2->din);
 
@@ -164,7 +164,7 @@ int main(int argc, char **argv) {
 
 	n->fillData(DTable[Dc],l1,l2);
 
-	DTable[Dc]->Save(fname);
+	DTable[Dc]->SaveBin(fname);
       }
       else {
       sscanf(line,"Data %s 2 filename %s filetype %s\n",name,fname,ftype);
@@ -277,6 +277,7 @@ int main(int argc, char **argv) {
 	sprintf(lname,"%s:%s",innet,name);
 
 	LTable[Lc]=new FLayer(LTable[i],batch,lname);
+	NTable[Nc]->addLayer(LTable[i]);
 	NTable[Nc]->addLayer(LTable[Lc]);
 	Lc++;
       }

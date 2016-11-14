@@ -156,10 +156,11 @@ void Layer::load_param(FILE *fe)
     exit(1);
   }
   fsd=fscanf(fe,"%d\n",&ldin);
-  if (ldin!=din) {
+
+  /*if (ldin!=din) {
     fprintf(stderr,"Error loading layer  %s (din) %d -- %d\n",name,din,ldin);
     exit(1);
-  }
+    }*/
 
   fsd=fscanf(fe,"%d\n",&llin);
   if (llin!=lin) {

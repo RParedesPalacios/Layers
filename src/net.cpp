@@ -946,13 +946,14 @@ void Net::fillData(Data *D,Layer *l1,Layer *l2)
   testmode();
   Dtrain->preparebatch(0);
   for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
-    fprintf(stderr,"%d of %d batches\r",i,Dtrain->num/Dtrain->batch);
+    fprintf(stderr,"%d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
     resetLayers();
     getbatch(Dtrain);
     forward();
     // L1
-    if (l1->lin==0) Dtrain->fillData(D,i);
-    else l1->fillData(D,i);
+    //if (l1->lin==0) Dtrain->fillData(D,i);
+    //else l1->fillData(D,i);
+    l1->fillData(D,i);
     l2->fillTarget(D,i);
   
     Dtrain->next();

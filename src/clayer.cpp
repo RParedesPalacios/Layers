@@ -177,6 +177,8 @@ void CLayer::addparent(Layer *l)
 
     fprintf(stderr,"Creating Convol (%d@%dx%d) output %d@%dx%d\n",nk,kr,kc,outz,outr,outc);
 
+    din=outr*outc*outz;
+
     if ((outr<=0)||(outc<=0)||(outz<=0)||(nk<=0)||(kr<=0)||(kc<=0)) exit(1);
 
     K=(LMatrix **)malloc(nk*sizeof(LMatrix *));
@@ -1362,21 +1364,34 @@ void CLayer::load(FILE *fe)
 
 }
 
-void CLayer::filldata(Data *D,int p)
+void CLayer::fillData(Data *D,int p)
 {
   int i,j,r,c,k;
 
   for(i=0;i<batch;i++) {
     k=0;
-    for(i=0;i<outz;i++) {
+    for(j=0;j<outz;j++) {
       for(r=0;r<outr;r++) {
 	for(c=0;c<outc;c++,k++) 
-	  D->M((p*batch)+k,j)=N[i][j](r,c);
+	  D->M((p*batch)+i,k)=N[i][j](r,c);
       }
     }
   }
 }
 
+void CLayer::fillTarget(Data *D,int p)
+{
+  int i,j,k,r,c;
+
+  for(i=0;i<batch;i++)
+    k=0;
+    for(j=0;j<outz;j++) {
+      for(r=0;r<outr;r++) {
+	for(c=0;c<outc;c++,k++) 
+	  D->T((p*batch)+i,k)=N[i][j](r,c);
+      }
+    }
+}
 
 
 
@@ -1410,6 +1425,8 @@ ICLayer::ICLayer(Data *D,int batch,int z,int ir,int ic,int cr,int cc,char *name)
   outc=cc;
   nk=z;
   outz=z;
+
+  din=outr*outc*outz;
 
   if ((imr<outr)||(imc<outc)){
     fprintf(stderr,"Error input lower than out (%dx%d)<(%dx%d)\n",imr,imc,outr,outc);

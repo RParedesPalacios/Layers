@@ -270,7 +270,8 @@ class CLayer : public Layer {
   void ConvolB();
   void MaxPoolB();
   void printkernels(FILE *fe);
-  void filldata(Data *D,int p);
+  void fillData(Data *D,int p);
+  void fillTarget(Data *D,int p);
 
   void save(FILE *fe);
   void load(FILE *fe);
