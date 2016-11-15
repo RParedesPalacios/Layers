@@ -11,7 +11,7 @@
 
 ## Constants
 
-* There are three different constants to define (default values):
+* There are four different constants to define (default values):
 	* threads: number of threads for parallelization (4)	
 	* batch size: size of the batch for the network (100)	
 	* log: log file where some messages are saved (netparser.log)
