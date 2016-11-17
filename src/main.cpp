@@ -160,18 +160,18 @@ int main(int argc, char **argv) {
 
 	fprintf(stderr,"New data %s from %s,%d->%s,%d\n",name,l1->name,l1->din,l2->name,l2->din);
 
-	DTable[Dc]=new Data(n->Dtrain->num,l1->din,l2->din,batch,name);
+	DTable[Dc]=new Data(20*n->Dtrain->num,l1->din,l2->din,batch,name);
 
 	n->fillData(DTable[Dc],l1,l2);
 
 	DTable[Dc]->SaveBin(fname);
       }
       else {
-      sscanf(line,"Data %s 2 filename %s filetype %s\n",name,fname,ftype);
-      if (!strcmp(ftype,"ascii")) 
-	DTable[Dc]=new Data(fname, batch,name);
-      else 
-	DTable[Dc]=new Data(1,fname, batch,name);
+	sscanf(line,"Data %s 2 filename %s filetype %s\n",name,fname,ftype);
+	if (!strcmp(ftype,"ascii")) 
+	  DTable[Dc]=new Data(fname, batch,name);
+	else 
+	  DTable[Dc]=new Data(1,fname, batch,name);
       }
       Dc++;
     }
@@ -283,32 +283,33 @@ int main(int argc, char **argv) {
       }
       ////////////// FO //////////////
       else if (!strcmp(ltype,"FO")) {
-	sscanf(line,"layer %s FO %d criterion %s autoencoder %d\n",name,&val,crit,&ae);
+	sscanf(line,"layer %s FO %d criterion %s %s %d\n",name,&val,crit,cad,&ae);
 	sprintf(lname,"%s:%s",innet,name);
 
-	if (!strcmp(crit,"classification")) act=10;
-	else act=0;
-
-	if (val==2) {
-	  sscanf(line,"layer %s FO 2 criterion regression %s %s\n",name,net1,layer1);
-	  sprintf(cad,"%s:%s",net1,layer1);
-	  for(i=0;i<Lc;i++) {
-	    if (!strcmp(cad,LTable[i]->name)) break;
-	  }
-	  LTable[Lc]=new OFLayer((FLayer*)LTable[i],batch,lname);
+	if (!strcmp(crit,"classification")) {
+	  act=10;
+	  LTable[Lc]=new OFLayer(NTable[Nc]->Dtrain,batch,act,lname);
 	}
 	else {
-	  if (ae) 
-	    LTable[Lc]=new OFLayer(NTable[Nc]->Dtrain,batch,act,ae,lname);
-	  else 
-	    LTable[Lc]=new OFLayer(NTable[Nc]->Dtrain,batch,act,lname);
-	}	
-	 
+	  act=0;
+	  if (strcmp(cad,"autoencoder")) {
+	    sscanf(line,"layer %s FO 2 criterion regression %s %s\n",name,net1,layer1);
+	    sprintf(cad,"%s:%s",net1,layer1);
+	    for(i=0;i<Lc;i++) {
+	      if (!strcmp(cad,LTable[i]->name)) break;
+	    }
+	    LTable[Lc]=new OFLayer((FLayer*)LTable[i],batch,lname);
+	  }
+	  else {
+	    if (ae) 
+	      LTable[Lc]=new OFLayer(NTable[Nc]->Dtrain,batch,act,ae,lname);
+	    else 
+	      LTable[Lc]=new OFLayer(NTable[Nc]->Dtrain,batch,act,lname);
+	  }	
+	}
 	NTable[Nc]->addLayer(LTable[Lc]);
 	Lc++;
-
-	
-      
+            
       }
       //F
       else if (!strcmp(ltype,"F")) {
