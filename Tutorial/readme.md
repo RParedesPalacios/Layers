@@ -221,7 +221,7 @@ network N1 {
 ### Networks - Layers - FO
 
 * FO has a mandatory parameter _{classification,regression}_ that define the cost error: cross-entropy or mse respectively
-*  For regression, optionally, we can define an _autoencoder_, and also _autoencoder_ as a shotcut
+*  For regression, optionally, we can define an _autoencoder_, and also _autoencoder_ as a shortcut
 
 ~~~c
 network N1 {  
@@ -430,7 +430,7 @@ network N1 {
   C c2 [nk=64, kr=3, kc=3]
   MP p2 [sizer=2,sizec=2]
 
-  // FC reshape, numnodes is not requiered
+  // FC reshape, numnodes is not required
   F   f0 []
 
   // FC hidden
@@ -529,7 +529,7 @@ network N1 {
 		* div(x): To divide all the data by factor x
 		* mul(x): To multiply all the data by factor x
 		* sum(x): To sum all the data quantity x
-		* sub(x): To substract all the data quantity x
+		* sub(x): To subtract all the data quantity x
 		* maxmin(): To perform a max-min normalization 
 		* store("filename"): to save the data to file (binary) format)
 	* For Networks:
@@ -911,7 +911,7 @@ N2![N2](./figs/sharingN2.jp2)
 
 ### Training several networks
 
-Note that in the previous example, N1 and N2 could be trained with different data sets. For instance the supervised network (N2) can be trained with a small data set while the unsupervised (N1) can be trained with all the available data (with and without labels). In this scenario it could be more interesting to train both netwroks simultaneously, a few bathces each network. To this end we can use a commnand where we specify how many repetitions, iterations and batches per network and a list of networks:
+Note that in the previous example, N1 and N2 could be trained with different data sets. For instance the supervised network (N2) can be trained with a small data set while the unsupervised (N1) can be trained with all the available data (with and without labels). In this scenario it could be more interesting to train both networks simultaneously, a few batches each network. To this end we can use a command where we specify how many repetitions, iterations and batches per network and a list of networks:
 
 ~~~c
  train(30,10,5,N1,N2)
@@ -992,7 +992,7 @@ script {
 
 ~~~
 
-**Note** that there is a new dataset [tinytraining.bin](https://github.com/RParedesPalacios/Layers/blob/master/examples/MNIST/Other/tinytraining.bin) that has only 500 supervised samples. Network N2 use oly this samples for the supervised part while network N1 uses the complete data set, 60000 samples. See the networks:
+**Note** that there is a new dataset [tinytraining.bin](https://github.com/RParedesPalacios/Layers/blob/master/examples/MNIST/Other/tinytraining.bin) that has only 500 supervised samples. Network N2 use only this samples for the supervised part while network N1 uses the complete data set, 60000 samples. See the networks:
 
 N1![N1](./figs/sharingN1.jp2)
 N2![N2](./figs/simulN2.jp2)
