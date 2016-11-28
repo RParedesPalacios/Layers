@@ -578,28 +578,28 @@ void Net::save(FILE *fe)
   fclose(fe);
 }
 
-  void Net::load(FILE *fe)
-  {
-    int i;
-
-    fprintf(stderr,"Loading Network %s\n",name);
-
-    for(i=0;i<layers;i++) {
-      fts[i]->load(fe);
-    }
-    fclose(fe);
-
+void Net::load(FILE *fe)
+{
+  int i;
+  
+  fprintf(stderr,"Loading Network %s\n",name);
+  
+  for(i=0;i<layers;i++) {
+    fts[i]->load(fe);
   }
-
+  fclose(fe);
+  
+}
 
 
 void Net::copy(Layer *ld,Layer *ls)
 {
 
-  fprintf(stderr,"Copy %s --> %s\n",ls->name,ld->name);
 
   if ((ld->type==1)&&(ls->type==1))
     {
+      fprintf(stderr,"Copy %s --> %s\n",ls->name,ld->name);
+
       FLayer *fd,*fs;
 
       fd=(FLayer*)ld;
@@ -904,6 +904,7 @@ void Net::evaluate(Data *Dt)
   reseterrors();
 
   for(i=0;i<Dt->num/Dt->batch;i++) {
+    fprintf(stderr,"%d of %d batches\r",i+1,Dt->num/Dt->batch);
     resetLayers();
     getbatch(Dt);
     forward();
@@ -938,28 +939,31 @@ void Net::evaluate(Data *Dt)
 
 void Net::fillData(Data *D,Layer *l1,Layer *l2)
 {
-  int i;
+  int i,it,k;
 
 
   fprintf(stderr,"Forward to Data %s,%d -> %s,%d\n",l1->name,l1->din,l2->name,l2->din);
 
-  testmode();
-  Dtrain->preparebatch(0);
-  for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
-    fprintf(stderr,"%d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
-    resetLayers();
-    getbatch(Dtrain);
-    forward();
-    // L1
-    //if (l1->lin==0) Dtrain->fillData(D,i);
-    //else l1->fillData(D,i);
-    l1->fillData(D,i);
-    l2->fillTarget(D,i);
-  
-    Dtrain->next();
+  //testmode();
+  trainmode();
+  k=0;
+  for(it=0;it<20;it++) {
+    Dtrain->preparebatch(0);
+    for(i=0;i<Dtrain->num/Dtrain->batch;i++,k++) {
+      fprintf(stderr,"%d of %d batches\r",k+1,20*(Dtrain->num/Dtrain->batch));
+      resetLayers();
+      getbatch(Dtrain);
+      forward();
+      // L1
+      //if (l1->lin==0) Dtrain->fillData(D,i);
+      //else l1->fillData(D,i);
+      l1->fillData(D,k);
+      l2->fillTarget(D,k);
+      
+      Dtrain->next();
+    }
+    fprintf(stderr,"\n");
   }
-  fprintf(stderr,"\n");
-
 }
 
 void Net::testOut(FILE *fs)
@@ -971,6 +975,7 @@ void Net::testOut(FILE *fs)
     testmode();
     Dtest->preparebatch(0);
     for(i=0;i<Dtest->num/Dtest->batch;i++) {
+      fprintf(stderr,"%d of %d batches\r",i+1,Dtest->num/Dtest->batch);
       /////
       resetLayers();
       /////
@@ -1000,14 +1005,17 @@ void Net::testOut(FILE *fs)
 void Net::trainbatch(int b,int epoch)
 {
   int i,d;
-  int adv=0;
+  int adv=0,bn;
 
   fprintf(stderr,"Epoch %d: training %s %d batches\r",epoch+1,name,b);
 
-  setvalues();
+  //setvalues();
 
   for(i=0;i<layers;i++) 
     if (lvec[i]->adv) adv=1;
+
+  for(i=0;i<layers;i++) 
+    if (lvec[i]->bn) bn=1;
 
   trainmode();
   if (bn) resetstats();
@@ -1052,5 +1060,7 @@ void Net::trainbatch(int b,int epoch)
   
   decmu(decay);
 }
+
+
 
 

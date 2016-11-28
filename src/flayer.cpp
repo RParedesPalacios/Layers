@@ -455,6 +455,8 @@ void FLayer::load(FILE *fe)
   double fv;
   int fsd;
 
+  fprintf(stderr,"Loading layer %s...",name);
+
   load_param(fe);
 
   for(k=0;k<lout;k++) {
@@ -484,7 +486,7 @@ void FLayer::load(FILE *fe)
     }
     fsd=fscanf(fe,"%d\n",&bnc);
   }
-
+  fprintf(stderr,"ok\n");
 }
 
 
