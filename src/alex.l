@@ -26,7 +26,7 @@ nentero		{digito}+
 nreal		({digito}+"."{digito}*)|({digito}*"."{digito}+)
 constante       {nentero}|{nreal}
 identificador	{letra}({letra}|{digito})*
-namefile        \"([^\0 ])+\"
+namefile        \"([^(\0\") ])+\"
 
 %%	
 {delimitador}   { if (verbosity) ECHO;}
@@ -144,9 +144,9 @@ char *createName()
 /*****************************************************************************/
 char *createLiteral()
 { char *t; int i;
-  t = (char *)malloc(yyleng+1); 
+  t = (char *)malloc(yyleng-1); 
   for (i = 0; (i < yyleng-2); i++) t[i] = yytext[i+1];
-  t[yyleng] = '\0';
+  t[yyleng-2] = '\0';
   return t;
 }
 /*****************************************************************************/
