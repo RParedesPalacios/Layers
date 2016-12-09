@@ -33,7 +33,8 @@ int main(int argc, char **argv) {
   }
 
   // Call new parser
-  netparser(argv[1]);
+  if (argc==2) 
+    netparser(argv[1]);
 
   lut_init();
 
@@ -84,7 +85,11 @@ int main(int argc, char **argv) {
 
 
   // Read netparser.run
-  fin=fopen("netparser.run","rt");
+  if (argc==2) 
+    fin=fopen("netparser.run","rt");
+  else 
+    fin=fopen(argv[2],"rt");
+
   if (fin==NULL) {
     fprintf(stderr,"Error netparser.run not found!!!\n");
     exit(1);
