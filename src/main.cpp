@@ -298,12 +298,18 @@ int main(int argc, char **argv) {
 	else {
 	  act=0;
 	  if (strcmp(cad,"autoencoder")) {
-	    sscanf(line,"layer %s FO 2 criterion regression %s %s\n",name,net1,layer1);
-	    sprintf(cad,"%s:%s",net1,layer1);
-	    for(i=0;i<Lc;i++) {
-	      if (!strcmp(cad,LTable[i]->name)) break;
+	    if (val==2) {
+	      sscanf(line,"layer %s FO 2 criterion regression %s %s\n",name,net1,layer1);
+	      sprintf(cad,"%s:%s",net1,layer1);
+	      fprintf(stderr,"Target %s.%s\n",net1,layer1);
+	      for(i=0;i<Lc;i++) {
+		if (!strcmp(cad,LTable[i]->name)) break;
+	      }
+	      LTable[Lc]=new OFLayer((FLayer*)LTable[i],batch,lname);
 	    }
-	    LTable[Lc]=new OFLayer((FLayer*)LTable[i],batch,lname);
+	    else {
+	      LTable[Lc]=new OFLayer(NTable[Nc]->Dtrain,batch,act,lname);
+	    }
 	  }
 	  else {
 	    if (ae) 
