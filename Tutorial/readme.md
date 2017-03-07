@@ -604,6 +604,7 @@ script {
 	* shift: to shift randomly input images [0]
 	* balance: for balancing data classes [0]
 	* cropmode: is a **network** parameter {0,1}. When a convolutional input performs random crops, with this parameter we indicate that all the crops must be used in the evaluation. It leads to a slower evaluation but with a better performance. If cropmode is not active (0, default) then only the central crop is evaluated
+	* lambda: is a **layer** parameter [1.0]. It is a factor which scales the cost function. This means it only affects an output layer. It could be used to ponderate the importance of several costs in semi-supervised task or to scale the cost function such that early updates in the network (which probabily suffer from big sumations) do not saturate. This secondary use is more intented to be taken in consideration for **GPU** computation. 
 	
 	
 * Parameters can be modified for one particular layer or data:
