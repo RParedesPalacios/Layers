@@ -26,7 +26,7 @@ CXX = g++
 
 # FOR LINUX
 LIBFLAGS = -lpthread -lm -lfl
-CXXFLAGS = -fopenmp -I Eigen -O3
+CXXFLAGS = -mavx -fopenmp -I Eigen -O3
 
 # FOR MAC:
 #CXXFLAGS = -I . -O3
