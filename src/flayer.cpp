@@ -510,7 +510,7 @@ void FLayer::fillData(Data *D,int p)
 
   for(i=0;i<batch;i++)
     for(j=0;j<din;j++)
-      D->M((p*batch)+i,j)=N(i,j);
+      D->M(((p*batch)+i)%D->num,j)=N(i,j);
 
 }
 void FLayer::fillTarget(Data *D,int p)
@@ -519,7 +519,7 @@ void FLayer::fillTarget(Data *D,int p)
 
   for(i=0;i<batch;i++)
     for(j=0;j<din;j++)
-      D->T((p*batch)+i,j)=N(i,j);
+      D->T(((p*batch)+i)%D->num,j)=N(i,j);
 }
 
 

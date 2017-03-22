@@ -958,6 +958,16 @@ void Net::fillData(Data *D,Layer *l1,Layer *l2)
     l2->fillTarget(D,i);
     Dtrain->next();
   }
+  // last samples not complete batch
+
+  if (Dtrain->num%Dtrain->batch) {
+    resetLayers();
+    getbatch(Dtrain);
+    forward();
+    l1->fillData(D,i);
+    l2->fillTarget(D,i);
+    Dtrain->next();
+  }
   fprintf(stderr,"\n");
 }
 
