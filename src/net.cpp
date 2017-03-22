@@ -789,6 +789,9 @@ void Net::printOut(Data *Dt,FILE *fs,int n)
       o=(OFLayer *)out[i];
       for(j=0;j<o->din;j++)
 	fprintf(fs,"%f ",o->N(b,j));
+      for(j=0;j<o->din;j++)
+	fprintf(fs,"%f ",o->T(b,j));
+
     }
     fprintf(fs,"\n");
   }
@@ -944,26 +947,18 @@ void Net::fillData(Data *D,Layer *l1,Layer *l2)
 
   fprintf(stderr,"Forward to Data %s,%d -> %s,%d\n",l1->name,l1->din,l2->name,l2->din);
 
-  //testmode();
-  trainmode();
-  k=0;
-  for(it=0;it<20;it++) {
-    Dtrain->preparebatch(0);
-    for(i=0;i<Dtrain->num/Dtrain->batch;i++,k++) {
-      fprintf(stderr,"%d of %d batches\r",k+1,20*(Dtrain->num/Dtrain->batch));
-      resetLayers();
-      getbatch(Dtrain);
-      forward();
-      // L1
-      //if (l1->lin==0) Dtrain->fillData(D,i);
-      //else l1->fillData(D,i);
-      l1->fillData(D,k);
-      l2->fillTarget(D,k);
-      
-      Dtrain->next();
-    }
-    fprintf(stderr,"\n");
+  testmode();
+  Dtrain->preparebatch(0);
+  for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
+    fprintf(stderr,"%d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
+    resetLayers();
+    getbatch(Dtrain);
+    forward();
+    l1->fillData(D,i);
+    l2->fillTarget(D,i);
+    Dtrain->next();
   }
+  fprintf(stderr,"\n");
 }
 
 void Net::testOut(FILE *fs)
@@ -983,6 +978,8 @@ void Net::testOut(FILE *fs)
       /////
       forward();
       /////
+      calcerr(Dtest); // to update Targets needed in printOut
+      ////
       printOut(Dtest,fs,Dtest->batch);
       /////
       Dtest->next();

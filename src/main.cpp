@@ -141,9 +141,10 @@ int main(int argc, char **argv) {
     ///////////////////////////
     else if (!strcmp(cad,"Data")) {
       //Data D4 2 creadata N0 k0 N0 k4 filename ./lola.tr
+      char ftype[100];
       sscanf(line,"Data %s %d %s\n",name,&iv,cad);
       if (!strcmp(cad,"creadata")) {
-	sscanf(line,"Data %s 2 creadata %s %s %s %s filename %s\n",name,net1,layer1,net2,layer2,fname);
+	sscanf(line,"Data %s 3 creadata %s %s %s %s filename %s filetype %s\n",name,net1,layer1,net2,layer2,fname,ftype);
 	
 	for(i=0;i<Nc;i++)
 	  if (!strcmp(NTable[i]->name,net1)) break;
@@ -163,13 +164,15 @@ int main(int argc, char **argv) {
 
 	//if (l1->lin==0) l1->din=n->Dtrain->dim;
 
-	fprintf(stderr,"New data %s from %s,%d->%s,%d\n",name,l1->name,l1->din,l2->name,l2->din);
+	fprintf(stderr,"New data %s from %s(%d)->%s(%d)\n",name,l1->name,l1->din,l2->name,l2->din);
 
-	DTable[Dc]=new Data(20*n->Dtrain->num,l1->din,l2->din,batch,name);
+	DTable[Dc]=new Data(n->Dtrain->num,l1->din,l2->din,batch,name);
 
 	n->fillData(DTable[Dc],l1,l2);
+	fprintf(stderr,"Saving %s\n",DTable[Dc]->name);
+	if (!strcmp(ftype,"binary")) DTable[Dc]->SaveBin(fname);
+	else DTable[Dc]->Save(fname);
 
-	DTable[Dc]->SaveBin(fname);
       }
       else {
 	sscanf(line,"Data %s 2 filename %s filetype %s\n",name,fname,ftype);

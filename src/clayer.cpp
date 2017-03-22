@@ -532,7 +532,7 @@ void CLayer::fBN()
 	  for(r=0;r<outr;r++)
 	    for(c=0;c<outc;c++)
 	      if (noiser>=un[(cn++)%GLUT]) 
-		E[b][i](r,c)+=noisesd*gn[(cn++)%GLUT];
+		bn_E[b][i](r,c)+=noisesd*gn[(cn++)%GLUT];
       }
 
       for(b=0;b<batch;b++)

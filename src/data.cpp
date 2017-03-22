@@ -527,6 +527,8 @@ void Data::preparebatch(int code)
   head=0;
 
   if (code==1) shuffle();
+  else for(int i=0;i<num;i++) idx[i]=i;
+
 
 }
 void Data::next()
