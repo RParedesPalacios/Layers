@@ -200,7 +200,7 @@ class OFLayer : public FLayer {
 
   void backward();
   void modbatch(int b);
-  double get_err(Data *Dt);
+  double get_err(Data *Dt,int b);
   double get_err(Data *Dt,int s,int cs);
 };
 

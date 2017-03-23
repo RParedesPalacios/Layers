@@ -763,7 +763,7 @@ void Net::calcerr(Data *Dt)
 
   for(i=0;i<olayers;i++) {
     o=(OFLayer *)out[i];
-    o->get_err(Dt);
+    o->get_err(Dt,Dt->batch);
   }
 }
 
@@ -774,7 +774,7 @@ void Net::calcerr(Data *Dt,int s)
 
   for(i=0;i<olayers;i++) {
     o=(OFLayer *)out[i];
-    o->get_err(Dt,s,crops);
+    o->get_err(Dt,s);
   }
 }
 
@@ -914,28 +914,13 @@ void Net::evaluate(Data *Dt)
     calcerr(Dt);
     Dt->next();
   }
-
-  printerrors(Dt);
-
-  
-  //////////////////////////////
-  if (cropmode) {
-    testmode();
-    Dt->preparebatch(0);
-    reseterrors();
-    for(i=0;i<Dt->num;i++) {
-      fprintf(stderr,"Evaluate in cropmode (%d) %d of %d ",crops,i,Dt->num);
-      resetLayers();
-      getbatch(Dt,i);
-      forward();
-      calcerr(Dt,i);
-    }
-    fprintf(stderr,"\n");
-
-    printerrors(Dt);
-
-    
+  if (i<Dtest->num) {
+    resetLayers();
+    getbatch(Dt);
+    forward();
+    calcerr(Dt,Dt->num%Dt->batch);    
   }
+  printerrors(Dt);
 
   
 }
@@ -959,7 +944,6 @@ void Net::fillData(Data *D,Layer *l1,Layer *l2)
     Dtrain->next();
   }
   // last samples not complete batch
-
   if (Dtrain->num%Dtrain->batch) {
     resetLayers();
     getbatch(Dtrain);
@@ -995,10 +979,12 @@ void Net::testOut(FILE *fs)
       Dtest->next();
     }
     // last batch
-    resetLayers();
-    getbatch(Dtest);
-    forward();
-    printOut(Dtest,fs,(Dtest->num)%Dtest->batch);
+    if (i<Dtest->num) {
+      resetLayers();
+      getbatch(Dtest);
+      forward();
+      printOut(Dtest,fs,(Dtest->num)%Dtest->batch);
+    }
   }
 
   fclose(fs);

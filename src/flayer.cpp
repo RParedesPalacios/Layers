@@ -957,7 +957,7 @@ double OFLayer::get_err(Data *Dt,int s,int cs)
 }
 
 
-double OFLayer::get_err(Data *Dt)
+double OFLayer::get_err(Data *Dt,int b)
 {
   int i,j,k,p;
   int rindex;
@@ -966,23 +966,23 @@ double OFLayer::get_err(Data *Dt)
 
 
   if (lt) {
-    for(i=0;i<batch;i++)
+    for(i=0;i<b;i++)
       for(j=0;j<din;j++)
 	T(i,j)=((FLayer*)target)->N(i,j);
   }
   else {
     if (ae)
-      for(i=0;i<batch;i++)
+      for(i=0;i<b;i++)
 	for(j=0;j<din;j++)
 	  T(i,j)=Dt->M(Dt->getpos(i),j);
     else
-      for(i=0;i<batch;i++)
+      for(i=0;i<b;i++)
 	for(j=0;j<din;j++)
 	  T(i,j)=Dt->T(Dt->getpos(i),j);
   }
 
   if (act==10) {
-    for(i=0;i<batch;i++) {
+    for(i=0;i<b;i++) {
       T.row(i).maxCoeff(&rindex);
       N.row(i).maxCoeff(&nindex);
       if (rindex!=nindex) cerr++;
@@ -993,14 +993,14 @@ double OFLayer::get_err(Data *Dt)
     }
   }
   else{
-    for(i=0;i<batch;i++)
+    for(i=0;i<b;i++)
       for(j=0;j<din;j++)
 	mse+=(T(i,j)-N(i,j))*(T(i,j)-N(i,j))/din;
 
-    for(i=0;i<batch;i++)
+    for(i=0;i<b;i++)
       rmse+=sqrt(((T.row(i)-N.row(i)).squaredNorm())/din);
 
-    for(i=0;i<batch;i++)
+    for(i=0;i<b;i++)
       for(j=0;j<din;j++)
 	mae+=fabs(T(i,j)-N(i,j))/din;
   }
