@@ -914,7 +914,7 @@ void Net::evaluate(Data *Dt)
     calcerr(Dt);
     Dt->next();
   }
-  if (i<Dtest->num) {
+  if (i<Dt->num) {
     resetLayers();
     getbatch(Dt);
     forward();
