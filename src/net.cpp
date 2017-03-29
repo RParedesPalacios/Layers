@@ -915,6 +915,7 @@ void Net::evaluate(Data *Dt)
     Dt->next();
   }
   if (i<Dt->num) {
+    fprintf(stderr,"...\n");
     resetLayers();
     getbatch(Dt);
     forward();
@@ -924,6 +925,38 @@ void Net::evaluate(Data *Dt)
 
   
 }
+void Net::testOut(FILE *fs)
+{
+  int i,j;
+
+  if (Dtest!=NULL) {
+    fprintf(stderr,"writting test output\n");
+    testmode();
+    Dtest->preparebatch(0);
+    for(i=0;i<Dtest->num/Dtest->batch;i++) {
+      fprintf(stderr,"%d of %d batches\r",i+1,Dtest->num/Dtest->batch);
+      resetLayers();
+      getbatch(Dtest);
+      forward();
+      calcerr(Dtest); // to update Targets needed in printOut
+      printOut(Dtest,fs,Dtest->batch);
+      Dtest->next();
+    }
+    // last batch
+    if (i<Dtest->num) {
+      fprintf(stderr,"...\n");
+      resetLayers();
+      getbatch(Dtest);
+      forward();
+      calcerr(Dtest,Dtest->num%Dtest->batch);    
+      printOut(Dtest,fs,Dtest->num%Dtest->batch);
+    }
+  }
+
+  fclose(fs);
+
+}
+
 
 void Net::fillData(Data *D,Layer *l1,Layer *l2)
 {
@@ -953,42 +986,6 @@ void Net::fillData(Data *D,Layer *l1,Layer *l2)
     Dtrain->next();
   }
   fprintf(stderr,"\n");
-}
-
-void Net::testOut(FILE *fs)
-{
-  int i,j;
-
-  if (Dtest!=NULL) {
-    fprintf(stderr,"writting test output\n");
-    testmode();
-    Dtest->preparebatch(0);
-    for(i=0;i<Dtest->num/Dtest->batch;i++) {
-      fprintf(stderr,"%d of %d batches\r",i+1,Dtest->num/Dtest->batch);
-      /////
-      resetLayers();
-      /////
-      getbatch(Dtest);
-      /////
-      forward();
-      /////
-      calcerr(Dtest); // to update Targets needed in printOut
-      ////
-      printOut(Dtest,fs,Dtest->batch);
-      /////
-      Dtest->next();
-    }
-    // last batch
-    if (i<Dtest->num) {
-      resetLayers();
-      getbatch(Dtest);
-      forward();
-      printOut(Dtest,fs,(Dtest->num)%Dtest->batch);
-    }
-  }
-
-  fclose(fs);
-
 }
 
 
