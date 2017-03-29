@@ -914,7 +914,7 @@ void Net::evaluate(Data *Dt)
     calcerr(Dt);
     Dt->next();
   }
-  if (i<Dt->num) {
+  if (Dt->num%Dt->batch) {
     fprintf(stderr,"...\n");
     resetLayers();
     getbatch(Dt);
@@ -943,7 +943,7 @@ void Net::testOut(FILE *fs)
       Dtest->next();
     }
     // last batch
-    if (i<Dtest->num) {
+    if (Dtest->num%Dtest->batch) {
       fprintf(stderr,"...\n");
       resetLayers();
       getbatch(Dtest);

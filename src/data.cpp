@@ -154,7 +154,10 @@ void Data::Save(char *fname)
   int i,j;
 
   fs=fopen(fname,"wt");
-
+  if (fs==NULL) {
+    fprintf(stderr,"Can not create file %s\n",fname);
+    exit(1);
+  }
 
   fprintf(fs,"%d %d %d\n",num,dim,out);
 
@@ -179,6 +182,10 @@ void Data::SaveBin(char *fname)
   float fv;
 
   fs=fopen(fname,"wb");
+  if (fs==NULL) {
+    fprintf(stderr,"Can not create file %s\n",fname);
+    exit(1);
+  }
 
   fprintf(stderr,"writting bin file\n");
 
@@ -524,10 +531,9 @@ void Data::next()
 {
   int c;
 
-  if (head>=num) {
+  head+=batch;
+  if (head>=num) 
     head=0;
-  }
-  else head+=batch;
 }
 
 int Data::gethead()

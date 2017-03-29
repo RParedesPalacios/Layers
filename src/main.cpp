@@ -122,6 +122,10 @@ int main(int argc, char **argv) {
 	sscanf(line,"Const %s %s\n",cad,logname);
 	fprintf(stderr,"setting logfile %s\n",logname);
 	flog=fopen(logname,"wt");
+	if (flog==NULL) {
+          fprintf(stderr,"Can not create file %s\n",logname);
+          exit(1);
+        }
 	fprintf(flog,"Start\n");
       }
       if (!strcmp(cad,"seeds")) {
@@ -448,7 +452,7 @@ int main(int argc, char **argv) {
         for(i=0;i<Dc;i++)
           if (!strcmp(DTable[i]->name,cad)) break;
         d=DTable[i];
-
+	
         d->SaveBin(cad2);
       }
 
@@ -556,6 +560,10 @@ int main(int argc, char **argv) {
 	for(i=0;i<Nc;i++) 
 	  if (!strcmp(NTable[i]->name,cad)) break;
 	FILE *fe=fopen(cad2,"wt");
+	if (fe==NULL) {
+          fprintf(stderr,"Can not create file %s\n",cad2);
+          exit(1);
+        }
 	NTable[i]->save(fe);
       }
       else if (!strcmp(com,"load")) {
@@ -563,6 +571,11 @@ int main(int argc, char **argv) {
 	for(i=0;i<Nc;i++) 
 	  if (!strcmp(NTable[i]->name,cad)) break;
 	FILE *fe=fopen(cad2,"rt");
+	if (fe==NULL) {
+          fprintf(stderr,"Can not find file %s\n",cad2);
+          exit(1);
+        }
+
 	NTable[i]->load(fe);
       }
       else if (!strcmp(com,"testout")) {
@@ -570,6 +583,10 @@ int main(int argc, char **argv) {
 	for(i=0;i<Nc;i++) 
 	  if (!strcmp(NTable[i]->name,cad)) break;
 	FILE *fe=fopen(cad2,"wt");
+	if (fe==NULL) {
+	  fprintf(stderr,"Can not create file %s\n",cad2);
+	  exit(1);
+	}
 	NTable[i]->testOut(fe);
       }
       else if (!strcmp(com,"evaluate")) {
@@ -596,6 +613,10 @@ int main(int argc, char **argv) {
 	  fprintf(stderr,"printkernels %s\n",l->name);
 
 	  FILE *fe=fopen(cad3,"wt");
+	  if (fe==NULL) {
+	    fprintf(stderr,"Can not create file %s\n",cad3);
+	    exit(1);
+	  }
 	  l->printkernels(fe);
 	}
       }
