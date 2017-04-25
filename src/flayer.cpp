@@ -351,13 +351,16 @@ void FLayer::forward()
   }  
   else {
     // Gaussian Noise
-    if (trmode) 
+    if (trmode) {
+      int cn=rand()%GLUT;
       if (noiser>0.0) {
 	for(int i=0;i<batch;i++)
 	  for(int j=0;j<din;j++)
 	    if (uniform()<noiser)
-	      E(i,j)+=gauss(0.0,noisesd);
+	      //E(i,j)+=gauss(0.0,noisesd);
+	      E(i,j)+=noisesd*gn[(cn++)%GLUT];
       }
+    }
   }
   
 
