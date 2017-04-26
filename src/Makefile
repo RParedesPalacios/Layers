@@ -29,16 +29,16 @@ CXX = g++
 ############################
 
 ## REGULAR
-#LIBFLAGS = -lm -lfl
-#CXXFLAGS = -fopenmp -I Eigen -O3
+LIBFLAGS = -lm -lfl
+CXXFLAGS = -fopenmp -I Eigen -O3
 
 ## SIMD instructions SSE2 ENABLED
 #LIBFLAGS = -lm -lfl 
 #CXXFLAGS = -fopenmp -I Eigen -march=native -msse2 -O3
 
 ## SIMD instructions AVX ENABLED
-LIBFLAGS = -lm -lfl 
-CXXFLAGS = -fopenmp -I Eigen -march=native -mavx -O3
+#LIBFLAGS = -lm -lfl 
+#CXXFLAGS = -fopenmp -I Eigen -march=native -mavx -O3
 
 ## DEBUGING
 #LIBFLAGS = -lm -lfl
