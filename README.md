@@ -33,7 +33,7 @@ see some examples of net files in the [examples](https://github.com/RParedesPala
 
 * Layers core is written by [**Roberto Paredes**](http://users.dsic.upv.es/~rparedes/)
 * The parser is written by [**Jose Miguel Benedí**](http://users.dsic.upv.es/~jbenedi/)
-* The GPU port is written by [**Juan Maroñas**] (http://github.com/jmaronas)
+* The GPU port is written by [**Juan Maroñas**](http://github.com/jmaronas)
 
 
 [Installation instructions](https://github.com/RParedesPalacios/Layers/blob/master/src/readme.md)
