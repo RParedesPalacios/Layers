@@ -4,17 +4,25 @@
 #include <typeinfo>
 #include <iostream>
 #include <cstdlib>
-#include <pthread.h>
+
 
 #include "utils.h"
+#ifdef MKL 
+#define EIGEN_USE_MKL_ALL
+#endif
 #include "Eigen/Dense"
 
 #define PI 3.1415926
 
-double gn[LUT];
 
 using namespace Eigen;
 using namespace std;
+
+//////////////////////////////
+////// RANDOM GENERATORS
+double gn[LUT];
+double un[LUT];
+
 double uniform() {
   return ((rand()%10000)/10000.0);
 
@@ -39,30 +47,25 @@ double gaussgen() {
   return x;
 }
 
+double gauss(double mean,double sd) 
+{
+  int i;  
+  return (gaussgen()*sd)+mean;
+}
 void lut_init()
 {
   int i;
 
-  //fprintf(stderr,"Initializing gaussian noise LUT\n");
-  for(i=0;i<LUT;i++)
+  for(int i=0;i<LUT;i++)
     gn[i]=gaussgen();
 
+  for(int i=0;i<LUT;i++)
+    un[i]=uniform();
 }
+///////////////////////////////////
 
-
-
-double gauss(double mean,double sd) {
-
-  int i;
-
-  i=rand()%LUT;
-
-  return (gn[i]*sd)+mean;
-
-}
-
-
-
+//////////////////////////////////
+///// ACTIVATION FUNCTIONS
 double sigm(double x)
 {
   if (x<-100) return 0;
@@ -71,36 +74,12 @@ double sigm(double x)
   return 1/(1+exp(-x));
 
 }
-
 double dsigm(double x)
 {
   double s=sigm(x);
 
   return s*(1-s);
 
-}
-
-void Drop(LMatrix &M,double drop)
-{
-  for(int i=0;i<M.rows();i++)
-    for(int j=0;j<M.cols();j++)
-      if (uniform()<drop) M(i,j)=0;
-      else M(i,j)=1;
-
-}
-
-void NoiseG(LMatrix &E,double noiser,double noisesd)
-{
-  if (noiser==1.0) {
-    for(int i=0;i<E.rows();i++)
-      for(int j=0;j<E.cols();j++)
-	E(i,j)+=gauss(0.0,noisesd);
-  }
-  else {
-    for(int i=0;i<E.rows();i++)
-      for(int j=0;j<E.cols();j++)
-	if (uniform()<noiser) E(i,j)+=gauss(0.0,noisesd);
-  }
 }
 
 void ReLu(LMatrix E,LMatrix& N)
@@ -112,14 +91,13 @@ void ReLu(LMatrix E,LMatrix& N)
 
 
 }
-
 void ELU(LMatrix E,LMatrix& N,double alfa)
 {
   int i,j;
 
   for(int i=0;i<E.rows();i++)
     for(int j=0;j<E.cols();j++)
-      if (E(i,j)<=0)  N(i,j)=alfa*(exp(E(i,j)-1));
+      if (E(i,j)<=0) N(i,j)=alfa*(exp(E(i,j)-1));
       else N(i,j)=E(i,j);
 
 }
@@ -132,7 +110,6 @@ void Sigmoid(LMatrix E,LMatrix &N)
       N(i,j)=sigm(E(i,j));
 
 }
-
 void Softmax(LMatrix E,LMatrix &N)
 {
   int i,j;

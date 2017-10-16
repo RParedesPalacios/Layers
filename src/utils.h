@@ -1,15 +1,19 @@
 #ifndef _UTILS_
 #define _UTILS_
 
-#define LUT 100000
-
-#include "Eigen/Dense"
 #include "types.h"
 
+#ifdef MKL 
+#define EIGEN_USE_MKL_ALL
+#endif
+#include "Eigen/Dense"
+
+#define VERBOSE 0
+
+#define LUT 100000
 
 using namespace Eigen;
 using namespace std;
-
 
 void lut_init();
 void NoiseG(LMatrix &E,double noiser,double noisesd);

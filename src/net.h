@@ -12,8 +12,9 @@ class Net {
   Data *Dtrain;
   Data *Dtest;
   Data *Dval;
-  FILE *flog;
 
+  FILE *flog;
+  
   Layer *out[MAX_LAYERS];
   Layer *in[MAX_LAYERS];
   double err[MAX_LAYERS];
@@ -29,6 +30,9 @@ class Net {
   int init;
   int cropmode;
   int crops;
+  int batch;
+  int bproc;
+  int berr;
 
   double mu;
   double decay;
@@ -36,16 +40,16 @@ class Net {
   double ftime;
   double btime;
 
-  Net(char *name);
+  Net(char *name,int b);
 
   void addLayer(Layer *l);
 
+  void preparebatch(Data *Dt,int code);
   void getbatch();
-  void getbatch(Data *Dt);
-  void getbatch(Data *Dt,int s);
   void next();
+  int calcbatch(Data *Dt);
+
   void initialize();
-  void preparebatch(int code);
   void evaluate(Data *dt);
 
   void resetLayers();
@@ -62,16 +66,20 @@ class Net {
   void copy(Layer *ld,Layer *ls);
   void setvalues();
   void train(int epochs);
-  void trainbatch(int b,int e);
-  void testOut(FILE *fs);
-  void fillData(Data *D,Layer *l1,Layer *l2);
-  void printOut(Data *Dt,FILE *fs,int n);
+  void testOut(FILE *fs); 
+  void printOut(FILE *fs,int n);
   void preparetrainbatch();
-  void calcerr(Data *Dt);
-  void calcerr(Data *Dt,int s);
-  void printerrors(Data *Dt);
-  void printerrors(Data *Dt,int num);
-  
+  void calcerr(int n);
+  void printerrors(int n);
+
+  void doforward();
+  void docounterr();
+  void dobackward();
+  void doresetstats();
+  void doupdate();
+  void doprinterrors();
+  void doreseterrors();
+
   void reseterrors();
   void Init(FILE *flog);
 
@@ -96,9 +104,6 @@ class Net {
   void setnoiseb(double n);
   void setdecay(double f);
   void setlambda(double f);
-  void setadv(int i);
-  void setadvf(double m);
-  void setaddelta(int i);
 
   int isIn(Layer *l);
 

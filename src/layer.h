@@ -1,9 +1,15 @@
 #include "data.h"
+
+#ifdef MKL 
+#define EIGEN_USE_MKL_ALL
+#endif
+
 #include "Eigen/Dense"
 #include "types.h"
+#include "tensor.h"
 
 #define MAX_CONNECT 100
-#define GLUT 100000
+#define MAX_DATA 100
 
 using namespace Eigen;
 using namespace std;
@@ -14,6 +20,8 @@ class Layer {
  public:
   char name[1000];
   int type;
+
+  Tensor *N,*Delta;
 
   int din;
   int lin;
@@ -29,9 +37,7 @@ class Layer {
   double noiser;
   double noiseb;
   double noisesd;
-  double *gn;
-  double *un;
-
+   
   int optim;
   int trmode;
   int dev_done;
@@ -39,22 +45,17 @@ class Layer {
   int opt;
   int reshape;
 
-  int nobias;
   int bn;
   int init;
   int out;
   double lambda;
-  int adv,adelta;
-  double advf;
-  
 
   int shift,flip;
   double brightness,contrast;
 
-  int lt;
-
   Data *D;
-  Layer *target;
+  Layer *L;
+
   Layer **Lin;
   Layer **Lout;
   Net *rnet;
@@ -83,8 +84,6 @@ class Layer {
   void setlambda(double l);
   void setthreads(int t);
   void setoptim(int i);
-  void setadv(int i);
-  void setadvf(double m);
 
   void save_param(FILE *fe);
   void load_param(FILE *fe);
@@ -102,11 +101,8 @@ class Layer {
   virtual void reset(){}
   virtual void resetmomentum(){}
   virtual void resetstats(){}
-  virtual void getbatch(Data *Dt){}
-  virtual void getbatch(Data *Dt,int s){}
-  virtual void fillData(Data *D,int p) {}
-  virtual void fillTarget(Data *D,int p){}
-
+  virtual void getbatch(){}
+  virtual void next(){}
 };
 
 
@@ -115,39 +111,18 @@ class FLayer : public Layer {
 
   FLayer();
   FLayer(int in,int batch,char *name);
+  FLayer(int batch,char *name);
   FLayer(Layer *In,int batch,char *name);
-
-  LMatrix *W;
-  LMatrix *gW;
-  LMatrix *pgW;
-
-  LRVector *b;
-  LRVector *gb;
-  LRVector *pgb;
-  LRVector dvec;
-
-  LMatrix N;
-  LMatrix E;
-  LMatrix T;
-  LMatrix dE;
-  LMatrix Delta;
-
-  //BN
-  LVector bn_mean;
-  LVector bn_var;
-  LVector bn_gmean;
-  LVector bn_gvar;
-  LVector bn_g;
-  LVector bn_b;
-  LMatrix bn_E;
-  LMatrix BNE;
+  
+  // Params
+  Tensor *W,*gW,*pgW,*b,*gb,*pgb,*dvec;
+  // Activations and deltas
+  Tensor *E,*T,*dE;
+  //Batch norm
   int bnc;
+  Tensor *bn_mean,*bn_var,*bn_gmean,*bn_gvar,*bn_g,*bn_b,*bn_E,*BNE;  
+  Tensor *gbn_mean,*gbn_var,*gbn_g,*gbn_b,*gbn_E;
 
-  LVector gbn_mean;
-  LVector gbn_var;
-  LVector gbn_g;
-  LVector gbn_b;
-  LMatrix gbn_E;
 
   void mem();
   void addchild(Layer *l);
@@ -162,46 +137,62 @@ class FLayer : public Layer {
   void resetstats();
   void resetmomentum();
 
-  void dactivation();
-
   void save(FILE *fe);
   void load(FILE *fe);
 
   void printkernels(FILE *fe);
-  void fillData(Data *D,int p);
-  void fillTarget(Data *D,int p);
+
 
 };
 
 class IFLayer : public FLayer {
  public:
+  int dc;
+  int itype[MAX_DATA];
 
-  IFLayer(Data *D,int b,char *name);
+  IFLayer(Data *D,FLayer *L,int b,char *name);
 
-  void getbatch(Data *Dt);
-  void getbatch(Data *Dt,int s);
-  void backward();
+  void getbatch();
+  void next();
   void addparent(Layer *l);
+  void backward();
+  void setsource(Data *newd);
+  void setsource(FLayer *newl);
 
 };
 
 
 class OFLayer : public FLayer {
  public:
-
-  int ae;
-  double landa;
   
-  double rmse,mse,mae,cerr,ent;
+  double landa;  
+  double rmse,mse,mae,cerr,ent,loss;
 
-  OFLayer(Data *D,int b,int act,int ae,char *name);
-  OFLayer(Data *D,int b,int act,char *name);
-  OFLayer(FLayer *t,int b,char *name);
-
+  OFLayer(Data *D,FLayer *T,int b,int opt,char *name);
+  void settarget(Data *Dt);
+  void settarget(FLayer *Lt);
   void backward();
-  void modbatch(int b);
-  double get_err(Data *Dt,int b);
-  double get_err(Data *Dt,int s,int cs);
+  double get_err(int n);
+};
+
+
+/////////////////////////////////
+
+class OLayer : public Layer {
+ public:
+  OLayer();
+  OLayer(int batch,int op,char *name);
+  void addchild(Layer *l);
+  void addparent(Layer *l);
+  void forward();
+  void backward();
+  void save(FILE *fe);
+  void load(FILE *fe);
+  void initialize();
+  void applygrads();
+  void reset();
+  int op;
+
 };
 
 ////////////////////
@@ -214,34 +205,32 @@ class CLayer : public Layer {
   int zpad;
   int rpad,cpad;
 
-  LMatrix **K;
-  LMatrix **gK;
-  LMatrix **pgK;
-  LVector bias;
-  LVector gbias;
+  Tensor *K;
+  Tensor *gK;
+  Tensor *pgK;
+  Tensor *bias;
+  Tensor *gbias;
 
-  LMatrix **E;
-  LMatrix **BNE;
-  LMatrix **N;
-  LMatrix *Dvec;
-  LMatrix **padN;
-  LMatrix **De;
-
+  Tensor *E;
+  Tensor *BNE;
+  Tensor *Dvec;
+  Tensor *dE;
+    
   // FOR BN
-  LVector bn_mean;
-  LVector bn_gmean;
-  LVector bn_var;
-  LVector bn_gvar;
-  LVector bn_g;
-  LVector bn_b;
-  LMatrix **bn_E;
+  Tensor *bn_mean;
+  Tensor *bn_gmean;
+  Tensor *bn_var;
+  Tensor *bn_gvar;
+  Tensor *bn_g;
+  Tensor *bn_b;
+  Tensor *bn_E;
   int bnc;
 
-  LVector gbn_mean;
-  LVector gbn_var;
-  LVector gbn_g;
-  LVector gbn_b;
-  LMatrix **gbn_E;
+  Tensor *gbn_mean;
+  Tensor *gbn_var;
+  Tensor *gbn_g;
+  Tensor *gbn_b;
+  Tensor *gbn_E;
 
   CLayer();
   CLayer(int batch,char *name);
@@ -258,8 +247,6 @@ class CLayer : public Layer {
   void reset();
   void resetstats();
   void resetmomentum();
-  void setzpad(int t);
-
 
   void fBN();
   void bBN();
@@ -270,8 +257,7 @@ class CLayer : public Layer {
   void ConvolB();
   void MaxPoolB();
   void printkernels(FILE *fe);
-  void fillData(Data *D,int p);
-  void fillTarget(Data *D,int p);
+
 
   void save(FILE *fe);
   void load(FILE *fe);
@@ -282,22 +268,26 @@ class CLayer : public Layer {
 class ICLayer : public CLayer {
  public:
 
+  
   int imr,imc;
 
-  ICLayer(Data *D,int batch,int z,int r,int c,char *name);
-  ICLayer(Data *D,int batch,int z,int r,int c,int ir,int ic,char *name);
+  ICLayer(Data *D,Layer *K,int batch,int z,int r,int c,int ir,int ic,char *name);
 
-  void getbatch(Data *Dt);
-  void getbatch(Data *Dt,int s);
+
+  void getbatch();
   void addparent(Layer *l);
+  void setsource(Data *newd);
+  void setsource(FLayer *newl);
 
   void forward();
   void backward();
   void initialize();
   void applygrads();
   void reset();
+  void resetmomentum();
   void save(FILE *fe);
   void load(FILE *fe);
+  void next();
 
   void doflip(LMatrix& I);
   void doshift(LMatrix& I,int sx,int sy);
@@ -307,7 +297,6 @@ class ICLayer : public CLayer {
   void dobrightness(LMatrix& I,double factor);
   void docontrast(LMatrix& I,double factor);
   void SaveImage(LMatrix R,LMatrix G,LMatrix B,char *name);
-
 
 };
 
@@ -357,10 +346,31 @@ class CatLayer : public CLayer {
   void initialize();
   void applygrads();
   void reset();
+  void resetmomentum();
 
   void save(FILE *fe);
   void load(FILE *fe);
 
   CatLayer();
   CatLayer(int batch,char *name);
+};
+
+class AddLayer : public CLayer {
+ public:
+  int add,addvec[100];
+
+  void addchild(Layer *l);
+  void addparent(Layer *l);
+  void forward();
+  void backward();
+  void initialize();
+  void applygrads();
+  void reset();
+  void resetmomentum();
+
+  void save(FILE *fe);
+  void load(FILE *fe);
+
+  AddLayer();
+  AddLayer(int batch,char *name);
 };

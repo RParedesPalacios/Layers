@@ -2,20 +2,23 @@
 #include <stdlib.h>     /* malloc, free, rand */
 #include <iostream>
 
-#include "Eigen/Dense"
-
 #include "layer.h"
 #include "net.h"
 
 #include "utils.h"
+#include "tensor.h"
 
-#define VERBOSE 0
+#ifdef MKL 
+#define EIGEN_USE_MKL_ALL
+#endif
+
+#include "Eigen/Dense"
 
 
 /// Eigen
-
 using namespace Eigen;
 using namespace std;
+
 
 ////////////////////////////////////
 ///// FULLY CONNECTED LAYER CLASS
@@ -31,42 +34,50 @@ void FLayer::mem()
 {
   int i;
 
-  W=new LMatrix[MAX_CONNECT];
-  gW=new LMatrix[MAX_CONNECT];
-  pgW=new LMatrix[MAX_CONNECT];
-  b=new LRVector[MAX_CONNECT];
-  // SGD+MOMENTUM
-  gb=new LRVector[MAX_CONNECT];
-  pgb=new LRVector[MAX_CONNECT];
+  W=new Tensor(MAX_CONNECT,UNSET,UNSET);
+  W->set(0.0);
+  gW=new Tensor(MAX_CONNECT,UNSET,UNSET);
+  pgW=new Tensor(MAX_CONNECT,UNSET,UNSET);
+  b=new Tensor(MAX_CONNECT,UNSET);
+
+  gb=new Tensor(MAX_CONNECT,UNSET);
+  pgb=new Tensor(MAX_CONNECT,UNSET);
   
-  N.resize(batch,din);
-  E.resize(batch,din);
-  dE.resize(batch,din);
-  Delta.resize(batch,din);
-  dvec.resize(din);
+  N=new Tensor(batch,din);
+  E=new Tensor(batch,din);
+  dE=new Tensor(batch,din);
+  Delta=new Tensor(batch,din);
+  dvec=new Tensor(din);
 
   //BN
-  bn_mean.resize(din);
-  bn_var.resize(din);
-  bn_gmean.resize(din);
-  bn_gvar.resize(din);
-  bn_g.resize(din);
-  bn_b.resize(din);
-  bn_E.resize(batch,din);
-  BNE.resize(batch,din);
+  bn_mean=new Tensor(din);
+  bn_var=new Tensor(din);
+  bn_gmean=new Tensor(din);
+  bn_gvar=new Tensor(din);
+  bn_g=new Tensor(din);
+  bn_b=new Tensor(din);
+  
+  bn_E=new Tensor(batch,din);
+  BNE=new Tensor(batch,din);
 
-  for(i=0;i<din;i++) {
-    bn_g(i)=1.0;
-    bn_b(i)=0.0;
-  }
+  bn_g->set(1.0);
+  bn_b->set(1.0);
 
-  gbn_mean.resize(din);
-  gbn_var.resize(din);
-  gbn_g.resize(din);
-  gbn_b.resize(din);
-  gbn_E.resize(batch,din);
+  gbn_mean=new Tensor(din);
+  gbn_var=new Tensor(din);
+  gbn_g=new Tensor(din);
+  gbn_b=new Tensor(din);
+  gbn_E=new Tensor(batch,din);
 
 }
+
+FLayer::FLayer(int batch,char *name):Layer(batch,name)
+{
+  type=1;
+  act=1;
+}
+
+
 
 FLayer::FLayer(int in,int batch,char *name):Layer(batch,name)
 {
@@ -89,9 +100,21 @@ FLayer::FLayer(int in,int batch,char *name):Layer(batch,name)
 //Reshape Layer
 FLayer::FLayer(Layer *In,int batch,char *name):Layer(batch,name)
 {
-  CLayer *cin;
+  if (In->type==FLAYER) {
 
-  if (In->type>1) {
+  }
+  else if (In->type==OLAYER) {
+    OLayer *l=(OLayer *)In;
+    din=l->din;
+    if (din<=0) {
+      fprintf(stderr,"Error %s with %d neurons\n",name,din);
+      exit(1);
+    }
+    reshape=1;
+  }
+  else {
+    CLayer *cin;
+
     cin=(CLayer *)In;
     din=cin->outz*cin->outr*cin->outc;
     reshape=1;
@@ -100,11 +123,6 @@ FLayer::FLayer(Layer *In,int batch,char *name):Layer(batch,name)
       exit(1);
     }
   }
-  else {
-    fprintf(stderr,"Error building %s with %s, not convolutional\n",name,In->name);
-    exit(1);
-  }
-
   type=1;
   // Linear
   act=0;
@@ -137,42 +155,42 @@ void FLayer::addchild(Layer *li)
 
       Lout[lout]=l;
 
-      W[lout].resize(din,l->din);
-      b[lout].resize(l->din);
-
+      W->subTensor(lout)->resize(din,l->din);
+      b->subTensor(lout)->resize(l->din);
+      
       // initialice here!
-      double s=sqrt(2.0/W[lout].cols());
-      for(i=0;i<W[lout].rows();i++)
-	for(j=0;j<W[lout].cols();j++)
-	  W[lout](i,j)=s*gauss(0,1);
+      double s=sqrt(2.0/din);
+      W->subTensor(lout)->set_rand_gauss(0,s);
+      b->subTensor(lout)->set(0.1);
 
-      if (nobias) {
-	fprintf(stderr,"================ %s BIAS 0  ==================\n",name);
-	for(j=0;j<b[lout].cols();j++)
-	  b[lout](j)=0.0;
-      }
-      else {
-	for(j=0;j<b[lout].cols();j++)
-	  b[lout](j)=0.1;
-      }
+      gW->subTensor(lout)->resize(din,l->din);
+      gW->subTensor(lout)->set(0.0);
 
-      gW[lout].resize(din,l->din);
-      gW[lout].setZero();
-      pgW[lout].resize(din,l->din);
-      pgW[lout].setZero();
+      pgW->subTensor(lout)->resize(din,l->din);
+      pgW->subTensor(lout)->set(0.0);
+      
+      gb->subTensor(lout)->resize(l->din);
+      gb->subTensor(lout)->set(0.0);
 
-      gb[lout].resize(l->din);
-      gb[lout].setZero();
-      pgb[lout].resize(l->din);
-      pgb[lout].setZero();
+      pgb->subTensor(lout)->resize(l->din);
+      pgb->subTensor(lout)->set(0.0);
 
       lout++;
 
       fprintf(stderr,"Connecting %s --> %s\n",name,li->name);
       l->addparent(this);
     }
-    else {
-      fprintf(stderr,"Error: %s->%s Only FC can be connected after FC\n",name,li->name);
+    else if (li->type==OLAYER) {
+      OLayer *l=(OLayer *)li;
+
+      Lout[lout]=l;
+
+      fprintf(stderr,"Connecting %s --> %s\n",name,li->name);
+      l->addparent(this);
+      lout++;
+    }
+    else{
+      fprintf(stderr,"Error: %s->%s Only FC or O can be connected after FC\n",name,li->name);
       exit(1);
     }
   }
@@ -205,8 +223,8 @@ void FLayer::resetmomentum()
   if (VERBOSE) fprintf(stderr,"layer %s reset momentum\n",name);
 
   for(k=0;k<lout;k++) {
-    pgW[k].setZero();
-    pgb[k].setZero();
+    pgW->subTensor(k)->set(0.0);
+    pgb->subTensor(k)->set(0.0);
   }
 
 }
@@ -217,83 +235,55 @@ void FLayer::reset()
 
   if (VERBOSE) fprintf(stderr,"RESET Layer %s\n",name);
 
-  for(i=0;i<GLUT;i++)
-    gn[i]=gaussgen();
 
-  for(i=0;i<GLUT;i++)
-    un[i]=uniform();
-
-
-  E.setZero();
-  N.setZero();
-
-  if (!adelta) Delta.setZero();
+  E->set(0.0);
+  N->set(0.0);
+  Delta->set(0.0);
   
   for(k=0;k<lout;k++) {
-    gW[k].setZero();
-
-    gb[k].setZero();
+    gW->subTensor(k)->set(0.0);
+    gb->subTensor(k)->set(0.0);
   }
-
-
 }
+
 void FLayer::resetstats()
 {
   bnc=0;
 
-  bn_gmean.setZero();
-  bn_gvar.setZero();
+  bn_gmean->set(0.0);
+  bn_gvar->set(0.0);
 
 }
+
 
 //////////////////////
 ///// FORWARD
 //////////////////////
-
 void FLayer::fBN()
 {
   int i,j;
 
+
+  //CPU
   if (trmode) {
     bnc++;
-    for(int i=0;i<din;i++) {
-      int b,cn=rand()%GLUT;
-      double m,var,eps=0.00001;
 
-      m=0;
-      for(b=0;b<batch;b++)
-	m+=E(b,i);
-      m/=batch;
-      bn_mean(i)=m;
-
-      var=0;
-      for(b=0;b<batch;b++)
-	var+=(m-E(b,i))*(m-E(b,i));
-      var/=batch;
-      bn_var(i)=var;
-
-      for(b=0;b<batch;b++) {
-	bn_E(b,i)=(E(b,i)-bn_mean(i))/sqrt(bn_var(i)+eps); //this is \hat{x}
-	if (noiser>0.0) {
-	  if (noiser>=un[(cn++)%GLUT])
-	    bn_E(b,i)+=noisesd*gn[(cn++)%GLUT];
-	}
-	BNE(b,i)=(bn_g(i)*bn_E(b,i))+bn_b(i);
-      }
-    }
-    bn_gmean+=bn_mean;
-    bn_gvar+=bn_var;
+    Tensor::forwardBN_training(batch,
+			       E,
+			       bn_mean,
+			       bn_var,
+			       bn_E,
+			       bn_g,
+			       bn_b,
+			       BNE,
+			       bn_gmean,
+			       bn_gvar,
+			       bnc,
+			       noiser,
+			       noisesd);
   }
   else { // testmode
-    for(int i=0;i<din;i++) {
-      int b;
-      double var,eps=0.00001;
-
-      for(b=0;b<batch;b++){
-	bn_E(b,i)=(E(b,i)-bn_gmean(i)/bnc)/sqrt(bn_gvar(i)/bnc+eps);
-	BNE(b,i)=(bn_g(i)*bn_E(b,i))+bn_b(i);
-      }
-    }
+    Tensor::forwardBN_inference(batch,E,bn_mean,bn_var,bn_E,bn_g,bn_b,BNE,bnc);
   }
 }
 
@@ -303,123 +293,80 @@ void FLayer::forward()
   FLayer *l;
   CLayer *cin;
 
-
+ 
   if (reshape) {
-    cin=(CLayer *)Lin[0];
-    for(k=0;k<batch;k++) {
-      j=0;
-      for(z=0;z<cin->outz;z++)
-	for(r=0;r<cin->outr;r++)
-	  for(c=0;c<cin->outc;c++,j++)
-	    E(k,j)=cin->N[k][z](r,c);
-    }
-    if (VERBOSE) fprintf(stderr,"from CNN (%s) E(%s) = %f\n",cin->name,name,E.norm());
-  }
+    
+    if (Lin[0]->type==OLAYER) {
+      OLayer *l;
+      l=(OLayer *)Lin[0];
+      N->copy(l->N);
+      if (VERBOSE) fprintf(stderr,"from OP(%s) = %f\n",l->name,N->norm());
 
-  if (VERBOSE) {
-    if (bn) fprintf(stderr,"BNE(%s) = %f\n",name,BNE.norm());
-    else fprintf(stderr,"E(%s) = %f\n",name,E.norm());
-  }
-
-
-  /////////////////////////////
-  // PREACTIVATION
-  /////////////////////////////
-
-  if (trmode) {
-    // Adversarial Noise
-    if ((act<10)&&(adelta)) {
-      if (adv==1) E=E-advf*Delta; // gradient as it is                                                                         
-      if (adv==2) { // sign                                                                                                    
-	for(i=0;i<E.rows();i++)
-	  for(j=0;j<E.cols();j++)
-	    if (Delta(i,j)>0) Delta(i,j)=1;
-	    else Delta(i,j)=-1;
-	E=E-advf*Delta;
-      }
-      if (adv==3) { // normalize gradient                                                                                      
-	for(i=0;i<E.rows();i++)
-	  E.row(i)=E.row(i)-advf*(Delta.row(i)/Delta.row(i).norm());
-      }
-
-      Delta.setZero();
-    }
-  }
-  
-  if (bn) {
-    fBN();
-  }  
-  else {
-    // Gaussian Noise
-    if (trmode) {
-      int cn=rand()%GLUT;
-      if (noiser>0.0) {
-	for(int i=0;i<batch;i++)
-	  for(int j=0;j<din;j++)
-	    if (uniform()<noiser)
-	      //E(i,j)+=gauss(0.0,noisesd);
-	      E(i,j)+=noisesd*gn[(cn++)%GLUT];
-      }
-    }
-  }
-  
-
-  ////////////////////////////
-  // ACTIVATION
-  ////////////////////////////
-  if (bn) {
-    if (act==0) N=BNE;
-    if (act==1) ReLu(BNE,N);
-    if (act==2) Sigmoid(BNE,N);
-    if (act==3) ELU(BNE,N,1.0);
-    if (act==10) Softmax(BNE,N);
-  }
-  else {
-    if (act==0) N=E;
-    if (act==1) ReLu(E,N);
-    if (act==2) Sigmoid(E,N);
-    if (act==3) ELU(E,N,1.0);
-    if (act==10) Softmax(E,N);
-  }
-
-  if (VERBOSE) {
-    fprintf(stderr,"N(%s,%d) = %f\n",name,act,N.norm());
-    if (N.norm()==0) getchar();
-  }
-  
-  ////////////////////////////
-  // POST-ACTIVATION
-  ////////////////////////////
-  if (drop>0.0) {
-    if (trmode) {
-      dvec.setZero();
-      for(i=0;i<din;i++)
-	if (uniform()>drop) dvec(i)=1;
-
-      if (VERBOSE) fprintf(stderr,"Drop N %s(%d)\n",name,act);
-      for(j=0;j<din;j++)
-	if (dvec(j)==0)
-	  for(i=0;i<batch;i++) N(i,j)=0.0;
     }
     else {
-      N*=(1.0-drop);
+      cin=(CLayer *)Lin[0];
+      N->copy(cin->N);
+    
+      if (VERBOSE) fprintf(stderr,"from CNN (%s) = %f\n",cin->name,N->norm());
+
     }
-
   }
+  else{ // !reshape
+    /////////////////////////////
+    // PREACTIVATION
+    /////////////////////////////
+  
+    if (bn) {
+      fBN();
+    }  
+    else {
+      // Gaussian Noise
+      if ((trmode)&&(noiser>0.0)) {
+	E->add_noise_gauss(noiser,0.0,noisesd);
+      }
+    }
+  
+    if (VERBOSE) fprintf(stderr,"E(%s) = %f\n",name,E->norm());
+  
+    ////////////////////////////
+    // ACTIVATION
+    ////////////////////////////
+    if (bn) 
+      Tensor::activation(BNE,N,act);
+    else 
+      Tensor::activation(E,N,act);
+  
 
-  if (VERBOSE) fprintf(stderr,"N(%s) = %f\n",name,N.norm());
-
+    ////////////////////////////
+    // POST-ACTIVATION
+    ////////////////////////////
+    if (drop>0.0) {
+      if (trmode) {
+	dvec->set_rand_binary(drop);
+	Tensor::maskZeros(dvec,N);
+      }
+      else 
+	Tensor::sc_mult(N,1.0-drop,N,0);
+    }
+  
+    if (VERBOSE) fprintf(stderr,"N(%s,%d) = %f\n",name,act,N->norm());
+  }
 
   //////////////////////////////
   // FORWARD TO CHILD LAYERS
   //////////////////////////////
   for(i=0;i<lout;i++) {
     if (rnet->isIn(Lout[i])) {
-      if (Lout[i]->type==1) {
+      if (Lout[i]->type==FLAYER) {
 	if (VERBOSE) fprintf(stderr,"Forward %s-->%s\n",name,Lout[i]->name);
 	l=(FLayer *)Lout[i];
-	l->E+=N*W[i];
-	l->E.rowwise()+=b[i];
+	
+	if (VERBOSE) fprintf(stderr,"Forward %s W norm %f\n",name,W->subTensor(i)->norm());
+
+	Tensor::mult(N,0,W->subTensor(i),0,l->E,1);
+	
+	//bias
+	l->E->inc_2Drowwise(b->subTensor(i));
       }
     }
   }
@@ -435,17 +382,17 @@ void FLayer::save(FILE *fe)
   for(k=0;k<lout;k++) {
     for(i=0;i<din;i++)
       for(j=0;j<Lout[k]->din;j++)
-	fprintf(fe,"%f ",W[k](i,j));
+	fprintf(fe,"%f ",W->get(k,i,j));
     
     for(j=0;j<Lout[k]->din;j++)
-      fprintf(fe,"%f ",b[k](j));
+      fprintf(fe,"%f ",b->get(k,j));
     
     fprintf(fe,"\n");
   }
   
   if (bn) {
     for(j=0;j<din;j++)
-      fprintf(fe,"%f %f %f %f ",bn_g(j),bn_b(j),bn_gmean(j),bn_gvar(j));
+      fprintf(fe,"%f %f %f %f ",bn_g->get(j),bn_b->get(j),bn_gmean->get(j),bn_gvar->get(j));
     
     fprintf(fe,"%d\n",bnc);
   }
@@ -466,12 +413,12 @@ void FLayer::load(FILE *fe)
     for(i=0;i<din;i++)
       for(j=0;j<Lout[k]->din;j++) {
 	fsd=fscanf(fe,"%lf ",&fv);
-	W[k](i,j)=fv;
+	W->set(k,i,j,fv);
       }
     
       for(j=0;j<Lout[k]->din;j++) {
 	fsd=fscanf(fe,"%lf ",&fv);
-	b[k](j)=fv;
+	b->set(k,j,fv);
       }
     fsd=fscanf(fe,"\n");
   }
@@ -479,13 +426,13 @@ void FLayer::load(FILE *fe)
   if (bn) {
     for(j=0;j<din;j++) {
       fsd=fscanf(fe,"%lf ",&fv);
-      bn_g(j)=fv;
+      bn_g->set(j,fv);
       fsd=fscanf(fe,"%lf ",&fv);
-      bn_b(j)=fv;
+      bn_b->set(j,fv);
       fsd=fscanf(fe,"%lf ",&fv);
-      bn_gmean(j)=fv;
+      bn_gmean->set(j,fv);
       fsd=fscanf(fe,"%lf ",&fv);
-      bn_gvar(j)=fv;
+      bn_gvar->set(j,fv);
     }
     fsd=fscanf(fe,"%d\n",&bnc);
   }
@@ -500,29 +447,11 @@ void FLayer::printkernels(FILE *fe)
   for(k=0;k<lout;k++) {
     for(i=0;i<din;i++)
       for(j=0;j<Lout[k]->din;j++)
-	fprintf(fe,"%f ",W[k](i,j));
+	fprintf(fe,"%f ",W->get(k,i,j));
     fprintf(fe,"\n");
   }
 
   fclose(fe);
-}
-
-void FLayer::fillData(Data *D,int p)
-{
-  int i,j;
-
-  for(i=0;i<batch;i++)
-    for(j=0;j<din;j++)
-      D->M(((p*batch)+i)%D->num,j)=N(i,j);
-
-}
-void FLayer::fillTarget(Data *D,int p)
-{
-  int i,j;
-
-  for(i=0;i<batch;i++)
-    for(j=0;j<din;j++)
-      D->T(((p*batch)+i)%D->num,j)=N(i,j);
 }
 
 
@@ -531,173 +460,58 @@ void FLayer::fillTarget(Data *D,int p)
 //////////////////////////////////////////
 void FLayer::bBN()
 {
-
-#pragma omp parallel for
-for(int i=0;i<din;i++) {
-    int b;
-    double m,var,eps=0.00001;
-    double sqvar,var32;
-
-    m=batch;
-
-    //1 Gamma
-    gbn_g(i)=0.0;
-    for(b=0;b<batch;b++)
-      gbn_g(i)+=Delta(b,i)*bn_E(b,i);
-
-    //2 Beta
-    gbn_b(i)=0.0;
-    for(b=0;b<batch;b++)
-      gbn_b(i)+=Delta(b,i);
-
-
-    //3 bnE
-    for(b=0;b<batch;b++)
-      gbn_E(b,i)=Delta(b,i)*bn_g(i);
-
-
-    //4 Var
-    sqvar=sqrt(bn_var(i)+eps);
-    var32=(bn_var(i)+eps)*sqvar;
-
-    gbn_var(i)=0;
-    for(b=0;b<batch;b++)
-      gbn_var(i)+=-0.5*gbn_E(b,i)*(E(b,i)-bn_mean(i))/var32;
-
-
-    //5 Mean
-    gbn_mean(i)=0;
-    for(b=0;b<batch;b++) {
-      gbn_mean(i)+=-gbn_E(b,i)/sqvar;
-      //gbn_mean(i)+=-2*gbn_var(i)*(E(b,i)-bn_mean(i))/m;
-    }
-
-    //6 x
-    for(b=0;b<batch;b++) {
-      Delta(b,i)=gbn_E(b,i)/sqvar;
-      Delta(b,i)+=gbn_var(i)*2*(E(b,i)-bn_mean(i))/m;
-      Delta(b,i)+=gbn_mean(i)/m;
-    }
-
-
-
-  }
-
-
-}
-
-
-void FLayer::dactivation()
-{
-
-  if (bn) {
-    if (act==0) {
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++)
-	  dE(i,j)=1;
-    }
-    else if (act==1) {
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++)
-	  if (BNE(i,j)<=0) dE(i,j)=0;
-	  else dE(i,j)=1;
-    }
-    else if (act==2)  {
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++)
-	  dE(i,j)=dsigm(BNE(i,j));
-    }
-    else if (act==3)  {
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++)
-	  if (BNE(i,j)<=0) dE(i,j)=N(i,j)+1;
-	  else dE(i,j)=1;
-    }
-    else {
-      fprintf(stderr,"Error dactivation (%s)\n",name);
-      exit(1);
-    }
-  }
-  else {
-    if (act==0) {
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++)
-	  dE(i,j)=1;
-    }
-    else if (act==1) {
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++)
-	  if (E(i,j)<=0) dE(i,j)=0;
-	  else dE(i,j)=1;
-    }
-    else if (act==2)  {
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++)
-	  dE(i,j)=dsigm(E(i,j));
-    }
-    else if (act==3)  {
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++)
-	  if (E(i,j)<=0) dE(i,j)=N(i,j)+1;
-	  else dE(i,j)=1;
-    }
-    else {
-      fprintf(stderr,"Error dactivation (%s)\n",name);
-      exit(1);
-    }
-
-  }
-
+  Tensor::backwardBN(batch,
+			E,
+			bn_E,
+			bn_g,
+			bn_mean,
+			bn_var,
+			Delta,
+			gbn_g,
+			gbn_b,
+			gbn_E,
+			gbn_mean,
+			gbn_var
+			 );
 
 }
 
 
 void FLayer::backward()
 {
-  int i,j,k,ind,b,c,r,z;
-  double sum;
-  FLayer *l;
-  CLayer *cnn;
-  CatLayer *cat;
-  PLayer *mp;
+  int i,j,k,ind;
 
+  if (drop>0.0) Tensor::maskZeros(dvec,Delta);
 
-  if (drop>0.0) {
-    if (VERBOSE) fprintf(stderr,"Drop Delta %s(%d)\n",name,act);
-    for(j=0;j<din;j++)
-      if (dvec(j)==0)
-	for(i=0;i<batch;i++) Delta(i,j)=0.0;
-  }
-
-
+  
   if (reshape) {
-    cnn=(CLayer *)Lin[0];
-    for(b=0;b<batch;b++) {
-      j=0;
-      for(z=0;z<cnn->outz;z++)
-	for(r=0;r<cnn->outr;r++)
-	  for(c=0;c<cnn->outc;c++,j++) {
-	    cnn->De[b][z](r,c)+=Delta(b,j);
-	  }
-    }
     if (VERBOSE) {
-      fprintf(stderr,"%s Delta norm %f\n",name,Delta.norm());
+      fprintf(stderr,"%s Delta norm %f\n",name,Delta->norm());
+    }
+    
+    if (Lin[0]->type==OLAYER) {
+      OLayer *l=(OLayer *)Lin[0];
+      l->Delta->copy(Delta);      
+    }
+    else {
+      CLayer *cnn;
+      cnn=(CLayer *)Lin[0];
+      cnn->Delta->copy(Delta);
     }
   }
   else { //!reshape
+    FLayer *l;
 
-    if (VERBOSE) {
-      sum=Delta.norm();
-      fprintf(stderr,"%s Delta norm %f\n",name,sum);
-    }
-
+    if (VERBOSE) fprintf(stderr,"%s Delta norm %f\n",name,Delta->norm());
 
     // Delta*DerivAct
-    if (act!=10) { // To prevent for output layers with softmax
-      dactivation();
-      for(int b=0;b<batch;b++)
-	for(int j=0;j<din;j++)
-	  Delta(b,j)*=dE(b,j);
+    if (act!=ACT_SOF) { // To prevent for output layers with softmax
+      if (bn) 
+	Tensor::dactivation(BNE,N,dE,act);
+      else 
+	Tensor::dactivation(E,N,dE,act);
+      
+      Tensor::el_mult(Delta,0,dE,0,Delta,0);
     }
 
 
@@ -705,7 +519,7 @@ void FLayer::backward()
 
     for(i=0;i<lin;i++) {
       if (rnet->isIn(Lin[i])) {
-	if (Lin[i]->type==1) { // Fully connected
+	if (Lin[i]->type==FLAYER) { // Fully connected
 
 	  l=(FLayer *)Lin[i];
 
@@ -715,24 +529,16 @@ void FLayer::backward()
 	  if (ind==-1) {fprintf(stderr,"Error no connection!!\n"); exit(1);}
 
 	  // Compute grads
-	  if (VERBOSE) {
-	    fprintf(stderr,"%f %f -->\n",l->N.norm(),Delta.norm());
-	  }
-	  //noalias
-	  l->gW[ind]+=l->N.transpose()*Delta;
+	  if (VERBOSE) fprintf(stderr,"%f %f -->\n",l->N->norm(),Delta->norm());
 
-	  if (VERBOSE) {
-	    fprintf(stderr,"gW %s = %f\n",l->name,l->gW[ind].norm());
-	  }
+	  Tensor::mult(l->N,1,Delta,0,l->gW->subTensor(ind),0);
 
-	  if (!l->nobias) 
-	    if (!l->bn)
-	      for(j=0;j<l->gb[ind].cols();j++)
-		l->gb[ind](j)+=Delta.col(j).sum();
+	  if (!l->bn)
+	    for(j=0;j<l->gb->subTensor(ind)->a;j++)
+	      l->gb->subTensor(ind)->set(j,Delta->col_sum(j));
 
 	  // back-propagate Delta
-	  //noalias
-	  l->Delta+=(Delta*l->W[ind].transpose());
+	  Tensor::mult(Delta,0,l->W->subTensor(ind),1,l->Delta,1);
 	}
       }
     }
@@ -744,27 +550,29 @@ void FLayer::backward()
 void FLayer::applygrads()
 {
   int k,i,j;
-  double inc;
-  double sum=0;
 
 
   for(k=0;k<lout;k++) {
 
     // WEIGHTS
-    if (optim==1) {//MOMENTUM
-      pgW[k]=(mu/batch)*gW[k]+mmu*pgW[k];
-      W[k]+=pgW[k];
+    Tensor::sum((mu/batch),gW->subTensor(k),0,mmu,pgW->subTensor(k),0,pgW->subTensor(k),0);
+    Tensor::inc(pgW->subTensor(k),W->subTensor(k));
+    if (VERBOSE) fprintf(stderr,"W (%s) norm = %f\n",name,W->subTensor(k)->norm());
 
-    }
+    // BIAS
+    Tensor::sum((mu/batch),gb->subTensor(k),0,mmu,pgb->subTensor(k),0,pgb->subTensor(k),0);
+    Tensor::inc(pgW->subTensor(k),W->subTensor(k));
 
-    // REGULARIZATION
+    // REGULARIZATION    
     if (l2!=0.0)
-      W[k]-=l2*W[k];
+      Tensor::sc_mult(W->subTensor(k),(1-l2),W->subTensor(k),0);
+    //W[k]-=l2*W[k];
 
+    /*
     if (maxn>0.0)
       for(i=0;i<W[k].cols();i++) {
-	if (W[k].col(i).norm()>maxn) {
-	  W[k].col(i)=(maxn/W[k].col(i).norm())*W[k].col(i);
+	if (W[k].col(i)->norm()>maxn) {
+	  W[k].col(i)=(maxn/W[k].col(i)->norm())*W[k].col(i);
 	}
       }
 
@@ -774,25 +582,25 @@ void FLayer::applygrads()
 	  if (W[k](i,j)<0.0) W[k](i,j)+=l1;
 	  else W[k](i,j)-=l1;
     }
+    */
 
-    // BIAS
-    pgb[k]=(mu/batch)*gb[k]+mmu*pgb[k];
-    if (!nobias) {
-      b[k]+=pgb[k];
-    }
-
-    gW[k].setZero();
-    gb[k].setZero();
+    gW->subTensor(k)->set(0.0);
+    gb->subTensor(k)->set(0.0);
+    //gW[k].setZero();
+    //gb[k].setZero();
 
   }
 
-
   // BATCH NORM g,b
   if (bn) {
-    for(i=0;i<din;i++) {
+    Tensor::sc_mult(gbn_g,(mu/batch),bn_g,1);
+    
+    /*
+      for(i=0;i<din;i++) {
       bn_g(i)+=(mu/batch)*gbn_g(i);
       bn_b(i)+=(mu/batch)*gbn_b(i);
     }
+    */
   }
 
 }
@@ -802,259 +610,363 @@ void FLayer::applygrads()
 ////////////////////////////////////////////////////////////////
 /// INPUT FULLY CONNECTED LAYER
 ////////////////////////////////////////////////////////////////
-IFLayer::IFLayer(Data *D,int b,char *name):FLayer(D->dim,b,name)
+IFLayer::IFLayer(Data *D,FLayer *L,int b,char *name):FLayer(b,name)
 {
-  this->D=D;
-  // Linear
-  act=0;
+  int i,j;
 
+  if (D!=NULL) {
+    din=D->dim;
+    this->D=D;
+  }
+  else {
+    din=L->din;
+    this->L=L;
+  }
+  
+
+  mem();
+  act=0;
 
   fprintf(stderr,"Creating Input FC layer (%s) with %d neurons\n",name,din);
 
 }
 
-void IFLayer::getbatch(Data *Dt,int s){}
-
-void IFLayer::getbatch(Data *Dt)
+void IFLayer::setsource(Data *Dt)  
 {
-  int i,j,c;
+  // Check if generative data is used
+  if (Dt->gen) {
+    if (Dt->dim==0) {
+      Dt->dim=Dt->out;
+      Dt->out=0;
+    }
+  }
+
+  if (din!=Dt->dim) {
+    fprintf(stderr,"setsource data error, different dimensions %d %d in %s\n",din,Dt->dim,name);
+    exit(1);
+  }
+
+  D=Dt;
+  L=NULL;
+  
+}
+
+void IFLayer::setsource(FLayer *Lt)  
+{
+  if (din!=Lt->din) {
+    fprintf(stderr,"setsource layer error, different dimensions %d %d in %s\n",din,Lt->din,name);
+    exit(1);
+  }
+
+  D=NULL;
+  L=Lt;
+}
+ 
+void IFLayer::next()
+{
+  if (D!=NULL) {
+    if (D->gen) {
+      GData *gd=(GData *)D;
+      gd->next();
+    }
+    else D->next();
+  }
+}
+
+void IFLayer::getbatch()
+{
+  int i,j;
   double fv;
 
-  for(i=0;i<batch;i++)
-    for(j=0;j<din;j++)
-      E(i,j)=Dt->M(Dt->getpos(i),j);
+  if ((D==NULL)&&(L==NULL)) {
+    fprintf(stderr,"Input layer %s has not source\n",name);
+    exit(1);
+  }
+
+  if (D!=NULL) 
+    E->copyfromData(D);
+  else 
+    E->copy(((FLayer*)L)->N);
   
+
   //Noise for binary input
   if (trmode) {
     if (noiseb>0.0)
       for(int i=0;i<batch;i++)
 	for(int j=0;j<din;j++)
 	  if (uniform()<noiseb)
-	    if (E(i,j)) E(i,j)=0.0;
-	    else E(i,j)=1.0;
+	    if (E->get(i,j)) E->set(i,j,0.0);
+	    else E->set(i,j,1.0);
   }
 }
 
 void IFLayer::addparent(Layer *l) {
   fprintf(stderr,"Error: Input FC Layer (%s) can not have parent layer\n",name);
   exit(1);
-
+  
 }
-
+ 
 
 //void IFLayer::forward();
 
 
 void IFLayer::backward() {
-  return;
+  int b,i;
+
+  if (L!=NULL) {
+    // pass Delta to parent (FC) Layer
+    if (VERBOSE) fprintf(stderr,"%s Delta norm %f\n",name,Delta->norm());
+    
+    ((FLayer *)L)->Delta->copy(Delta);
+  }
+
 }
 
-  //void IFLayer::initialize();
-  //void IFLayer::applygrads();
-  //void IFLayer::reset();
+//void IFLayer::initialize();
+//void IFLayer::applygrads();
+//void IFLayer::reset();
 
 
 
 ////////////////////////////////////////////////////////////////
 /// OUTPUT FULLY CONNECTED LAYER
 ////////////////////////////////////////////////////////////////
-OFLayer::OFLayer(Data *D,int b,int act,char *name):FLayer(D->out,b,name)
+OFLayer::OFLayer(Data *Dt,FLayer *Lt,int b,int o,char *name):FLayer(b,name)
 {
-  this->ae=0;
-  this->lt=0;
+  // opt 0: classification
+  // opt 1: regression
+  // opt 2: autoencoder
+  // opt 3: max
+  // opt 4: min
+  // opt 5: max log
+  // opt 6: min log
+  // ...
 
-  T.resize(batch,din);
-  this->D=D;
-  this->act=act;
-  out=1;
-  if (act==10)
-    fprintf(stderr,"Creating Onput FC layer CLASS (%s) with %d neurons\n",name,din);
-  else
-    fprintf(stderr,"Creating Onput FC layer REG (%s) with %d neurons\n",name,din);
-}
-OFLayer::OFLayer(Data *D,int b,int act,int ae,char *name):FLayer(D->dim,b,name)
-{
-  this->ae=ae;
-  this->lt=0;
+  D=Dt;
+  L=Lt;
+  opt=o;
 
-  T.resize(batch,din);
-  this->D=D;
-  out=1;
-  this->act=act;
-  if (act==10){
-    fprintf(stderr,"Autoencoder %s can not have softmax activation\n",name);
-    exit(1);
+  if (L!=NULL) {
+    din=Lt->din;
+    L=Lt;
   }
-  else {
-    fprintf(stderr,"Creating Onput FC layer REG (%s) with %d neurons\n",name,din);
+  else if (opt==2) { //autoencoder
+    if (Dt->gen) {
+      if (Dt->dim==0) {
+	Dt->dim=Dt->out;
+	Dt->out=0;
+      }
+    }
+    din=Dt->dim;
+    D=Dt;
   }
-}
-
-OFLayer::OFLayer(FLayer *t,int b,char *name):FLayer(t->din,b,name)
-{
-  this->ae=0;
-  this->lt=1;
-  target=t;
-
-  T.resize(batch,din);
-  this->D=NULL;
+  else { //normal
+    if (Dt->gen) {
+      if (Dt->out==0) {
+	Dt->out=Dt->dim;
+	Dt->dim=0;
+      }
+    }
+    din=Dt->out;
+    D=Dt;
+  }
   out=1;
-  this->act=t->act;
-  fprintf(stderr,"Creating Onput FC layer REG (%s) with target %s with %d neurons\n",name,target->name,din);
+
+  mem();
+
+  T=new Tensor(batch,din);
+
+  // act
+  if (opt==0) act=10; //softmax
+  else act=0; //linear;
+
+  if (D==NULL)
+    fprintf(stderr,"Creating Output FC layer %s with %d neurons opt %d target %s\n",name,din,opt,L->name);
+  else    
+    fprintf(stderr,"Creating Output FC layer %s with %d neurons opt %d data %s\n",name,din,opt,D->name);
 }
 
-double OFLayer::get_err(Data *Dt,int s,int cs)
+void OFLayer::settarget(Data *Dt)
 {
-  int i,j,k,p;
-  int rindex;
-  int nindex;
-  double err;
-
-  if (ae)
-    for(j=0;j<din;j++)
-      T(0,j)=Dt->M(s,j);
-  else
-    for(j=0;j<din;j++)
-      T(0,j)=Dt->T(s,j);
-
-
-  if (act==10) {
-    if (cs>batch) cs=batch;
-    for(i=1;i<cs;i++) 
-      for(j=0;j<din;j++) 
-	N(0,j)+=N(i,j);
-    
-    for(j=0;j<din;j++) 
-      N(0,j)/=cs;
-
-    T.row(0).maxCoeff(&rindex);
-    N.row(0).maxCoeff(&nindex);
-    if (rindex!=nindex) 
-      cerr++;
-    fprintf(stderr," %f.2%%\r",(cerr*100)/(s+1));
-
-    for(j=0;j<din;j++) {
-      if (j==rindex) {if (N(i,j)!=0.0) ent+=log(N(i,j));}
-      else if (N(i,j)!=1.0) ent+=log(1-N(i,j));
+  // Check if generative data is used
+  if (Dt->gen) {
+    if (Dt->out==0) {
+      Dt->out=Dt->dim;
+      Dt->dim=0;
     }
   }
-  else{
-    if (cs>batch) cs=batch;
-    for(i=1;i<cs;i++) 
-      for(j=0;j<din;j++) 
-	N(0,j)+=N(i,j);
-    for(j=0;j<din;j++) 
-      N(0,j)/=cs;
 
-    for(j=0;j<din;j++)
-      mse+=(T(0,j)-N(0,j))*(T(0,j)-N(0,j))/din;
+  int dsize;
 
-    rmse+=sqrt(((T.row(0)-N.row(0)).squaredNorm())/din);
+  if (opt==2) dsize=Dt->dim; //autoencoder
+  else dsize=Dt->out;
 
-    for(j=0;j<din;j++)
-      mae+=fabs(T(0,j)-N(0,j))/din;
-
-    fprintf(stderr," %f\r",rmse/(s+1));
+  if (din!=dsize) {
+    fprintf(stderr,"settarget error, different dimensions %d %d in %s\n",din,dsize,name);
+    exit(1);
   }
-  return 0.0;  
+  
+  D=Dt;
+  L=NULL;
+}
+void OFLayer::settarget(FLayer *Lt)
+{
+
+  if (din!=Lt->din) {
+    fprintf(stderr,"settarget error, different dimensions %d %d in %s\n",din,Lt->din,name);
+    exit(1);
+  }
+  
+  L=Lt;
+  D=NULL;
 }
 
-
-double OFLayer::get_err(Data *Dt,int b)
+double OFLayer::get_err(int n)
 {
   int i,j,k,p;
   int rindex;
   int nindex;
   double err;
 
+  // opt 0: classification
+  // opt 1: regression
+  // opt 2: autoencoder
+  // opt 3: max
+  // opt 4: min
+  // opt 5: max log
+  // opt 6: min log
+  // ...
 
-  if (lt) {
-    for(i=0;i<b;i++)
-      for(j=0;j<din;j++)
-	T(i,j)=((FLayer*)target)->N(i,j);
+  if ((D==NULL)&&(L==NULL)) {
+    fprintf(stderr,"Output layer %s has not targets\n",name);
+    exit(1);
   }
+
+  if (L!=NULL) 
+    T->copy(((FLayer *)L)->N);
   else {
-    if (ae)
-      for(i=0;i<b;i++)
-	for(j=0;j<din;j++)
-	  T(i,j)=Dt->M(Dt->getpos(i),j);
-    else
-      for(i=0;i<b;i++)
-	for(j=0;j<din;j++)
-	  T(i,j)=Dt->T(Dt->getpos(i),j);
+    if (opt<2) 
+      for(i=0;i<n;i++) 
+        for(j=0;j<din;j++) 
+          T->set(i,j,D->M(D->getpos(i),j+D->dim));
+  
+    else if (opt==2) // autoencoder
+      for(i=0;i<n;i++)
+	for(j=0;j<din;j++) 
+	  T->set(i,j,D->M(D->getpos(i),j));
+	
   }
+  
+  //////////////////////
+  if (opt==0) {
+    for(i=0;i<n;i++) {
+      T->row_max(i,&rindex);
+      N->row_max(i,&nindex);
 
-  if (act==10) {
-    for(i=0;i<b;i++) {
-      T.row(i).maxCoeff(&rindex);
-      N.row(i).maxCoeff(&nindex);
       if (rindex!=nindex) cerr++;
       for(j=0;j<din;j++) {
-	if (j==rindex) {if (N(i,j)!=0.0) ent+=log(N(i,j));}
-	else if (N(i,j)!=1.0) ent+=log(1-N(i,j));
+	if (j==rindex) {if (N->get(i,j)!=0.0) ent-=log(N->get(i,j));}
+	else if (N->get(i,j)!=1.0) ent-=log(1-N->get(i,j));
       }
     }
   }
-  else{
-    for(i=0;i<b;i++)
-      for(j=0;j<din;j++)
-	mse+=(T(i,j)-N(i,j))*(T(i,j)-N(i,j))/din;
+  else if (opt<3) {
+    for(i=0;i<n;i++)
+      for(j=0;j<din;j++) {
+        float Tn,Nn;
+        if (D!=NULL) {
+          if (opt==1) {
+            Tn=(T->get(i,j)*D->fsd[j+D->dim])+D->fmu[j+D->dim];
+            Nn=(N->get(i,j)*D->fsd[j+D->dim])+D->fmu[j+D->dim];
+          }
+          else {//opt=2
+            Tn=(T->get(i,j)*D->fsd[j])+D->fmu[j];
+            Nn=(N->get(i,j)*D->fsd[j])+D->fmu[j];
+          }
+        }
+        else {
+          Tn=T->get(i,j);
+          Nn=N->get(i,j);
+        }
+        mse+=(Tn-Nn)*(Tn-Nn)/din;
+        mae+=fabs(Tn-Nn)/din;
+      }
+  }
+  else if (opt<5) {
+    // max min                                                                            
+    for(i=0;i<n;i++)
+      for(j=0;j<din;j++) loss+=N->get(i,j)/din;
 
-    for(i=0;i<b;i++)
-      rmse+=sqrt(((T.row(i)-N.row(i)).squaredNorm())/din);
-
-    for(i=0;i<b;i++)
-      for(j=0;j<din;j++)
-	mae+=fabs(T(i,j)-N(i,j))/din;
+  }
+  else {
+    //maxlog minlog                                                                       
+    for(i=0;i<n;i++)
+      for(j=0;j<din;j++) loss+=log(N->get(i,j))/din;
   }
 
   return 0.0;
-
+  
 }
 
 void OFLayer::backward()
 {
   int i,j,k,p;
   double sum;
-
-  if ((!lt)||(rnet->isIn(target))) {
-    if (lt) {
+  
+  
+  if (L!=NULL) {
+    T->copy(((FLayer *)L)->N);
+  }
+  else {
+    if (opt==2)
       for(i=0;i<batch;i++)
 	for(j=0;j<din;j++)
-	  T(i,j)=((FLayer*)target)->N(i,j);
-    }
-    else {
-      if (ae)
-	for(i=0;i<batch;i++)
-	  for(j=0;j<din;j++)
-	    T(i,j)=D->M(D->getpos(i),j);
-      else
-	for(i=0;i<batch;i++)
-	  for(j=0;j<din;j++)
-	    T(i,j)=D->T(D->getpos(i),j);
-    }
-
-    if (act==10) {// Softmax, CrossEnt
-      if (lout>0) {
-	for(i=0;i<batch;i++)
-	  for(j=0;j<din;j++)
-	    Delta(i,j)*=(N(i,j)-(N(i,j)*N(i,j))); //deriv softmax w.r.t pre-activation: y_i-(y_i)^2
-      }
-      Delta+=(T-N)*lambda;
-    }
-    else { //MSE
-      Delta+=2*(T-N)*lambda;
-    }
+	  T->set(i,j,D->M(D->getpos(i),j));
+    else
+      for(i=0;i<batch;i++)
+	for(j=0;j<din;j++)
+	  T->set(i,j,D->M(D->getpos(i),j+D->dim));
   }
 
+  if (opt==0) {// Softmax, CrossEnt
+    if (lout>0) {
+      for(i=0;i<batch;i++)
+	for(j=0;j<din;j++) {
+	  LType val=N->get(i,j);
+	  Delta->set(i,j,Delta->get(i,j)*(val-(val*val))); //deriv softmax w.r.t pre-activation: y_i-(y_i)^2
+	}
+    }
+    Tensor::sum(lambda,T,0,-lambda,N,0,Delta,1);
+    //Delta+=(T-N)*lambda;
+  }
+  else if (opt<3) {
+    Tensor::sum(2*lambda,T,0,-2*lambda,N,0,Delta,1);
+    //Delta+=2*(T-N)*lambda;
+  }
+  else if (opt<5) {
+    // max min
+    for(i=0;i<batch;i++)
+      for(j=0;j<din;j++)
+	if (opt==3) Delta->set(i,j,-1.0);
+	else Delta->set(i,j,1.0);
+  }
+  else {
+    // maxlog minlog
+    if (opt==5)  
+      for(i=0;i<batch;i++)
+	for(j=0;j<din;j++)
+	  if (opt==5) Delta->set(i,j,-1/N->get(i,j));
+	  else  Delta->set(i,j,1/N->get(i,j));
+  }
+
+  if (VERBOSE) fprintf(stderr,"OFLayer %s Delta norm %f\n",name,Delta->norm());
   FLayer::backward();
 
 }
 
-
-  //  virtual void addparent(Layer *l);
-  //  virtual void forward();
-  //  virtual void backward();
-  //  virtual void initialize();
-  //  virtual void applygrads();
-  //  virtual void reset();
+//  virtual void addparent(Layer *l);
+//  virtual void forward();
+//  virtual void backward();
+//  virtual void initialize();
+//  virtual void applygrads();
+//  virtual void reset();

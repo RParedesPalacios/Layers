@@ -2,11 +2,16 @@
 #include <stdlib.h>     /* malloc, free, rand */
 #include <iostream>
 
-#include "Eigen/Dense"
+
 #include "layer.h"
 #include "utils.h"
 
-#define VERBOSE 0
+
+#ifdef MKL 
+#define EIGEN_USE_MKL_ALL
+#endif
+
+#include "Eigen/Dense"
 
 using namespace Eigen;
 using namespace std;
@@ -16,7 +21,7 @@ using namespace std;
 ////////////////////////////////////
 PLayer::PLayer()
 {
-  type=3;
+  type=PLAYER;
 
 }
 
@@ -25,7 +30,7 @@ PLayer::PLayer(int batch,int sizer,int sizec,char *name):CLayer(batch,name)
   this->batch=batch;
   this->sizer=sizer;
   this->sizec=sizec;
-  type=3;
+  type=PLAYER;
 
   fprintf(stderr,"Creating MaxPool layer (%s) with %dx%d size\n",name,sizer,sizec);
 }
@@ -58,6 +63,11 @@ void PLayer::addchild(Layer *l)
       fprintf(stderr,"Connecting %s --> %s Cat\n",name,l->name);
       l->addparent(this);
     }
+    else if (l->type==5) {
+      Lout[lout++]=l;
+      fprintf(stderr,"Connecting %s --> %s Add\n",name,l->name);
+      l->addparent(this);
+    }
     else {
       fprintf(stderr,"Error: %s mp layer can not have child layer %s\n",name,l->name);
       exit(1);
@@ -81,7 +91,7 @@ void PLayer::addparent(Layer *l)
   }
 
 
-  if ((l->type==2)||(l->type==3)||(l->type==4)) {
+  if (l->type>1) {
     CLayer *c=(CLayer *)l;
     Lin[lin++]=l;
 
@@ -107,56 +117,34 @@ void PLayer::addparent(Layer *l)
       for(j=0;j<nk;j++)
 	maxC[i][j].resize(outr,outc);
 
-    N=(LMatrix **)malloc(batch*sizeof(LMatrix *));
-    for(i=0;i<batch;i++) {
-      N[i]=new LMatrix[nk];
-    }
-
-    for(i=0;i<batch;i++)
-      for(j=0;j<nk;j++)
-	N[i][j].resize(outr,outc);
-
-    De=(LMatrix **)malloc(batch*sizeof(LMatrix *));
-    for(i=0;i<batch;i++) {
-      De[i]=new LMatrix[nk];
-    }
-
-    for(i=0;i<batch;i++)
-      for(j=0;j<nk;j++)
-	De[i][j].resize(outr,outc);
+    N=new Tensor(batch,nk,outr,outc);
+    Delta=new Tensor(batch,nk,outr,outc);
 
     fprintf(stderr,"Creating MaxPool (%dx%d) output %d@%dx%d\n",sizer,sizec,outz,outr,outc);
   }
   else {
-    fprintf(stderr,"Error: MaxPool layer (%s) can only appear after Conv, Cat or MPool layers\n",name);
+    fprintf(stderr,"Error: MaxPool layer (%s) can only appear after Conv, Cat, Add,  or MPool layers\n",name);
     exit(1);
   }
 }
 
 void PLayer::MaxPool()
 {
-
-
   CLayer *c=(CLayer *)Lin[0];
   double sum=0.0;
+  int b;
 
-  if (VERBOSE) {
-    for(int b=0;b<batch;b++)
-      for(int i=0;i<c->outz;i++)
-	sum+=c->N[b][i].norm();
-    fprintf(stderr,"%s Parent N(%s) = %f\n",name,c->name,sum);
-  }
+  if (VERBOSE) fprintf(stderr,"%s Parent N(%s) = %f\n",name,c->name,c->N->norm());
 
-
-#pragma omp parallel for
-  for(int b=0;b<batch;b++) {
+  #pragma omp parallel for
+  for(b=0;b<batch;b++) {
     LMatrix::Index x,y;
     int i,j,k,z,r;
     int mr,mc;
     for(k=0;k<nk;k++) {
       for(i=0;i<outr;i++) {
 	for(j=0;j<outc;j++) {
-	  N[b][k](i,j)=((c->N[b][k]).block((i*sizer),(j*sizec),sizer,sizec)).maxCoeff(&x,&y);
+	  N->set(b,k,i,j,((c->N->ptr[b]->ptr[k]->ptr2).block((i*sizer),(j*sizec),sizer,sizec)).maxCoeff(&x,&y));
 
 	  maxR[b][k](i,j)=x;
 	  maxC[b][k](i,j)=y;
@@ -166,6 +154,7 @@ void PLayer::MaxPool()
       }
     }
   }
+
 }
 
 
@@ -176,12 +165,8 @@ void PLayer::forward()
 
   MaxPool();
 
-  if (VERBOSE) {
-    for(b=0;b<batch;b++)
-      for(i=0;i<outz;i++)
-	sum+=N[b][i].norm();
-    fprintf(stderr,"N(%s) = %f\n",name,sum);
-  }
+  if (VERBOSE) fprintf(stderr,"N(%s) = %f\n",name,N->norm());
+
 }
 
 
@@ -210,30 +195,21 @@ void PLayer::MaxPoolB()
 {
   CLayer *c=(CLayer *)Lin[0];
   double sum=0;
+  int b;
 
   #pragma omp parallel for
-  for(int b=0;b<batch;b++) {
+  for(b=0;b<batch;b++) {
     int i,j,k,z,r;
     for(k=0;k<nk;k++) {
       for(i=0;i<outr;i++)
 	for(j=0;j<outc;j++)
-	  c->De[b][k](maxR[b][k](i,j),maxC[b][k](i,j))=De[b][k](i,j);
-      if (VERBOSE) sum+=De[b][k].norm();
+	  c->Delta->set(b,k,maxR[b][k](i,j),maxC[b][k](i,j),Delta->get(b,k,i,j));
     }
   }
 
-  if (VERBOSE) fprintf(stderr,"DeMP=%f\n ",sum);
+  if (VERBOSE) fprintf(stderr,"DeltaMP=%f\n ",Delta->norm());
 
-  if (VERBOSE) {
-    sum=0;
-    int b,k;
-    for(b=0;b<batch;b++)
-      for(k=0;k<nk;k++) {
-	sum+=c->De[b][k].norm();
-
-      }
-    fprintf(stderr,"DeMPIn=%f\n ",sum);
-  }
+ 
 }
 
 void PLayer::backward()
@@ -248,10 +224,6 @@ void PLayer::initialize(){ }
 void PLayer::applygrads(){ }
 void PLayer::reset()
 {
-  int i,j;
-
-  for(i=0;i<batch;i++)
-    for(j=0;j<nk;j++)
-      De[i][j].setZero();
-
+  Delta->set(0);
 }
+

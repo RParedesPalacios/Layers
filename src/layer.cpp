@@ -2,9 +2,13 @@
 #include <stdlib.h>     /* malloc, free, rand */
 #include <iostream>
 
-#include "Eigen/Dense"
 #include "layer.h"
 #include "utils.h"
+
+#ifdef MKL 
+#define EIGEN_USE_MKL_ALL
+#endif
+#include "Eigen/Dense"
 
 #define VERBOSE_PARAM 0
 
@@ -57,61 +61,44 @@ Layer::Layer(int batch,char *name)
   //BATCH NORM
   bn=0;
 
-  nobias=0;
-
-  //Adversarial
-  adv=0;
-  advf=1.0;
-  adelta=0;
   init=0;
-
-  gn=(double *)malloc(GLUT*sizeof(double));
-  for(int i=0;i<GLUT;i++)
-    gn[i]=gaussgen();
-
-  un=(double *)malloc(GLUT*sizeof(double));
-  for(int i=0;i<GLUT;i++)
-    un[i]=uniform();
 
   // IMAGE TRANSFORMS
   shift=flip=0;
   brightness=contrast=0;
 
   D=NULL;
-  target=NULL;
-  lt=0;
-  
+  L=NULL;
+
   Lin=(Layer **)malloc(MAX_CONNECT*sizeof(Layer *));
   Lout=(Layer **)malloc(MAX_CONNECT*sizeof(Layer *));
 
 
 }
 
-void Layer::setbrightness(double f){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting brightness %f\n",name,f);brightness=f;}
+void Layer::setbrightness(double f){ fprintf(stderr,"Layer %s setting brightness %f\n",name,f);brightness=f;}
 
-void Layer::setcontrast(double f){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting contrast %f\n",name,f);contrast=f;}
+void Layer::setcontrast(double f){ fprintf(stderr,"Layer %s setting contrast %f\n",name,f);contrast=f;}
 
-void Layer::setflip(int f){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting flip %d\n",name,f);flip=f;}
-void Layer::setshift(int f){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting shift %d\n",name,f);shift=f;}
+void Layer::setflip(int f){fprintf(stderr,"Layer %s setting flip %d\n",name,f);flip=f;}
+void Layer::setshift(int f){ fprintf(stderr,"Layer %s setting shift %d\n",name,f);shift=f;}
 void Layer::setmu(double m){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting mu %f\n",name,m);mu=m;resetmomentum();}
 void Layer::setmmu(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting mmu %f\n",name,m);mmu=m;}
-void Layer::setdrop(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting drop %f\n",name,m);drop=m;}
-void Layer::setl2(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting l2 %f\n",name,m);l2=m;}
-void Layer::setl1(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting l1 %f\n",name,m);l1=m;}
-void Layer::setmaxn(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting maxn %f\n",name,m);maxn=m;}
-void Layer::setlambda(double l){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting lambda %f\n",name,l);lambda=l;}
+void Layer::setdrop(double m){ fprintf(stderr,"Layer %s setting drop %f\n",name,m);drop=m;}
+void Layer::setl2(double m){  fprintf(stderr,"Layer %s setting l2 %f\n",name,m);l2=m;}
+void Layer::setl1(double m){fprintf(stderr,"Layer %s setting l1 %f\n",name,m);l1=m;}
+void Layer::setmaxn(double m){ fprintf(stderr,"Layer %s setting maxn %f\n",name,m);maxn=m;}
+void Layer::setlambda(double l){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting lambda %f\n",name,l);lambda=l;opt=floor(l);}
 void Layer::trainmode(){trmode=1;}
 void Layer::testmode(){trmode=0;}
-void Layer::setact(int i){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setact to %d\n",name,i);act=i;}
-void Layer::setbn(int i){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting BN %d\n",name,i);bn=i;}
-void Layer::setnoiser(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting noiser %f\n",name,m);noiser=m;}
-void Layer::setnoisesd(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting noisesd %f\n",name,m);noisesd=m;}
-void Layer::setnoiseb(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting binary noise %f\n",name,m);noiseb=m;}
+void Layer::setact(int i){fprintf(stderr,"Layer %s setact to %d\n",name,i);act=i;}
+void Layer::setbn(int i){ fprintf(stderr,"Layer %s setting BN %d\n",name,i);bn=i;}
+void Layer::setnoiser(double m){fprintf(stderr,"Layer %s setting noiser %f\n",name,m);noiser=m;}
+void Layer::setnoisesd(double m){fprintf(stderr,"Layer %s setting noisesd %f\n",name,m);noisesd=m;}
+void Layer::setnoiseb(double m){fprintf(stderr,"Layer %s setting binary noise %f\n",name,m);noiseb=m;}
 void Layer::setthreads(int t){threads=t;}
-void Layer::setoptim(int t){if (VERBOSE_PARAM) fprintf(stderr,"Set optimization method layer %s to %d\n",name,t);optim=t;}
+void Layer::setoptim(int t){ fprintf(stderr,"Set optimization method layer %s to %d\n",name,t);optim=t;}
 
-void Layer::setadv(int i){ if (VERBOSE_PARAM) fprintf(stderr,"Set adversarial mode layer %s to %d\n",name,i);adv=i;}
-void Layer::setadvf(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Set adversarial factor Layer %s to %f\n",name,m);advf=m;}
 
 void Layer::save_param(FILE *fe)
 {
@@ -137,9 +124,7 @@ void Layer::save_param(FILE *fe)
   fprintf(fe,"%f\n",contrast);
 
   // FOR FUTURE PARAMS
-  fprintf(fe,"%d\n",adv);
-  fprintf(fe,"%f\n",advf);
-  for(i=0;i<8;i++)
+  for(i=0;i<10;i++)
     fprintf(fe,"-1\n");
 
 }
@@ -187,12 +172,7 @@ void Layer::load_param(FILE *fe)
   fsd=fscanf(fe,"%lf\n",&contrast);
 
   // FOR FUTURE PARAMS
-  fsd=fscanf(fe,"%d\n",&adv);
-  if (adv==-1) adv=0;
-  fsd=fscanf(fe,"%lf\n",&advf);  
-  if (advf==-1) advf=1.0;
-
-  for(i=0;i<8;i++)
+  for(i=0;i<10;i++)
     fsd=fscanf(fe,"-1\n");
 
 

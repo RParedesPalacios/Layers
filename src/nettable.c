@@ -2,124 +2,43 @@
 /**  Functions of "nettable".                       <jmbenedi@prhlt.upv.es> **/
 /*****************************************************************************/
 #include <stdio.h>
+#include <limits.h> 
 #include <stdlib.h>
 #include <string.h>
 #include "nettable.h"
 /*****************************************************************************/
-#define MaxMem 150
-#define MaxTdN  10          /* Maximum number of inputs in table of networks */
-#define MaxTdL 100          /* Maximum number of inputs in table of layers   */
-#define MaxTdD  10          /* Maximum number of inputs in table of data     */
-#define MaxPar   6          /* Maximum number of parameters per layer        */
-typedef struct tdnet  /*************************** Elements of network table */
-{
-  char *name;
-  int   reftr;
-  int   refts;
-  int   refva;
-  int   belem;                   
-  int   eelem;                   
-  int   start;                   
-}TDNET;
-
-typedef struct node {
-   int  refnet;
-  int   reflay; 
-   struct node *succ;
-} typenode;
-
-typedef typenode *pnode;
-
-typedef struct tdlay  /***************************** Elements of layer table */
-{
-  char *name;
-  int   type;  
-  int   refnet;
-  int   ninit;
-  int   root;
-  int   visit;
-  int   visit2;
-  int   cte1;
-  int   cte2;
-  int   cte3;
-  int   cte4;
-  int   cte5;
-  int   cte6;
-  int   nsucc;
-  int   nprev;
-  pnode succ;    
-  pnode prev;    
-}TDLAY;
-
-typedef struct tddata  /**************************** Elements of data table  */
-{
-  char *name;
-  int   level;
-  int   lfrom;
-  int   lto;
-  char *namefile;
-  int   filetype;                   
-}TDDATA;
-/*****************************************************************************/
-char   *mem[MaxMem];
-TDNET  tdn [MaxTdN]; 
-TDNET  tdnini = {"",-1,-1,-1,-1,-1,-1};
-int    ptdn = 0;
-TDLAY  tdl [MaxTdL]; 
-TDLAY  tdlini = {"",-1,-1,-1,-1,FALSE,FALSE,-1,-1,-1,-1,-1,-1,0,0,NULL,NULL};
-int    ptdl = 0;
-TDDATA tdd [MaxTdD];
-TDDATA tddini = {"",-1,-1,-1,"",NONE};
-int    ptdd = 0;
-int    pmem = 0;
-int leveldata = 0;
-
-struct Gconst {
-  int batch  ;
-  int threads;
-  int seed;
-  int gpu;
+struct Gconst {   /*************************************** General Constants */
+  int  batch;
+  int  threads;
+  int  seed;
+  int  device;
+  int  cuDNN;
+  int  cuBLAS;
   char *log;
-} gconst = {100, 4, 1234, 0, "netparser.log"};
+} gconst = {100, 4, 1234, -1, 0, 1, "netparser.log"};
 
-int sn [MaxTdN];
-int psn;
-/*****************************************************************************/
-/*****************************************************************************/
-void yyerror(const char *msg)
-/*  Error handling.                                                          */
-{
-  numErrores++;
-  fprintf(stderr, "\nError at line %d: %s\n", yylineno, msg);
-}
-/*****************************************************************************/
-void emit (char *s)
-{ char *d = malloc (strlen (s) + 1); 
+TDDATA tdd [MaxTdD]; /******************************************* Data Table */
+TDDATA tddini = {"",-1,NONE,NONE,"",NONE,-1,-1,-1,-1,-1};
+int    ptdd = 0;
+int    leveldata = 0;
 
-  strcpy (d,s); mem[pmem] = d; pmem++; 
-}
-/*****************************************************************************/
-void dump_file()
-{ FILE *fd; char *t; int i; 
+TDNET  tdn [MaxTdN]; /**************************************** Network Table */
+TDNET  tdnini = {"",-1,NONE,-1,NONE,-1,NONE,-1,-1,-1};
+int    ptdn = 0;
 
-  if(numErrores == 0) {
-    fd = fopen ("netparser.run", "w");
-    for (i=0; i < pmem; i++) fprintf(fd,"%s\n",mem[i]);
-    fclose(fd);
-  }
-}
-/*****************************************************************************/
-void begin_experiment()
-{ int i; 
+TDLAY  tdl [MaxTdL]; /****************************************** Layer Table */
+TDLAY  tdlini = {"", -1, -1, -1, -1, FALSE, FALSE, INT_MIN, INT_MIN, INT_MIN, 
+		 INT_MIN, INT_MIN, INT_MIN, INT_MIN, 0, 0, NULL, NULL};
+int    ptdl = 0;
 
-  tdn[ptdn] = tdnini;  tdl[ptdl] = tdlini;  tdd[ptdd] = tddini;
-}
-/*****************************************************************************/
- void end_experiment()
-{ char line[140];
+char   *mem[MaxMem]; /*********************************************** Memory */
+int    pmem = 0;
 
-  sprintf(line,"END"); emit(line);
-}
+int      pstv;            /**** Pointer to the segment of temporal variables */
+ptsymbol ptnames = NULL;  /************************** head to the name table */
+int      fcteneg = FALSE;
+/*****************************************************************************/
+/***************************** general constants *****************************/
 /*****************************************************************************/
 void insert_gconstants (int ref, int cte, char *filename)
 {
@@ -136,8 +55,16 @@ void insert_gconstants (int ref, int cte, char *filename)
     gconst.seed = cte;
     break;
   }
-  case GPU: { 
-    gconst.gpu = cte;
+  case DEVICE: { 
+    gconst.device = cte;
+    break;
+  }
+  case CUDNN: { 
+    gconst.cuDNN = cte;
+    break;
+  }
+  case CUBLAS: { 
+    gconst.cuBLAS = cte;
     break;
   }
   case LOG: { 
@@ -145,6 +72,30 @@ void insert_gconstants (int ref, int cte, char *filename)
     break;
   }
   }
+}
+/*****************************************************************************/
+void get_gconstants()
+{ char line[140];
+  sprintf(line,"Const batch %d", gconst.batch);     emit(line);  
+  sprintf(line,"Const threads %d", gconst.threads); emit(line);  
+  sprintf(line,"Const seed %d", gconst.seed);       emit(line);  
+  if (gconst.device < 0) 
+    { sprintf(line,"Const device cpu"); emit(line);  }
+  else { sprintf(line,"Const device gpu%d", gconst.device); emit(line); }
+  sprintf(line,"Const cuDNN %d", gconst.cuDNN);     emit(line); 
+  sprintf(line,"Const cuBLAS %d", gconst.cuBLAS);   emit(line); 
+  sprintf(line,"Const log %s", gconst.log);         emit(line);  
+}
+/*****************************************************************************/
+/****************************** data definition ******************************/
+/*****************************************************************************/
+int search_data (char *named)
+{ int i, k = -1, ok = TRUE;
+
+  for (i = 0; ((i < ptdd) && ok); i++)
+    if (strcmp(tdd[i].name, named) == 0) 
+      { k = i; ok = FALSE; }
+  return k;
 }
 /*****************************************************************************/
 void inser_name_data (char *named)
@@ -157,43 +108,172 @@ void inser_name_data (char *named)
  }
 }
 /*****************************************************************************/
-void inser_param_data (char *namef, int cte1, int cte2)
+void inser_param_data (int cod, char *namef, int cte1, int cte2, int cte3)
 { int j = ptdd-1;
 
-  if (strlen(namef) == 0) 
-    if (cte2 >= 0) { 
-      tdd[j].lfrom = cte1;   tdd[j].lto = cte2;
-    }
-    else tdd[j].filetype = cte1;  
-  else tdd[j].namefile = namef; 
-}
-/*****************************************************************************/
-void insert_name_network (char *name)
-{ 
-  if (ptdn == MaxTdN) 
-    yyerror("Table of networks is completely full");
-  else {
-    tdn[ptdn].name=name;
-    ptdn++; tdn[ptdn] = tdnini;
+  switch (cod) {
+  case FILES: {
+    tdd[j].type = FILES;
+    if (strlen(namef) == 0) tdd[j].filetype = cte1;  
+    else tdd[j].namefile = namef;  
+    break;
+  }
+  case GENERATED: {
+    tdd[j].type = GENERATED;
+    if (cte1 > 0) tdd[j].gentype  = cte1; 
+    if (cte2 > 0) tdd[j].numnodes = cte2;
+    if (cte3 > 0) tdd[j].pos      = cte3;
+    break;
+  }
+  case CREADATA: {
+    tdd[j].type = CREADATA;
+    if (cte1 > 0) tdd[j].nrows      = cte1; 
+    if (cte2 >= 0) tdd[j].ncolsample = cte2;
+    if (cte3 >= 0) tdd[j].ncoltarget = cte3;
+    break;
+  }
   }
 }
+/*****************************************************************************/
+void check_param_data (int cod)
+{ int j = ptdd-1;
+
+  switch (cod) {
+  case FILES: {
+    if (tdd[j].filetype == NONE) tdd[j].filetype=BINARY;
+    if (strlen(tdd[j].namefile) == 0)
+      yyerror("File name is mandatory");
+    break;
+  }
+  case GENERATED: {
+    if (tdd[j].gentype == NONE)
+      yyerror("The type of generated file is mandatory");
+    if (tdd[j].numnodes < 0)
+      yyerror("The number of nodes is mandatory");
+    if ((tdd[j].gentype != ONESHOT) && (tdd[j].pos >= 0))
+      yyerror("Only for 'oneshot' is possible the additional constant");
+    break;
+  }
+  case CREADATA: {
+    if (tdd[j].nrows < 0)
+      yyerror("The number of rows is mandatory");
+    if (tdd[j].ncolsample < 0)
+      yyerror("The number of columns of the sample is mandatory");
+    if (tdd[j].ncoltarget < 0)
+      yyerror("The number of columns of the target is mandatory");
+    break;
+  }
+  }
+}
+/*****************************************************************************/
+void get_data()
+{ char line[140]; int i; char *aux;
+
+  for (i = 0; (i < ptdd); i++) 
+    if (tdd[i].level == leveldata) {
+      switch (tdd[i].type) {
+      case FILES: {
+        if (tdd[i].filetype == ASCII) aux = "ascii";
+        else aux = "binary";
+        sprintf(line,"Data F %s %s %s", tdd[i].name, aux, tdd[i].namefile);
+        break;
+      }
+      case GENERATED: {
+        switch (tdd[i].gentype) {
+	case GAUSS:   { aux = "gauss";   break; }
+	case UNIFORM: { aux = "uniform"; break; }
+	case ONES:    { aux = "ones";    break; }
+	case ZEROS:   { aux = "zeros";   break; }
+	case ONESHOT: { aux = "oneshot"; break; }
+	}
+	sprintf(line,"Data G %s %s %d %d", tdd[i].name, aux,
+		tdd[i].numnodes, tdd[i].pos);
+        break;
+      }
+      case CREADATA: {
+        sprintf(line,"Data C %s %d %d %d", tdd[i].name, tdd[i].nrows, 
+		tdd[i].ncolsample, tdd[i].ncoltarget);
+        break;
+      }
+      }
+      emit(line);
+    }
+  leveldata++;
+}
+/*****************************************************************************/
+int inser_new_name_data (char *named)
+{ 
+  if (ptdd == MaxTdD)
+    yyerror("Table of data is completely full");
+  else {
+    tdd[ptdd].name  = named; 
+    tdd[ptdd].level = leveldata;
+    tdd[ptdd].type  = CREADATA;
+    ptdd++; tdd[ptdd] = tddini; 
+  }
+  return ptdd-1;
+}
+/*****************************************************************************/
+/******************************* network data ********************************/
 /*****************************************************************************/
 void inser_param_net_data (int cod, int ref)
 { int j=ptdn-1;
+
   switch (cod) {
-  case tr: {
+  case TR: {
     tdn[j].reftr = ref; 
     break;
   }
-  case ts: {
-    tdn[j].refts = ref;
+  case TS: {
+    tdn[j].refts = ref; 
     break;
   }
-  case va: {
-    tdn[j].refva = ref;
+  case VA: {
+    tdn[j].refva = ref; 
     break;
   }
   }
+}
+/*****************************************************************************/
+ void get_net_data()
+ { int n = ptdn-1; char line[140]; char *aux1;
+
+  sprintf(line,"Network %s",tdn[n].name); emit(line);
+
+  if (tdn[n].reftr >= 0) { 
+    if (tdd[tdn[n].reftr].type == FILES) aux1="F";
+    else if (tdd[tdn[n].reftr].type == GENERATED) aux1="G"; 
+    else aux1="C";
+    sprintf(line,"data tr %s %s", aux1, tdd[tdn[n].reftr].name); 
+    emit(line); 
+  }
+  if (tdn[n].refts >= 0) { 
+    if (tdd[tdn[n].refts].type == FILES) aux1="F";
+    else if (tdd[tdn[n].refts].type == GENERATED) aux1="G";
+    else aux1="C"; 
+    sprintf(line,"data ts %s %s", aux1, tdd[tdn[n].refts].name); 
+    emit(line); 
+  }
+  if (tdn[n].refva >= 0) { 
+    if (tdd[tdn[n].refva].type == FILES) aux1="F";
+    else if (tdd[tdn[n].refva].type == GENERATED) aux1="G";
+    else aux1="C";
+    sprintf(line,"data va %s %s", aux1, tdd[tdn[n].refva].name); 
+    emit(line); 
+  }
+}
+/*****************************************************************************/
+/******************************* network layers ******************************/
+/*****************************************************************************/
+int search_layer (int refnet, char *layname)
+{ int i, j, k = -1, ok = TRUE;
+
+  if (refnet < 0) j = ptdn-1;
+  else j = refnet;
+  if (tdn[j].belem >= 0)
+    for (i = tdn[j].belem; ((i <= tdn[j].eelem) && ok); i++)
+      if (strcmp(tdl[i].name, layname) == 0) { k = i; ok = FALSE; }
+  return k;
 }
 /*****************************************************************************/
 void insert_name_layer (char *layname, int type)
@@ -203,7 +283,7 @@ void insert_name_layer (char *layname, int type)
     yyerror("Table of layerss is completely full");
   else {      /*   Here the layer is created in the layer table   */
       tdl[ptdl].name   = layname; tdl[ptdl].type  = type;    
-      tdl[ptdl].refnet = j;       tdl[ptdl].root  = TRUE;  
+      tdl[ptdl].refnet = j;       tdl[ptdl].root  = TRUE;
       /*   Here the network table is updated   */
      if (tdn[j].belem < 0)
        tdn[j].belem = tdn[j].eelem = ptdl;
@@ -213,34 +293,200 @@ void insert_name_layer (char *layname, int type)
 }
 /*****************************************************************************/
 void insert_param_layer(int cod, int val)
-{
+{ int j=ptdl;
+
   switch (cod) {
   case 1: {
-    tdl[ptdl].cte1 = val;
+    tdl[j].cte1 = val;
     break;
   }
   case 2: {
-    tdl[ptdl].cte2 = val;
+    tdl[j].cte2 = val;
     break;
   }
   case 3: {
-    tdl[ptdl].cte3 = val;
+    tdl[j].cte3 = val;
     break;
   }
   case 4: {
-    tdl[ptdl].cte4 = val;
+    tdl[j].cte4 = val;
     break;
   }
   case 5: {
-    tdl[ptdl].cte5 = val;
+    tdl[j].cte5 = val;
     break;
   }
   case 6: {
-    tdl[ptdl].cte6 = val;
+    tdl[j].cte6 = val;
+    break;
+  }
+  case 7: {
+    tdl[j].cte7 = val;
     break;
   }
   }
 }
+/*****************************************************************************/
+ void check_param_layer (int n)
+{ int i=1, ok=TRUE;
+  int aux [MaxPar] = {FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE}; 
+ 
+  if (tdl[ptdl].cte1 > INT_MIN) aux[0] = TRUE;
+  if (tdl[ptdl].cte2 > INT_MIN) aux[1] = TRUE;
+  if (tdl[ptdl].cte3 > INT_MIN) aux[2] = TRUE;
+  if (tdl[ptdl].cte4 > INT_MIN) aux[3] = TRUE;
+  if (tdl[ptdl].cte5 > INT_MIN) aux[4] = TRUE;
+  if (tdl[ptdl].cte6 > INT_MIN) aux[5] = TRUE;
+  if (tdl[ptdl].cte7 > INT_MIN) aux[6] = TRUE;
+  for (i = 0; ((i< n) && (ok == TRUE)); i++)
+    if (aux[i] != TRUE) ok = FALSE;
+  if (ok == FALSE)
+    yyerror("Error, mandatory parameters incomplete.");
+}
+/*****************************************************************************/
+ void get_net_layers (int n)
+{ char line[140], line2[140]; char *aux,*aux2; int i,j;
+
+  for (i=tdn[n].belem; (i <= tdn[n].eelem); i++) 
+  if (n == tdl[i].refnet) 
+      switch (tdl[i].type) {
+      case F: {
+        sprintf(line,"layer %s F numnodes %d", tdl[i].name, tdl[i].cte1);
+	emit(line);
+        break;
+      }
+      case R: {
+	j = tdl[i].cte1;
+        sprintf(line,"layer %s R %s %s", tdl[i].name, 
+		tdn[tdl[j].refnet].name, tdl[j].name);
+	emit(line);
+        break;
+	}
+      case FI: {
+	sprintf(line,"layer %s FI", tdl[i].name);
+
+ 	j = tdl[i].cte1;
+	if (j > INT_MIN) 
+	  sprintf(line2, " %s %s", tdn[tdl[j].refnet].name,
+		  tdl[j].name);
+	else sprintf(line2, " NULL NULL");
+	strcat(line,line2);
+
+        j = tdl[i].cte2;
+	if (j > INT_MIN) 
+	  sprintf(line2," %s", tdd[j].name);
+	else  sprintf(line2," NULL");
+	strcat(line,line2);
+
+	emit(line);
+        break;
+      }
+      case CI: {
+        sprintf(line,"layer %s CI nz %d nr %d nc %d", tdl[i].name,
+		tdl[i].cte1, tdl[i].cte2, tdl[i].cte3);
+        if (tdl[i].cte4 > INT_MIN) sprintf(line2," cr %d", tdl[i].cte4);
+	else sprintf(line2," cr %d", tdl[i].cte2);
+	strcat(line,line2);
+        if (tdl[i].cte5 > INT_MIN) sprintf(line2," cc %d", tdl[i].cte5);
+	else sprintf(line2," cc %d", tdl[i].cte3);
+	strcat(line,line2);
+
+ 	j = tdl[i].cte6;
+	if (j > INT_MIN) 
+	  sprintf(line2, " %s %s", tdn[tdl[j].refnet].name,
+		  tdl[j].name);
+	else sprintf(line2, " NULL NULL");
+	strcat(line,line2);
+
+        j = tdl[i].cte7;
+	if (j > INT_MIN) 
+	  sprintf(line2," %s", tdd[j].name);
+	else  sprintf(line2," NULL");
+	strcat(line,line2);
+
+        emit(line);
+        break;
+	}
+      case FO: { 
+        switch (tdl[i].cte1) {
+        case CLASSIFICATION: { aux = "classification"; break; }
+	case REGRESSION:     { aux = "regression";     break; }
+	case AUTOENCODER:    { aux = "autoencoder";    break; }
+	case MAX:            { aux = "max";            break; }
+	case MIN:            { aux = "min";            break; }
+	case MAXLOG:         { aux = "maxlog";         break; }
+	case MINLOG:         { aux = "minlog";         break; }
+	}
+	sprintf(line, "layer %s FO %s", tdl[i].name, aux);
+
+	j = tdl[i].cte2;
+	if (j > INT_MIN) 
+	  sprintf(line2, " %s %s", tdn[tdl[j].refnet].name,
+		  tdl[j].name);
+	else sprintf(line2, " NULL NULL");
+	strcat(line,line2);
+
+        j = tdl[i].cte3;
+	if (j > INT_MIN) 
+	  sprintf(line2," %s", tdd[j].name);
+	else  sprintf(line2," NULL");
+	strcat(line,line2);
+
+	emit(line);
+        break;
+      }
+      case C:  {
+        sprintf(line,"layer %s C nk %d kr %d kc %d", tdl[i].name, 
+		tdl[i].cte1, tdl[i].cte2, tdl[i].cte3);
+        if (tdl[i].cte4 > INT_MIN) sprintf(line2," rpad %d",tdl[i].cte4);
+	else sprintf(line2," rpad 0");
+	strcat(line,line2);
+        if (tdl[i].cte5 > INT_MIN) sprintf(line2," cpad %d",   tdl[i].cte5);
+	else sprintf(line2," cpad 0");
+	strcat(line,line2);
+        if (tdl[i].cte6 > INT_MIN) sprintf(line2," stride %d", tdl[i].cte6);
+        else sprintf(line2," stride 1");
+	strcat(line,line2); 
+        emit(line);
+        break;
+      }
+      case MP: {
+        sprintf(line,"layer %s MP sizer %d sizec %d", tdl[i].name,
+		tdl[i].cte1,tdl[i].cte2);
+	emit(line);
+        break;
+	}
+      case CAT: {
+        sprintf(line,"layer %s CAT",tdl[i].name);
+	emit(line);
+        break;
+      }
+      case ADD: {
+        sprintf(line,"layer %s ADD",tdl[i].name);
+	emit(line);
+        break;
+      }
+      case O: {
+        switch (tdl[i].cte1) {
+        case ADDITION:    { aux = "add";     break; }
+        case SUBTRACTION: { aux = "sub";     break; }
+        case DIVISION:    { aux = "div";     break; }
+        case INNERMULT:   { aux = "imult";   break; }
+        case OUTERMULT:   { aux = "omult";   break; }
+        case SIGMOID:     { aux = "sigmoid"; break; }
+        case TANH:        { aux = "tanh";    break; }
+        case LOGARITHM:   { aux = "log";     break; }
+        case RELU:        { aux = "relu";    break; }
+	}
+      	sprintf(line, "layer %s O %s", tdl[i].name, aux);
+	emit(line);
+        break;
+      }
+      }
+}
+/*****************************************************************************/
+/**************************** network links **********************************/
+/*****************************************************************************/
 /*****************************************************************************/
 void insert_link (int a, int b)
 { pnode p,q; 
@@ -270,59 +516,9 @@ void insert_link (int a, int b)
     while (q -> succ != NULL) q = q -> succ;
     q -> succ = p; tdl[b].nprev++;
   }
-}
-/*****************************************************************************/
-int insert_net_stack (int numnet, int refnet)
-{ int i, k, ok = TRUE;
-
-  if (numnet < 0) psn = 0;
-  else { sn[numnet] = refnet; psn++;  }
-  return psn;
-}
-/*****************************************************************************/
-void check_param_layer (int n)
-{ int i=1, ok=TRUE;
-  int aux [MaxPar] = {FALSE,FALSE,FALSE,FALSE,FALSE,FALSE}; 
- 
-  if (tdl[ptdl].cte1 >= 0) aux[0] = TRUE;
-  if (tdl[ptdl].cte2 >= 0) aux[1] = TRUE;
-  if (tdl[ptdl].cte3 >= 0) aux[2] = TRUE;
-  if (tdl[ptdl].cte4 >= 0) aux[3] = TRUE;
-  if (tdl[ptdl].cte5 >= 0) aux[4] = TRUE;
-  if (tdl[ptdl].cte6 >= 0) aux[5] = TRUE;
-  for (i = 0; ((i< n) && (ok == TRUE)); i++)
-    if (aux[i] != TRUE) ok = FALSE;
-  if (ok == FALSE)
-    yyerror("Error, mandatory parameters incomplete.");
-}
-/*****************************************************************************/
-int search_data (char *named)
-{ int i, k=-1, ok = TRUE;
-
-  for (i = 0; ((i < ptdd) && ok); i++)
-    if (strcmp(tdd[i].name, named) == 0) 
-	{ k = i; ok = FALSE; }
-  return k;
-}
-/*****************************************************************************/
-int search_layer (int refnet, char *layname)
-{ int i, j, k = -1, ok = TRUE;
-
-  if (refnet < 0) j = ptdn-1;
-  else j = refnet;
-  if (tdn[j].belem >= 0)
-    for (i = tdn[j].belem; ((i <= tdn[j].eelem) && ok); i++)
-      if (strcmp(tdl[i].name, layname) == 0) { k = i; ok = FALSE; }
-  return k;
-}
-/*****************************************************************************/
-int search_network (char *named)
-{ int i, k = -1, ok = TRUE;
-
-  for (i = 0; ((i < ptdn) && ok); i++)
-    if (strcmp(tdn[i].name, named) == 0) 
-	{ k = i; ok = FALSE; }
-  return k;
+  /* reshape control: insert param layer R */
+  if ((tdl[b].type == R) && (tdl[b].refnet == (ptdn -1))) 
+    tdl[b].cte1 = a;
 }
 /*****************************************************************************/
 int search_states(char *netname, char *layname)
@@ -355,151 +551,6 @@ int search_states(char *netname, char *layname)
   }
   else yyerror("Network name does not exist");
   return lay;
-}
-/*****************************************************************************/
-void get_gconstants()
-{ char line[140];
-
-  sprintf(line,"Const batch %d", gconst.batch);     emit(line);  
-  sprintf(line,"Const threads %d", gconst.threads); emit(line);  
-  sprintf(line,"Const log %s", gconst.log);         emit(line);  
-  sprintf(line,"Const seed %d", gconst.seed);       emit(line);  
-  sprintf(line,"Const gpu %d", gconst.gpu);         emit(line);  
-}
-/*****************************************************************************/
-void get_data()
-{ char line[140]; int i; char *aux;
-
-  for (i = 0; (i < ptdd); i++) 
-    if (tdd[i].level == leveldata) {
-      if (tdd[i].filetype == ASCII) aux = "ascii";
-      else aux = "binary";
-
-      if (strlen(tdd[i].namefile) >= 0) {
-	if ((tdd[i].lfrom >= 0) && (tdd[i].lto >= 0))
-	  if (tdd[i].filetype != NONE)
-	    sprintf(line,
-		    "Data %s 3 creadata %s %s %s %s filename %s filetype %s",
-		    tdd[i].name, tdn[tdl[tdd[i].lfrom].refnet].name,
-		    tdl[tdd[i].lfrom].name, tdn[tdl[tdd[i].lto].refnet].name,
-		    tdl[tdd[i].lto].name, tdd[i].namefile, aux);
-	  else
-	    sprintf(line,"Data %s 2 creadata %s %s %s %s filename %s",
-		    tdd[i].name, tdn[tdl[tdd[i].lfrom].refnet].name,
-		    tdl[tdd[i].lfrom].name, tdn[tdl[tdd[i].lto].refnet].name,
-		    tdl[tdd[i].lto].name, tdd[i].namefile);
-	else
-	  if (tdd[i].filetype != NONE)
-	    sprintf(line,"Data %s 2 filename %s filetype %s",
-		    tdd[i].name, tdd[i].namefile, aux);
-	  else
-	    sprintf(line,"Data %s 1 filename %s",
-		    tdd[i].name, tdd[i].namefile);
-	emit(line);
-      }
-      else yyerror("File name is a mandatory parameters.");
-    }
-
-  leveldata++;
-}
-/*****************************************************************************/
-void get_net_data(int n)
-{ char line[140];
-
-  sprintf(line,"data tr %s", tdd[tdn[n].reftr].name); emit(line);
-  if (tdn[n].refts >= 0) 
-    { sprintf(line,"data ts %s",tdd[tdn[n].refts].name); emit(line); }
-  if (tdn[n].refva >= 0) 
-    { sprintf(line,"data va %s",tdd[tdn[n].refva].name); emit(line); } 
-}
-/*****************************************************************************/
-void get_net_layers (int n)
-{ char line[140], line2[140]; char *aux,*aux2; int i,j;
-
-  for (i=tdn[n].belem; (i <= tdn[n].eelem); i++) 
-    if (n == tdl[i].refnet) {
-      switch (tdl[i].type) {
-      case F: {
-        sprintf(line,"layer %s F 1 numnodes %d", tdl[i].name, tdl[i].cte1);
-	emit(line);
-        break;
-      }
-      case R: {
-        break;
-      }
-      case FI: {
-	sprintf(line,"layer %s FI 0", tdl[i].name);
-	emit(line);
-        break;
-      }
-      case FO: { 
-	sprintf(line,"layer %s FO ", tdl[i].name);
-	switch (tdl[i].cte1) {
-	case CLASSIFICATION: {
-	  sprintf(line2,"1 criterion classification");
-	  break;
-	}
-	case REGRESSION:{
-	  j = tdl[i].cte2;
-	  if (j >= 0) sprintf(line2,"2 criterion regression %s %s",
-			      tdn[tdl[j].refnet].name, tdl[j].name);
-	  else sprintf(line2,"1 criterion regression");
-	  break;
-	}
-	case AUTOENCODER:{
-	  sprintf(line2,"2 criterion regression autoencoder 1");
-	  break;
-	}
-	}
-	strcat(line,line2);
-	emit(line);
-        break;
-      }
-      case C:  {
-        sprintf(line,"layer %s C 6 nk %d kr %d kc %d", tdl[i].name, 
-		tdl[i].cte1, tdl[i].cte2, tdl[i].cte3);
-        if (tdl[i].cte4 >= 0) sprintf(line2," rpad %d",tdl[i].cte4);
-	else sprintf(line2," rpad 0");
-	strcat(line,line2);
-        if (tdl[i].cte5 >= 0) sprintf(line2," cpad %d",   tdl[i].cte5);
-	else sprintf(line2," cpad 0");
-	strcat(line,line2);
-        if (tdl[i].cte6 >= 0) sprintf(line2," stride %d", tdl[i].cte6);
-        else sprintf(line2," stride 1");
-	strcat(line,line2); 
-        emit(line);
-        break;
-      }
-      case CI: {
-        sprintf(line,"layer %s CI 5 nz %d nr %d nc %d", tdl[i].name,
-		tdl[i].cte1,tdl[i].cte2,tdl[i].cte3);
-        if (tdl[i].cte4 >= 0) sprintf(line2," cr %d",   tdl[i].cte4);
-	else sprintf(line2," cr %d", tdl[i].cte2);
-	strcat(line,line2);
-        if (tdl[i].cte5 >= 0) sprintf(line2," cc %d",   tdl[i].cte5);
-	else sprintf(line2," cc %d", tdl[i].cte3);
-	strcat(line,line2);
-        emit(line);
-        break;
-      }
-      case MP: {
-        sprintf(line,"layer %s MP 2 sizer %d sizec %d", tdl[i].name,
-		tdl[i].cte1,tdl[i].cte2);
-	emit(line);
-        break;
-      }
-      case CAT: {
-        sprintf(line,"layer %s CAT 0",tdl[i].name);
-	emit(line);
-        break;
-      }
-      case ADD: {
-        sprintf(line,"layer %s ADD 0",tdl[i].name);
-	emit(line);
-        break;
-      }
-      }
-    }
 }
 /*****************************************************************************/
 int is_acyclic()
@@ -538,7 +589,7 @@ int is_acyclic()
 }
 /*****************************************************************************/
 void get_net_links(int n, int l)
-{ char line[140]; char *aux; int i,c, s,queue [MaxTdL]; pnode p; int phq, ptq;
+{ char line[140]; int i,c, s,queue [MaxTdL]; pnode p; int phq, ptq;
   /*   Breadth-First-Search   */
   phq = ptq = 0; /*   initialize empty queue   */
   if (ptq == MaxTdL)          /* add item to the end of the queue   */
@@ -554,33 +605,46 @@ void get_net_links(int n, int l)
   	if (ptq == MaxTdL) /* add item to the end of the queue */
 	  yyerror("Queue of layerss is completely full");
         else { queue[ptq] = s; ptq++; }
-        if ((tdl[s].type == R) && (tdl[s].refnet == (ptdn -1))) {
-	  if (tdl[s].cte1 == 1) aux ="local 1";
-	  else aux = "local 0";
-	  sprintf(line,"layer %s R 2 prevlayer %s %s %s", tdl[s].name,
-		  tdn[tdl[c].refnet].name, tdl[c].name, aux);
-	  emit(line);
-	}
-	else { 
-          sprintf(line,"link %s %s %s %s",tdn[tdl[c].refnet].name,
+
+        sprintf(line,"link %s %s %s %s",tdn[tdl[c].refnet].name,
 		  tdl[c].name, tdn[tdl[s].refnet].name, tdl[s].name);
 	  emit(line);
-	}
 	p = p -> succ;
       }
     }
   }
 }
 /*****************************************************************************/
-void get_network()
+/******************************* network *************************************/
+/*****************************************************************************/
+void insert_name_network (char *name)
+{ 
+  if (ptdn == MaxTdN) 
+    yyerror("Table of networks is completely full");
+  else {
+    tdn[ptdn].name=name;
+    ptdn++; tdn[ptdn] = tdnini;
+  }
+}
+/*****************************************************************************/
+int search_network (char *named)
+{ int i, k = -1, ok = TRUE;
+
+  for (i = 0; ((i < ptdn) && ok); i++)
+    if (strcmp(tdn[i].name, named) == 0) 
+	{ k = i; ok = FALSE; }
+  return k;
+}
+/*****************************************************************************/
+ void get_network()
 { char line[140]; int i, k, j = ptdn-1, nsti = 0, ok = TRUE;
   /*   checking the network: initial, internal and final layers   */
   for (i = tdn[j].belem; i <= tdn[j].eelem; i++) {
     switch (tdl[i].type) {
     case FO: {
       if (!((tdl[i].nsucc >= 0) && (tdl[i].nprev > 0))) {
-	ok = FALSE;
-	yyerror("Error in the accessibility of final layer");
+	/* ok = FALSE; */
+        /* yyerror("Error in the accessibility of final layer"); */
       }
       break;
     }
@@ -596,22 +660,22 @@ void get_network()
 	}
       }
       else {
-	ok = FALSE;
-	yyerror("Error in the accessibility of initial layer");
+	/* ok = FALSE; */
+	/* yyerror("Error in the accessibility of initial layer"); */
       }
       break;
     }
     case C: case MP: {
       if (!((tdl[i].nsucc > 0) && (tdl[i].nprev == 1))) {
-	ok = FALSE;
-	yyerror("Error in the accessibility of internal layer1");
+	/* ok = FALSE; */
+	/* yyerror("Error in the accessibility of internal layer1"); */
       }
       break;
     }
     case CAT: case ADD: case F: case R: {
       if (!((tdl[i].nsucc > 0) && (tdl[i].nprev > 0))) {
-	ok = FALSE;
-	yyerror("Error in the accessibility of internal layer2");
+	/* ok = FALSE; */
+	/* yyerror("Error in the accessibility of internal layer2"); */
       }
       break;
     }
@@ -620,9 +684,9 @@ void get_network()
   if (nsti == 0)
     yyerror("Error: a network must have an initial layer");
   else if (ok == TRUE) {
-    sprintf(line,"Network %s",tdn[j].name); emit(line);
+    /* sprintf(line,"Network %s",tdn[j].name); emit(line); */
     /*   getting data files of network   */
-    get_net_data(j);
+    /*    get_net_data(j); */
     /*   getting layers of network   */
     if (is_acyclic() == FALSE)
       yyerror("Error, possible loop in the network");
@@ -635,270 +699,539 @@ void get_network()
       get_net_links(j, k);
     }
     /* end network */ 
-    sprintf(line,"END_Network"); emit(line);
+    sprintf(line,"EndNetwork"); emit(line);
   }
 }
 /*****************************************************************************/
-void get_amendment(int type, int ref, char *aux)
-{ char line[140];
- 
-  if (type == LAYER)
-    sprintf(line,"amendment %s %s %s", tdn[tdl[ref].refnet].name,
-	    tdl[ref].name, aux);
-  else sprintf(line,"amendment %s * %s", tdn[ref].name, aux);
-  emit(line);
-}
+/********************************* amendment *********************************/
 /*****************************************************************************/
-void get_amendment_onlynet(int ref, int aux)
-{ char line[140];
- 
-  if (aux == 0)
-    sprintf(line,"amendment %s * cropmode 0", tdn[ref].name);
-  else sprintf(line,"amendment %s * cropmode 1", tdn[ref].name);
-  emit(line);
-}
-/*****************************************************************************/
-void get_amendment_data(int ref, int aux)
-{ char line[140];
-  sprintf(line,"amendment %s balance %d", tdd[ref].name, aux);
-  emit(line);
-}
-/*****************************************************************************/
-char *get_amend_param_ctr(int param, float value)
-{ char line[140];  char *d;
+void get_amendment(int type, int ref, int cod, EXPRE value)
+{ char line[140], opd[140]; char *aux;
 
-  switch (param) {
-  case mu: { 
-    sprintf(line,"mu %f",value);
+  strexpre(opd,value);
+  switch (cod) {
+    case mu:         { aux = "mu";         break; }
+    case mmu:        { aux = "mmu";        break; }
+    case l2:         { aux = "l2";         break; }
+    case l1:         { aux = "l1";         break; }
+    case maxn:       { aux = "maxn";       break; }
+    case drop:       { aux = "drop";       break; }
+    case noiser:     { aux = "noiser";     break; }
+    case noisesd:    { aux = "noisesd";    break; }
+    case brightness: { aux = "brightness"; break; }
+    case contrast:   { aux = "contrast";   break; }
+    case lambda:     { aux = "lambda";     break; }
+    case noiseb:     { aux = "noiseb";     break; }
+    case advf:       { aux = "advf";       break; }
+    case bn:         { aux = "bn";         break; }
+    case act:        { aux = "act";        break; }
+    case shift:      { aux = "shift";      break; }
+    case flip:       { aux = "flip";       break; }
+    case adv:        { aux = "adv";        break; }
+    case cropmode:   { aux = "cropmode";   break; }
+    case balance:    { aux = "balance";    break; }
+    case trainable : { aux = "trainable";  break; }
+  }
+  switch (type) {
+  case DATA: {
+    if (cod == balance) 
+      sprintf(line,"amendment data %s balance %s", tdd[ref].name, opd);
+    else yyerror("Parameter is not allowed for data");
     break;
   }
-  case mmu: {
-    sprintf(line,"mmu %f",value);
+  case LAYER: {
+    if ((cod == cropmode)||(cod == balance)) 
+      yyerror("Parameter is not allowed for layers");
+    else 
+      sprintf(line,"amendment layer %s %s %s %s", tdn[tdl[ref].refnet].name,
+	      tdl[ref].name, aux, opd);
     break;
   }
-  case l2: { 
-    sprintf(line,"l2 %f",value);
-    break;
-  }
-  case l1: { 
-    sprintf(line,"l1 %f",value);
-    break;
-  }
-  case maxn: { 
-    sprintf(line,"maxn %f",value);
-    break;
-  }
-  case drop: { 
-    sprintf(line,"drop %f",value);
-    break;
-  }
-  case noiser: { 
-    sprintf(line,"noiser %f",value);
-    break;
-  }
-  case noisesd: { 
-    sprintf(line,"noisesd %f",value);
-    break;
-  }
-  case brightness: { 
-    sprintf(line,"brightness %f",value);
-    break;
-  }
-  case contrast: { 
-    sprintf(line,"contrast %f",value);
-    break;
-  }
-  case lambda: { 
-    sprintf(line,"lambda %f",value);
-    break;
-  }
-  case noiseb: { 
-    sprintf(line,"noiseb %f",value);
-    break;
-  }
-  case advf: { 
-    sprintf(line,"advf %f",value);
+  case NETWORK: {
+    sprintf(line,"amendment network %s %s %s", tdn[ref].name, aux, opd);
     break;
   }
   }
-  d = malloc (strlen (line) + 1);
-  strcpy (d,line);
-  return d;
+  emit(line);
 }
 /*****************************************************************************/
-char *get_amend_param_cte(int param, int value)
-{ char line[140]; char *d;
-
-  switch (param) {
-  case bn: { 
-    sprintf(line,"bn %d",value);
-    break;
-  }
-  case act: { 
-    sprintf(line,"act %d",value);
-    break;
-  }
-  case shift: { 
-    sprintf(line,"shift %d",value);
-    break;
-  }
-  case flip: { 
-    sprintf(line,"flip %d",value);
-    break;
-  }
-  case adv: { 
-    sprintf(line,"adv %d",value);
-    break;
-  }
-  case balance: { 
-    sprintf(line,"balance %d",value);
-    break;
-  }
-  }
-  d = malloc (strlen (line) + 1); 
-  strcpy (d,line);
-  return d;
-}
+/********************************* command ***********************************/
 /*****************************************************************************/
-void get_printkernels (int refn, int refl, char *aux)
+void get_echo(char *aux)
 { char line[140]; 
 
-  sprintf(line,"command %s %s printkernels 1 %s", tdn[refn].name, 
-	  tdl[refl].name, aux);
+  sprintf(line,"command %s", aux);
   emit(line);
 }
 /*****************************************************************************/
-void get_copy (int refnd, int refld, int refns, int refls)
-{ char line[140]; 
+void get_for(ptsymbol s, EXPRE exp1, EXPRE exp2, EXPRE exp3)
+{ char line[140], opd1[140], opd2[140], opd3[140];
 
-  sprintf(line,"command %s %s copy %s %s", tdn[refnd].name, 
-	  tdl[refld].name, tdn[refns].name, tdl[refls].name);
+  strexpre(opd1, exp1); strexpre(opd2, exp2); strexpre(opd3, exp3);
+  sprintf(line, "command For %s %s %s %s", s->ident, opd1, opd2, opd3);
   emit(line);
 }
 /*****************************************************************************/
-void get_train (int par1, int par2, int par3, int ref)
-{ char line[140]; int i;
+void get_endfor()
+{ char line[140];
 
-  sprintf(line,"command list train numiter %d numnet %d", par1, ref);
+  sprintf(line,"command EndFor");
   emit(line);
-  for (i = 0; (i < ref); i++) {
-    sprintf(line,"command %s train 2 nepoch %d numbatch %d", 
-	    tdn[sn[i]].name, par2, par3);
+}
+/*****************************************************************************/
+/****************************** command layers *******************************/
+/*****************************************************************************/
+void get_com_lay_file(int refn, int refl, int cod, char *nfil)
+{ char line[140]; char *aux;
+
+  if (cod == printkernels) aux ="printkernels";
+  sprintf(line,"command layer %s %s %s %s", aux, tdn[refn].name, 
+	  tdl[refl].name, nfil);
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_lay_datlay(int refnd, int refld, int cod, int refns, int refls)
+{ char line[140]; char *aux;
+
+  if (cod == change) aux ="change";
+  if ( (tdl[refld].type == FI) || (tdl[refld].type == CI)||
+       (tdl[refld].type == FO) ) {
+    if (refls < 0)
+      sprintf(line,"command layer %s %s %s NULL NULL %s", aux, tdn[refnd].name,
+	      tdl[refld].name, tdd[refns].name);
+    else 
+      sprintf(line,"command layer %s %s %s %s %s NULL", aux, tdn[refnd].name,
+	      tdl[refld].name, tdn[refns].name, tdl[refls].name);
     emit(line);
   }
-  sprintf(line,"command list train start");
+  else yyerror("Destination layer type not allowed for this command");
+}
+/*****************************************************************************/
+void get_com_lay_copy(int ref1, int ref2, int cod, char *aux)
+{ char line[140]; char *aux2;
+
+printf(":::::::::::::::::::::::::[%s]\n",aux);
+
+  if (cod == copy) aux2 ="copy";
+  sprintf(line,"command layer %s %s %s %s", aux2, tdn[ref1].name, 
+	  tdl[ref2].name, aux);
+  printf("#########################[%s] %d\n",line,(int)strlen(line));
+
   emit(line);
 }
 /*****************************************************************************/
-void get_net_train (int refn, int par) 
-{ char line[140];
+/***************************** command networks ******************************/
+/*****************************************************************************/
+void get_com_net_void (int ref, int cod)
+{ char line[140]; char *aux;
+
+  switch (cod) {
+  case forward:     {aux = "forward";     break;}
+  case backward:    {aux = "backward";    break;}
+  case resetstats:  {aux = "resetstats";  break;}
+  case printerrors: {aux = "printerrors"; break;}
+  case reseterrors: {aux = "reseterrors"; break;}
+  case trainmode:   {aux = "trainmode";   break;}
+  case testmode:    {aux = "testmode";    break;}
+  case update:      {aux = "update";      break;}
+  }
+  sprintf(line,"command network %s %s", aux, tdn[ref].name);
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_net_file(int ref, int cod, char *nfil)
+{ char line[140];  char *aux;
+
+  switch (cod) {
+  case load:    {aux = "load";    break;}
+  case save:    {aux = "save";    break;}
+  case testout: {aux = "testout"; break;}
+  }
+  sprintf(line,"command network %s %s %s", aux, tdn[ref].name, nfil);
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_net_dat(int ref1, int cod, int ref2) 
+{ char line[140]; char *aux;
+
+  if (cod == test) aux = "test"; else aux = "evaluate";
+  if (ref2 >= 0)
+    sprintf(line,"command network %s %s %s", aux, tdn[ref1].name,  
+	    tdd[ref2].name);
+  else sprintf(line, "command network %s %s NULL", aux, tdn[ref1].name);
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_net_exp (int ref, int cod, EXPRE val) 
+{ char line[140], opd[140]; char *aux;
+
+  strexpre(opd, val);
+  if (cod == train) aux ="train";
+  sprintf(line,"command network %s %s %s", aux, tdn[ref].name, opd);
+  emit(line);
+}
+/*****************************************************************************/
+/******************************* command data ********************************/
+/*****************************************************************************/
+void get_com_data_void_rank(int ref, RANGO r, int cod)
+{ char line[140], opd1[140], opd2[140], opd3[140], opd4[140]; char *aux,*aux2;
+
+  switch (cod) {
+  case zscore:   {aux = "zscore";  break;}
+  case center:   {aux = "center";  break;}
+  case yuv:      {aux = "yuv";     break;}
+  case maxmin:   {aux = "maxmin";  break;}
+  default: yyerror("This command does not support a rank");
+  }
+  strexpre(opd1,r.row.ini); strexpre(opd2,r.row.fin); 
+  strexpre(opd3,r.col.ini); strexpre(opd4,r.col.fin);
+
+  if (r.col.aux < 0) aux2 = "NONE";
+  else 
+    switch (r.col.aux) {
+    case (REAL):   {aux2 = "REAL";   break;}
+    case (BIN):    {aux2 = "BIN";    break;}
+    case (INT):    {aux2 = "INT";    break;}
+    case (TARGET): {aux2 = "TARGET"; break;}
+    case (SAMPLE): {aux2 = "SAMPLE"; break;}
+    }
+  sprintf(line, "command data %s %s %s %s %s %s %s", aux, tdd[ref].name,
+	  opd1, opd2, opd3, opd4, aux2 );
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_data_void(int ref, int cod)
+{ char line[140], opd[140]; char *aux; EXPRE e; 
+
+  switch (cod) {
+  case zscore:   {aux = "zscore";  break;}
+  case center:   {aux = "center";  break;}
+  case yuv:      {aux = "yuv";     break;}
+  case maxmin:   {aux = "maxmin";  break;}
+  case shuffle:  {aux = "shuffle"; break;}
+  case next:     {aux = "next";    break;}
+  }
+  e.psymbol = NULL;  e.reftemp = cr_var_temp_cte(-1);
+  strexpre(opd, e);
+
+  if ((cod==shuffle)||(cod==next)) 
+    sprintf(line, "command data %s %s", aux, tdd[ref].name);
+  else 
+    sprintf(line, "command data %s %s %s %s %s %s NONE", aux,
+	    tdd[ref].name,opd, opd, opd, opd);
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_data_file(int ref, int cod, char *valor)
+{ char line[140], opd[140]; char *aux;
+
+  if (cod == store) aux ="store";
+  sprintf(line, "command data %s %s %s", aux, tdd[ref].name, valor);
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_data_dat(int ref, int cod, int ref2)
+{ char line[140], opd[140];  char *aux;
+
+  if (cod == getstats) aux ="getstats";
+  sprintf(line, "command data %s %s %s", aux, tdd[ref].name, tdd[ref2].name);
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_data_exp_rank(int ref, RANGO r, int cod, EXPRE val)
+{ char line[140], opd[140], opd1[140], opd2[140], opd3[140], opd4[140]; 
+  char *aux,*aux2;
+
+  strexpre(opd,val);
+  switch (cod) {
+  case (multiplication): {aux = "mul"; break; }
+  case (division):       {aux = "div"; break; }
+  case (addition):       {aux = "add"; break; }
+  case (subtraction):    {aux = "sub"; break; }
+  case (set):            {aux = "set"; break; }
+  }
+  strexpre(opd1,r.row.ini); strexpre(opd2,r.row.fin); 
+  strexpre(opd3,r.col.ini); strexpre(opd4,r.col.fin);
+
+  if (r.col.aux < 0) aux2 = "NONE";
+  else 
+    switch (r.col.aux) {
+    case (REAL):   {aux2 = "REAL";   break;}
+    case (BIN):    {aux2 = "BIN";    break;}
+    case (INT):    {aux2 = "INT";    break;}
+    case (TARGET): {aux2 = "TARGET"; break;}
+    case (SAMPLE): {aux2 = "SAMPLE"; break;}
+    }
+  sprintf(line, "command data %s %s %s %s %s %s %s %s", aux, tdd[ref].name,
+	  opd1, opd2, opd3, opd4, aux2, opd);
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_data_exp (int ref, int cod, EXPRE val)
+{ char line[140], opd[140], opd1[140];  char *aux; EXPRE e; 
+
+  strexpre(opd1,val);
+  switch (cod) {
+  case (multiplication): {aux = "mul"; break; }
+  case (division):       {aux = "div"; break; }
+  case (addition):       {aux = "add"; break; }
+  case (subtraction):    {aux = "sub"; break; }
+  case (set):            {aux = "set"; break; }
+  }
+  e.psymbol = NULL;  e.reftemp = cr_var_temp_cte(-1);
+  strexpre(opd, e);
+  sprintf(line, "command data %s %s %s %s %s %s NONE %s", aux, tdd[ref].name,
+	  opd, opd, opd, opd, opd1);
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_data_copy_rank(int ref, RANGO r, int cod, char *aux)
+{ char line[140], opd1[140], opd2[140], opd3[140], opd4[140]; 
+  char *aux1, *aux2;
+
+  if (cod == copy) aux1 ="copy";
+  strexpre(opd1,r.row.ini); strexpre(opd2,r.row.fin); 
+  strexpre(opd3,r.col.ini); strexpre(opd4,r.col.fin);
+  if (r.col.aux < 0) aux2 = "NONE";
+  else 
+    switch (r.col.aux) {
+    case (REAL):   {aux2 = "REAL";   break;}
+    case (BIN):    {aux2 = "BIN";    break;}
+    case (INT):    {aux2 = "INT";    break;}
+    case (TARGET): {aux2 = "TARGET"; break;}
+    case (SAMPLE): {aux2 = "SAMPLE"; break;}
+    }
+  sprintf(line, "command data %s %s %s %s %s %s %s %s", aux1, tdd[ref].name,
+	  opd1, opd2, opd3, opd4, aux2, aux);
+  emit(line);
+}
+/*****************************************************************************/
+void get_com_data_copy (int ref, int cod, char *aux)
+{ char line[140], opd[140]; char *aux2; EXPRE e; 
+
+  if (cod == copy) aux2 ="copy";
+  e.psymbol = NULL;  e.reftemp = cr_var_temp_cte(-1);
+  strexpre(opd, e);
+  sprintf(line, "command data %s %s %s %s %s %s NONE %s", aux2, tdd[ref].name,
+	  opd, opd, opd, opd, aux);
+  emit(line);
+}
+/*****************************************************************************/
+/******************************** expressions ********************************/
+/*****************************************************************************/
+void get_init_cte(int ref, float val)
+{ char line[140]; 
  
-  sprintf(line,"command %s train 1 nepoch %d",tdn[refn].name, par);
+  sprintf(line, "var initcte #%d %f", ref, val);
   emit(line);
 }
 /*****************************************************************************/
-void get_net_test (int ref1, int ref2) 
-{ char line[140], line2[140]; 
+void get_init_elem(int ref, int dat, EXPRE f, EXPRE c)
+{ char line[140], opd1[140], opd2[140]; 
+ 
+  strexpre(opd1, f); strexpre(opd2, c);
+  sprintf(line, "var initelem #%d %s %s %s", ref, tdd[dat].name, opd1, opd2);
+  emit(line);
+}
+/*****************************************************************************/
+void get_init_amend(int type, int ref, int dat, int cod)
+{ char line[140]; char *aux; 
+ 
+  switch (cod) {
+    case mu:         { aux = "mu";         break; }
+    case mmu:        { aux = "mmu";        break; }
+    case l2:         { aux = "l2";         break; }
+    case l1:         { aux = "l1";         break; }
+    case maxn:       { aux = "maxn";       break; }
+    case drop:       { aux = "drop";       break; }
+    case noiser:     { aux = "noiser";     break; }
+    case noisesd:    { aux = "noisesd";    break; }
+    case brightness: { aux = "brightness"; break; }
+    case contrast:   { aux = "contrast";   break; }
+    case lambda:     { aux = "lambda";     break; }
+    case noiseb:     { aux = "noiseb";     break; }
+    case advf:       { aux = "advf";       break; }
+    case bn:         { aux = "bn";         break; }
+    case act:        { aux = "act";        break; }
+    case shift:      { aux = "shift";      break; }
+    case flip:       { aux = "flip";       break; }
+    case adv:        { aux = "adv";        break; }
+    case cropmode:   { aux = "cropmode";   break; }
+    case balance:    { aux = "balance";    break; }
+    case trainable : { aux = "trainable";  break; }
+  }
+  switch (type) {
+  case DATA: {
+    if (cod == balance) 
+      sprintf(line,"var initdat #%d %s %s", ref, tdd[dat].name, aux);
+    else yyerror("Parameter is not allowed for data");
+    break;
+  }
+  case LAYER: {
+    if ((cod == cropmode)||(cod == balance)) 
+      yyerror("Parameter is not allowed for layers");
+    else 
+      sprintf(line,"var initlay #%d %s %s %s", ref, tdn[tdl[dat].refnet].name,
+	      tdl[dat].name, aux);
+    break;
+  }
+  case NETWORK: {
+    sprintf(line,"var initnet #%d %s %s", ref, tdn[dat].name, aux);
+    break;
+  }
+  }
+  emit(line);
+}
+/*****************************************************************************/
+void get_functions(int ref, int cod, EXPRE val)
+{ char line[140];  char *aux;
+ 
+  switch(cod) {
+  case (LOGARITHM):   { aux = "log"; break;}
+  case (EXPONENTIAL): { aux = "exp"; break;}
+  case (SQUARE):      { aux = "sqr"; break;}
+  }
+  if (val.psymbol == NULL) 
+    sprintf(line, "var function #%d %s #%d", ref, aux, val.reftemp);
+  else sprintf(line, "var function #%d %s %s", ref, aux, val.psymbol->ident);
+  emit(line);
+}
+/*****************************************************************************/
+void get_exp_mul(int ref, EXPRE op1, int op, EXPRE op2)
+{ char line[140], line2[140];  char *aux;
+ 
+  switch(op) {
+  case (MULTIPLICATION): { aux = "*";  break;}
+  case (DIVISION):       { aux = "/";  break;}
+  case (MODULUS):        { aux = "%";  break;}
+  case (EXPONET):        { aux = "**"; break;}
+  }
+  if (op1.psymbol == NULL) 
+    sprintf(line, "var operator #%d %s #%d", ref, aux, op1.reftemp);
+  else sprintf(line, "var operator #%d %s %s", ref, aux, op1.psymbol->ident);
 
-  if (ref2 < 0) sprintf(line2,"0");
-  else  sprintf(line2,"1 %s",tdd[ref2].name);
-  sprintf(line,"command %s test %s", tdd[ref1].name, line2);
+  if (op2.psymbol == NULL)  sprintf(line2, " #%d", op2.reftemp);
+  else sprintf(line2, " %s", op2.psymbol->ident);
+  strcat(line,line2);
   emit(line);
 }
 /*****************************************************************************/
-void get_net_evaluate (int ref1, int ref2) 
+void get_exp_add(int ref, EXPRE op1, int op, EXPRE op2)
+{ char line[140], line2[140];  char *aux;
+ 
+  switch(op) {
+  case (ADDITION):    { aux = "+";  break;}
+  case (SUBTRACTION): { aux = "-";  break;}
+  }
+  if (op1.psymbol == NULL) 
+    sprintf(line, "var operator #%d %s #%d", ref, aux, op1.reftemp);
+  else sprintf(line, "var operator #%d %s %s", ref, aux, op1.psymbol->ident);
+
+  if (op2.psymbol == NULL)  sprintf(line2, " #%d", op2.reftemp);
+  else sprintf(line2, " %s", op2.psymbol->ident);
+  strcat(line,line2);
+  emit(line);
+}
+/*****************************************************************************/
+void  get_exp_eqvar(ptsymbol s, EXPRE op)
 { char line[140];
 
-  sprintf(line,"command %s evaluate 1 %s", tdn[ref1].name, tdd[ref2].name);
+  if (op.psymbol == NULL) 
+    sprintf(line, "var eqvar %s #%d", s->ident, op.reftemp);
+  else
+    sprintf(line, "var eqvar %s %s", s->ident, op.psymbol->ident);
   emit(line);
 }
 /*****************************************************************************/
-void get_save (int ref, char *aux)
-{ char line[140]; 
+void  get_exp_eqelem(int ref, EXPRE f, EXPRE c, EXPRE der)
+{ char line[140], opd1[140], opd2[140], opd[140];
 
-  sprintf(line,"command %s save 1 %s", tdn[ref].name, aux);
+  strexpre(opd1, f); strexpre(opd2, c); strexpre(opd, der);
+  sprintf(line, "var eqelem %s %s %s %s", tdd[ref].name, opd1, opd2, opd);
   emit(line);
 }
 /*****************************************************************************/
-void get_load (int ref, char *aux)
-{ char line[140]; 
-
-  sprintf(line,"command %s load 1 %s", tdn[ref].name, aux);
-  emit(line);
+/********************************* generales *********************************/
+/*****************************************************************************/
+void strexpre(char *p, EXPRE val)
+{
+ if (val.psymbol == NULL) sprintf(p,"#%d", val.reftemp);
+ else sprintf(p, "%s" , val.psymbol->ident);
 }
 /*****************************************************************************/
-void get_testout (int ref, char *aux)
-{ char line[140]; 
+int  cr_var_temp_cte(int cte) 
+{ char line[140];
 
-  sprintf(line,"command %s testout 1 %s", tdn[ref].name, aux);
-  emit(line);
+  if (cte == -1)
+    if (fcteneg == FALSE) {
+      sprintf(line, "var initcte #%d %f", 0, -1.0);
+      emit(line); fcteneg = TRUE;
+      return 0;
+    }
+    else return 0;
 }
 /*****************************************************************************/
-void get_zscore (int ref1, int ref2)
-{ char line[140], line2[140]; 
-
-  if (ref2 < 0) sprintf(line2,"0");
-  else  sprintf(line2,"1 %s",tdd[ref2].name);
-  sprintf(line,"command %s zscore %s", tdd[ref1].name, line2);
-  emit(line);
+int cr_var_temp()
+{ pstv++; return pstv-1; }
+/*****************************************************************************/
+void create_list_names()
+{ ptnames = NULL; }
+/*****************************************************************************/
+ptsymbol insert_name(char *x)
+{ ptsymbol s;
+  s =  (ptsymbol)malloc(sizeof(typesymbol)); 
+  s->ident = x; s->succ = ptnames; 
+  ptnames = s; 
+  return s;
 }
 /*****************************************************************************/
-void get_center (int ref1, int ref2)
-{ char line[140], line2[140]; 
-
-  if (ref2 < 0) sprintf(line2,"0");
-  else  sprintf(line2,"1 %s",tdd[ref2].name);
-  sprintf(line,"command %s center %s", tdd[ref1].name, line2);
-  emit(line);
+ptsymbol search_name (char *x) 
+{ ptsymbol s = ptnames;
+  while ((s != NULL) && (strcmp(x, s->ident))) s = s->succ;
+  return s;
 }
 /*****************************************************************************/
-void get_yuv (int ref1)
-{ char line[140]; 
+void show_list_names ()
+{ ptsymbol t = ptnames;
 
-  sprintf(line,"command %s yuv 0",tdd[ref1].name);
-  emit(line);
+  while (t != NULL) {
+    printf("Var %s\n", t->ident);
+    t = t->succ;
+  }
 }
 /*****************************************************************************/
-void get_div (int ref1, float aux)
-{ char line[140]; 
-
-  sprintf(line,"command %s div 1 %f",tdd[ref1].name, aux);
-  emit(line);
+void yyerror(const char *msg)
+/*  Error handling.                                                          */
+{
+  numErrores++;
+  fprintf(stderr, "\nError at line %d: %s\n", yylineno, msg);
 }
 /*****************************************************************************/
-void get_add (int ref1, float aux)
-{ char line[140]; 
+void emit (char *s)
+{ char *d = malloc (strlen(s) + 1); 
 
-  sprintf(line,"command %s add 1 %f",tdd[ref1].name, aux);
-  emit(line);
+  strcpy (d,s); mem[pmem] = d; pmem++;
 }
 /*****************************************************************************/
-void get_sub (int ref1, float aux)
-{ char line[140]; 
-
-  sprintf(line,"command %s sub 1 %f",tdd[ref1].name, aux);
-  emit(line);
+void dump_file()
+{ FILE *fd; char *t; int i;
+ 
+  if(numErrores == 0) {
+    fd = fopen ("netparser.run", "w");
+    for (i=0; i < pmem; i++) { fprintf(fd,"%s\n",mem[i]); free(mem[i]); }
+    fclose(fd);
+  }
 }
 /*****************************************************************************/
-void get_mul (int ref1, float aux)
-{ char line[140]; 
-
-  sprintf(line,"command %s mul 1 %f",tdd[ref1].name, aux);
-  emit(line);
+void begin_experiment()
+{ 
+  pstv = 1; tdn[ptdn] = tdnini; tdl[ptdl] = tdlini; tdd[ptdd] = tddini; 
 }
 /*****************************************************************************/
-void get_maxmin (int ref1)
-{ char line[140]; 
+void end_experiment()
+{ char line[140];
 
-  sprintf(line,"command %s maxmin 0",tdd[ref1].name);
-  emit(line);
-}
-/*****************************************************************************/
-void get_store (int ref1, char *aux)
-{ char line[140]; 
-
-  sprintf(line,"command %s store 1 %s",tdd[ref1].name, aux);
-  emit(line);
+  sprintf(line,"End"); emit(line);
 }
 /*****************************************************************************/
 int netparser (char *nfich) 

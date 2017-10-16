@@ -16,26 +16,25 @@ using namespace Eigen;
 using namespace std;
 
 ////////////////////////////////////
-///// POOLING LAYER CLASS
+///// ADD LAYER CLASS
 ////////////////////////////////////
-CatLayer::CatLayer()
+AddLayer::AddLayer()
 {
-  type=CATLAYER;
-  cat=0;
-
+  type=ADDLAYER;
+  act=1;
 }
 
-CatLayer::CatLayer(int batch,char *name):CLayer(batch,name)
+AddLayer::AddLayer(int batch,char *name):CLayer(batch,name)
 {
   this->batch=batch;
-  type=CATLAYER;
-  cat=0;
+  type=ADDLAYER;
+  act=1;
 
 
-  fprintf(stderr,"Creating CatLayer (%s)\n",name);
+  fprintf(stderr,"Creating AddLayer (%s)\n",name);
 }
 
-void CatLayer::addchild(Layer *l)
+void AddLayer::addchild(Layer *l)
 {
   int enc=0;
 
@@ -62,20 +61,20 @@ void CatLayer::addchild(Layer *l)
       Lout[lout++]=l;
       fprintf(stderr,"Connecting %s --> %s Cat\n",name,l->name);
       l->addparent(this);
-    }
+    }    
     else if (l->type==5) {
       Lout[lout++]=l;
       fprintf(stderr,"Connecting %s --> %s Add\n",name,l->name);
       l->addparent(this);
     }
     else {
-      fprintf(stderr,"Error: %s cat layer can not have child layer %s\n",name,l->name);
+      fprintf(stderr,"Error: %s add layer can not have child layer %s\n",name,l->name);
       exit(1);
     }
   }
 }
 
-void CatLayer::addparent(Layer *l)
+void AddLayer::addparent(Layer *l)
 {
   int i,j;
 
@@ -90,41 +89,39 @@ void CatLayer::addparent(Layer *l)
       CLayer *c=(CLayer *)l;
       Lin[lin++]=l;
 
-      if (cat==0) {
+      if (add==0) {
+	add++;
 	outr=c->outr;
 	outc=c->outc;
-	catvec[cat]=c->outz;
-	outz+=c->outz;
-	cat++;
+	outz=c->outz;
+	nk=outz;
       }
       else {
 	if ((outr!=c->outr)||(outc!=c->outc)) {
-	  fprintf(stderr,"Error: (%s) can not cat different sizes\n",name);
+	  fprintf(stderr,"Error: (%s) can not add different sizes\n",name);
 	  exit(-1);
 	}
-	catvec[cat]=catvec[cat-1]+c->outz;
-	outz+=c->outz;
-	cat++;
+      
+	if (c->outz>nk) nk=c->outz;
       }
+
+      N=new Tensor(batch,nk,outr,outc);
+      E=new Tensor(batch,nk,outr,outc);
+      Delta=new Tensor(batch,nk,outr,outc);
     }
     else {
-      fprintf(stderr,"Error: (%s) cat layer only after cnn or maxpool\n",name);
+      fprintf(stderr,"Error: (%s) add layer only after cnn-like layers\n",name);
       exit(-1);
     }
 
-    nk=outz;
-    N=new Tensor(batch,nk,outr,outc);
-    Delta=new Tensor(batch,nk,outr,outc);
-
-    fprintf(stderr,"Creating CatLayer (%s) output %d@%dx%d\n",name,outz,outr,outc); 
-
+   fprintf(stderr,"Creating AddLayer (%s) output %d@%dx%d\n",name,outz,outr,outc);
   }
 }
 
 
 
 
-void CatLayer::forward()
+void AddLayer::forward()
 {
   int i,j,b;
   int ini;
@@ -132,57 +129,47 @@ void CatLayer::forward()
   PLayer *p;
 
   for(i=0;i<lin;i++) {
-    if (i==0) ini=0;
-    else ini=catvec[i-1];
-
-    for(j=ini;j<catvec[i];j++) {
-	c=(CLayer *)Lin[i];
-	for(int b=0;b<batch;b++)
-	  N->ptr[b]->ptr[j]->copy(c->N->ptr[b]->ptr[j-ini]);
-      }
+    c=(CLayer *)Lin[i];
+    Tensor::inc(c->N,E);
   }
+
+  Tensor::activation(E,N,act);
+
 }
 
-void CatLayer::save(FILE *fe)
+void AddLayer::save(FILE *fe)
 {
   save_param(fe);
 }
 
-void CatLayer::load(FILE *fe)
+void AddLayer::load(FILE *fe)
 {
   load_param(fe);
 }
 
 
-void CatLayer::backward()
+void AddLayer::backward()
 {
-  int i,j,b;
+  int i,j,b,k,r,c;
   int ini;
-  CLayer *c;
-  PLayer *p;
+  CLayer *cin;
 
+  Tensor::dactivation(E,N,Delta,act);
 
   for(i=0;i<lin;i++) {
-    if (i==0) ini=0;
-    else ini=catvec[i-1];
-
-
-    for(j=ini;j<catvec[i];j++){
-	c=(CLayer *)Lin[i];
-        #pragma omp parallel for
-	for(b=0;b<batch;b++)
-	  c->Delta->ptr[b]->ptr[j-ini]->copy(Delta->ptr[b]->ptr[j]);
-    }
+    cin=(CLayer *)Lin[i]; 
+    cin->Delta->copy(Delta);
   }
-
 }
 
 
-void CatLayer::initialize(){ }
-void CatLayer::applygrads(){ }
-void CatLayer::reset()
+void AddLayer::initialize(){ }
+void AddLayer::applygrads(){ }
+void AddLayer::reset()
 {
+  int i,j;
+  
   Delta->set(0.0);
-
+  E->set(0.0);
 }
-void CatLayer::resetmomentum(){}
+void AddLayer::resetmomentum(){}

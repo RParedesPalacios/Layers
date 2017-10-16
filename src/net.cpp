@@ -3,24 +3,21 @@
 #include <iostream>
 #include <time.h>
 
-
 #include "net.h"
 #include "layer.h"
 #include "data.h"
 #include "utils.h"
 
-#define VERBOSE 0
 #define SHOW_TIME 0
 
 // Comment this line for Mac
-#define USETIME 
-
+//#define USETIME 
 
 ////////////////////////////////////
 ///// NET CLASS
 ////////////////////////////////////
 
-Net::Net(char *name)
+Net::Net(char *name,int b)
 {
   layers=0;
   olayers=0;
@@ -30,10 +27,13 @@ Net::Net(char *name)
   cropmode=0;
   crops=1;
   decay=0.999;
-
+  batch=b;
+  bproc=0;
+  berr=0;
   Dtrain=NULL;
   Dtest=NULL;
   Dval=NULL;
+
 }
 
 void Net::addLayer(Layer *l)
@@ -71,6 +71,8 @@ void Net::net2dot()
   CLayer *c;
   PLayer *p;
   CatLayer *cat;
+  AddLayer *add;
+  OLayer *ol;
 
   sprintf(cad,"%s.dot",name);
   fs=fopen(cad,"wt");
@@ -78,7 +80,10 @@ void Net::net2dot()
   fprintf(fs,"digraph %s {\n",name);
   fprintf(fs,"rankdir=TB;\n");
 
-  fprintf(fs,"Data [label=\"%s\",style=filled,fontsize=12,fillcolor=LightBlue,shape=box]\n",Dtrain->name);
+  for(i=0;i<layers;i++)
+    if (lvec[i]->lin==0) 
+      if (lvec[i]->D!=NULL) 
+	fprintf(fs,"Data%d [label=\"%s\",style=filled,fontsize=12,fillcolor=LightBlue,shape=box]\n",i,lvec[i]->D->name);
 
   for(i=0;i<layers;i++) {
     strcpy(cad,lvec[i]->name);
@@ -93,11 +98,28 @@ void Net::net2dot()
 	fprintf(fs,"%s [label=\"%s [%d]\",style=filled,fontsize=12, fillcolor=White,shape=box]\n",pch,lvec[i]->name,lvec[i]->din);
 
     }
+    if (lvec[i]->type==6) {
+      ol=(OLayer *)lvec[i];
+      if (ol->op==OP_SUM)
+        fprintf(fs,"%s [label=\" ""+"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
+      else if (ol->op==OP_SUB)
+        fprintf(fs,"%s [label=\"""-"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
+      else if (ol->op==OP_IMULT)
+        fprintf(fs,"%s [label=\""".*"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
+      else if (ol->op==OP_OMULT)
+        fprintf(fs,"%s [label=\"""^*"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
+    else if (ol->op==OP_SIGM)
+        fprintf(fs,"%s [label=\"""sigmoid"" \",style=filled,fontsize=12, fillcolor=Gray,shape=diamond]\n",pch);
+      else 
+        fprintf(fs,"%s [label=\" ""o"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
+
+    }
+
     if (lvec[i]->type==2) {
       c=(CLayer *)lvec[i];
       if (lvec[i]->lin==0)
 	fprintf(fs,"%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=gray,shape=box]\n",pch,lvec[i]->name,c->nk,c->outr,c->outc);
-      else
+      else 
 	fprintf(fs,"%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=steelblue3,shape=box]\n",pch,lvec[i]->name,c->nk,c->kr,c->kc);
     }
     if (lvec[i]->type==3) {
@@ -108,6 +130,10 @@ void Net::net2dot()
       cat=(CatLayer *)lvec[i];
       fprintf(fs,"%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=darkkhaki,shape=box]\n",pch,lvec[i]->name,cat->nk,cat->outr,cat->outc);
     }
+    if (lvec[i]->type==5) {
+      add=(AddLayer *)lvec[i];
+      fprintf(fs,"%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=darkkhaki,shape=box]\n",pch,lvec[i]->name,add->nk,add->outr,add->outc);
+    }
   }
 
   for(i=0;i<layers;i++) {
@@ -115,7 +141,7 @@ void Net::net2dot()
       strcpy(cad,lvec[i]->name);
       pch = strtok (cad,":");
       pch = strtok (NULL,":");
-      fprintf(fs,"Data->%s\n",pch);
+      fprintf(fs,"Data%d->%s\n",i,pch);
     }
   }
 
@@ -132,9 +158,8 @@ void Net::net2dot()
 	fprintf(fs,"%s->%s\n",pch,pch2);
       }
     }
-    if ((lvec[i]->lt)&&(isIn(lvec[i]->target))) {
-
-      strcpy(cad2,lvec[i]->target->name);
+    if ((lvec[i]->L)&&(isIn(lvec[i]->L))) {
+      strcpy(cad2,lvec[i]->L->name);
       pch2 = strtok (cad2,":");
       pch2 = strtok (NULL,":");
       fprintf(fs,"%s->%s [style=\"dashed\"]\n",pch2,pch);
@@ -166,12 +191,15 @@ void Net::net2dot()
 void Net::resetLayers()
 {
   int i;
+
   for(i=0;i<layers;i++)
     lvec[i]->reset();
 }
 void Net::resetstats()
 {
   int i;
+
+  fprintf(stderr,"%s reset stats\n",name);
   for(i=0;i<layers;i++)
     lvec[i]->resetstats();
 }
@@ -179,45 +207,55 @@ void Net::resetstats()
 void Net::trainmode()
 {
   int i;
+  fprintf(stderr,"%s train mode\n",name);
   for(i=0;i<layers;i++)
     lvec[i]->trainmode();
 }
 void Net::testmode()
 {
   int i;
+  fprintf(stderr,"%s test mode\n",name);
   for(i=0;i<layers;i++)
     lvec[i]->testmode();
 }
 
-void Net::preparebatch(int code)
+
+
+void Net::preparebatch(Data *Dt,int code)
 {
   int i;
 
-  Dtrain->preparebatch(code);
+  Dt->preparebatch(code);
 
 }
 
-
-void Net::getbatch(Data *Dt)
-{
-  int i;
-
-  for(i=0;i<layers;i++)
-    if (lvec[i]->lin==0)
-      lvec[i]->getbatch(Dt);
-
-}
-
-void Net::getbatch(Data *Dt,int s)
+// mode= 0,train 1,test 2,val
+void Net::getbatch()
 {
   int i;
 
   for(i=0;i<layers;i++)
     if (lvec[i]->lin==0)
-      lvec[i]->getbatch(Dt,s);
+      lvec[i]->getbatch();
 
 }
 
+void Net::next()
+{
+  int i;
+  
+  for(i=0;i<layers;i++)
+    if (lvec[i]->lin==0)
+      lvec[i]->next();
+}
+
+int Net::calcbatch(Data *Dt)
+{
+  int i,n;
+
+  return Dt->num/Dt->batch;
+
+}
 
 void Net::applygrads()
 {
@@ -227,6 +265,12 @@ void Net::applygrads()
 
 }
 
+
+
+
+///////////////////////////////////////////
+//////// SET VALUES
+///////////////////////////////////////////
 void Net::setcropmode(int f)
 {
   int i;
@@ -280,7 +324,8 @@ void Net::setmu(double m)
   int i;
 
   mu=m;
-  fprintf(stderr,"Net %s set learning rate to %f\n",name,m);
+  fprintf(stderr,"Net %s set mu to %f\n",name,m);
+
   for(i=0;i<layers;i++)
     lvec[i]->setmu(m);
 }
@@ -410,33 +455,6 @@ void Net::setthreads(int l)
     lvec[i]->setthreads(l);
 }
 
-void Net::setadvf(double n)
-{
-  int i;
-  fprintf(stderr,"Net %s set adversarial factor to %f\n",name,n);
-  for(i=0;i<layers;i++)
-    lvec[i]->setadvf(n);
-
-}
-
-void Net::setadv(int l)
-{
-  int i;
-  fprintf(stderr,"Net %s set adversarial mode to %d\n",name,l);
-
-  for(i=0;i<layers;i++)
-    lvec[i]->setadv(l);
-
-}
-
-void Net::setaddelta(int l)
-{
-  int i;
-  for(i=0;i<layers;i++)
-    if (lvec[i]->adv) lvec[i]->adelta=l;
-
-}
-
 
 int Net::isIn(Layer *l)
 {
@@ -455,7 +473,7 @@ void Net::Init(FILE *f)
 
   if (!init) {
 
-    fprintf(stderr,"**** Initializing Net %s\n",name);
+    fprintf(stderr,"Initializing Net %s\n",name);
     flog=f;
 
     olayers=0;
@@ -595,7 +613,7 @@ void Net::load(FILE *fe)
 void Net::copy(Layer *ld,Layer *ls)
 {
 
-
+  /*
   if ((ld->type==1)&&(ls->type==1))
     {
       fprintf(stderr,"Copy %s --> %s\n",ls->name,ld->name);
@@ -616,6 +634,11 @@ void Net::copy(Layer *ld,Layer *ls)
       }
       fd->bnc=fs->bnc;
     }
+  else {
+    fprintf(stderr,"Copy operator only working on FC layers");
+    exit(1);
+  }
+  */
 }
 
 //Backward topologic sort
@@ -718,68 +741,55 @@ void Net::reseterrors()
     o->mae=0.0;
     o->cerr=0.0;
     o->ent=0.0;
+    o->loss=0.0;
   }
 }
 
 
-void Net::printerrors(Data *Dt)
+void Net::printerrors(int num)
 {
-  printerrors(Dt,Dt->num);
-}
 
-void Net::printerrors(Data *Dt,int num)
-{
   int i;
   OFLayer *o;
+  int d;
 
   for(i=0;i<olayers;i++) {
     o=(OFLayer *)out[i];
-    if ((!o->lt)||(isIn(o->target))){
-      if (o->act==10) {
-	fprintf(stderr,"%s Errors (%s) %1.0f of %d  %2.2f%%  CrossEnt=%f\n",Dt->fname,o->name,o->cerr,num,(100.0*o->cerr)/num,o->ent/(num*Dt->out));
-	fprintf(flog,"%s Errors (%s) %1.0f of %d  %2.2f%%  CrossEnt=%f\n",Dt->fname,o->name,o->cerr,num,(100.0*o->cerr)/num,o->ent/(num*Dt->out));
-      }
-      else
-	if (o->ae) {
-	  fprintf(stderr,"%s AE (%s) MSE=%f  MAE=%f\n",Dt->fname,o->name,o->mse/num,o->mae/num);
-	  fprintf(flog,"%s AE (%s) MSE=%f  MAE=%f\n",Dt->fname,o->name,o->mse/num,o->mae/num);
-	}
-	else {
-	  fprintf(stderr,"%s RMSE(%s)=%f  MAE=%f\n",Dt->fname,o->name,o->rmse/num,o->mae/num);
-	  fprintf(flog,"%s RMSE(%s)=%f  MAE=%f\n",Dt->fname,o->name,o->rmse/num,o->mae/num);
-	}
+    
+    if (o->opt==0) {
+      fprintf(stderr,"Errors (%s) %1.0f of %d  %2.2f%%  CrossEnt=%f\n",o->name,o->cerr,num,(100.0*o->cerr)/num,o->ent/(num*o->din));
+      fprintf(flog,"Errors (%s) %1.0f of %d  %2.2f%%  CrossEnt=%f\n",o->name,o->cerr,num,(100.0*o->cerr)/num,o->ent/(num*o->din));
+    }
+    else if (o->opt==1) {
+      fprintf(stderr,"%s MSE=%f  MAE=%f\n",o->name,o->mse/num,o->mae/num);
+      fprintf(flog,"%s MSE=%f  MAE=%f\n",o->name,o->mse/num,o->mae/num);
+    }
+    else if (o->opt==2) {
+      fprintf(stderr,"%s AE MSE=%f  MAE=%f\n",o->name,o->mse/num,o->mae/num);
+      fprintf(flog,"%s AE MSE=%f  MAE=%f\n",o->name,o->mse/num,o->mae/num);
     }
   }
+  
   fflush(flog);
 }
 
 
 
 
-void Net::calcerr(Data *Dt)
+void Net::calcerr(int n)
 {
   int i;
   OFLayer *o;
 
   for(i=0;i<olayers;i++) {
     o=(OFLayer *)out[i];
-    o->get_err(Dt,Dt->batch);
-  }
-}
-
-void Net::calcerr(Data *Dt,int s)
-{
-  int i;
-  OFLayer *o;
-
-  for(i=0;i<olayers;i++) {
-    o=(OFLayer *)out[i];
-    o->get_err(Dt,s);
+    o->get_err(n);
   }
 }
 
 
-void Net::printOut(Data *Dt,FILE *fs,int n)
+
+void Net::printOut(FILE *fs,int n)
 {
   int i,j,b;
   OFLayer *o;
@@ -788,17 +798,18 @@ void Net::printOut(Data *Dt,FILE *fs,int n)
     for(i=0;i<olayers;i++) {
       o=(OFLayer *)out[i];
       for(j=0;j<o->din;j++)
-	fprintf(fs,"%f ",o->N(b,j));
-      for(j=0;j<o->din;j++)
-	fprintf(fs,"%f ",o->T(b,j));
-
+	if (o->D!=NULL) {
+	  if (o->opt==2) 
+	    fprintf(fs,"%f ",(o->N->get(b,j)*o->D->fsd[j])+o->D->fmu[j]);
+	  else 	    
+	    fprintf(fs,"%f ",(o->N->get(b,j)*o->D->fsd[j+o->D->dim])+o->D->fmu[j+o->D->dim]);
+	}
+	else
+	  fprintf(fs,"%f ",o->N->get(b,j));
     }
     fprintf(fs,"\n");
   }
 }
-
-
-
 
 /////////////////////////////////
 // TRAINING NETS
@@ -807,88 +818,75 @@ void Net::train(int epochs)
 {
   int i,d;
   int epoch;
-  int adv=0;
+  int numbatch=calcbatch(Dtrain);
 
-  fprintf(stderr,"Training net %s %d epochs\n",name,epochs);
+  fprintf(stderr,"Training net %s %d batches %d epochs\n",name,numbatch,epochs);
 
-
-  for(i=0;i<layers;i++) 
-    if (lvec[i]->adv) adv=1;
-
-  if (adv) {
-    fprintf(stderr,"Adversarial training\n");
-    for(i=0;i<layers;i++) {
-      if (lvec[i]->adv) fprintf(stderr,"%s layer has adversarial noise type %d with factor %f\n",lvec[i]->name,lvec[i]->adv,lvec[i]->advf);
-    }
-  }
 
   for(epoch=1;epoch<=epochs;epoch++) {
+
+    for(i=0;i<layers;i++)
+      if (lvec[i]->lin==0) 
+	((IFLayer *)lvec[i])->setsource(Dtrain);
+    
+    for(i=0;i<layers;i++)
+      if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
+	((OFLayer *)lvec[i])->settarget(Dtrain);
+
+
     lut_init();
 
     reseterrors();
     fprintf(stderr,"Epoch %d:\n",epoch);
 
-    Dtrain->preparebatch(1);
+    preparebatch(Dtrain,1);
+    
     ftime=0;
     btime=0;
     trainmode();
     if (bn) resetstats();
-    for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
-      fprintf(stderr,"%d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
-      /////Layer %s setting noiser %f\n",name,
+
+    for(i=0;i<numbatch;i++) {
+      fprintf(stderr,"%d of %d\r",i+1,numbatch);
+      /////Reset Layers
       resetLayers();
       /////
-      getbatch(Dtrain);
+      getbatch();
       /////
       forward();
       /////
       backward();
       /////
-      if (!adv) {
-	calcerr(Dtrain);
-	applygrads();
-      }
-      else {
-	setaddelta(1);
-	/////
-	resetLayers();
-	/////
-	getbatch(Dtrain);
-	/////
-	forward();
-	/////
-	calcerr(Dtrain);
-	/////
-	backward();
-	/////
-	applygrads();
-	/////
-	setaddelta(0);
-      }
-     
+      calcerr(batch);
       /////
-      Dtrain->next();
+      applygrads();
+      /////
+      next();
       if (VERBOSE) getchar();
 
     }
 
     fprintf(stderr,"---------------------------------------\n");
     fprintf(stderr,"Forward %g secs\n",ftime);
-    fprintf(stderr,"Forward %g secs/batch\n",ftime/(Dtrain->num/Dtrain->batch));
+    fprintf(stderr,"Forward %g secs/batch\n",ftime/numbatch);
 
     fprintf(stderr,"Backward %g secs\n",btime);
-    fprintf(stderr,"Backward %g secs/batch\n",btime/(Dtrain->num/Dtrain->batch));
+    fprintf(stderr,"Backward %g secs/batch\n",btime/numbatch);
     fprintf(stderr,"Total= %g secs\n",ftime+btime);
-    fprintf(stderr,"Total= %g secs/batch\n",(ftime+btime)/(Dtrain->num/Dtrain->batch));
+    fprintf(stderr,"Total= %g secs/batch\n",(ftime+btime)/numbatch);
     fprintf(stderr,"---------------------------------------\n");
 
-    printerrors(Dtrain);
+    printerrors(numbatch*batch);
 
     // VAL
-    if (Dval!=NULL)  evaluate(Dval);
+    if (Dval!=NULL)  {
+      evaluate(Dval);
+    }
 
     //TEST
-    if (Dtest!=NULL) evaluate(Dtest);
+    if (Dtest!=NULL) {
+      evaluate(Dtest);
+    }      
 
     decmu(decay);
   }
@@ -897,160 +895,153 @@ void Net::train(int epochs)
 }
 
 
+///////////////////////////////////////////
+// ATOMIC OPERATIONS 
+void Net::doforward()
+{
+  resetLayers();
+  getbatch();
+  forward();
+  bproc++;
+
+  calcerr(batch);
+  berr++;
+  
+}
+void Net::docounterr()
+{
+  calcerr(batch);
+  berr++;
+}
+void Net::dobackward()
+{
+  backward();
+}
+
+void Net::doupdate()
+{
+  applygrads();
+}
+
+void Net::doresetstats()
+{
+  resetstats();
+}
+
+void Net::doprinterrors()
+{
+  printerrors(berr*batch);
+  ftime=0;
+  btime=0;
+}
+
+void Net::doreseterrors()
+{
+  berr=0;
+  bproc=0;
+  reseterrors();
+  lut_init();
+}
+
+
+
+///////////////////////////////////////////
+///////////////////////////////////////////
 void Net::evaluate(Data *Dt)
 {
-  int i;
+  int i,n;
 
   //////////////////////////////
   testmode();
-  Dt->preparebatch(0);
-  reseterrors();
-
-  for(i=0;i<Dt->num/Dt->batch;i++) {
-    fprintf(stderr,"%d of %d batches\r",i+1,Dt->num/Dt->batch);
-    resetLayers();
-    getbatch(Dt);
-    forward();
-    calcerr(Dt);
-    Dt->next();
-  }
-  if (Dt->num%Dt->batch) {
-    fprintf(stderr,"...\n");
-    resetLayers();
-    getbatch(Dt);
-    forward();
-    calcerr(Dt,Dt->num%Dt->batch);    
-  }
-  printerrors(Dt);
-
+  for(i=0;i<layers;i++)
+    if (lvec[i]->lin==0) 
+      ((IFLayer *)lvec[i])->setsource(Dt);
   
+  for(i=0;i<layers;i++)
+    if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
+      ((OFLayer *)lvec[i])->settarget(Dt);
+
+
+  preparebatch(Dt,0);
+  n=calcbatch(Dt);
+  reseterrors();
+  for(i=0;i<n;i++) {
+      fprintf(stderr,"%d of %d batches\r",i+1,n);
+      resetLayers();
+      getbatch();
+      forward();
+      calcerr(batch);
+      next();
+  }
+  
+  // last batch
+  if (Dt->num%Dt->batch) {
+    resetLayers();
+    getbatch();
+    forward();
+    calcerr(Dt->num%Dt->batch);
+  }
+  printerrors(Dt->num);
+
+
+  for(i=0;i<layers;i++)
+    if (lvec[i]->lin==0) 
+      ((IFLayer *)lvec[i])->setsource(Dtrain);
+  
+  for(i=0;i<layers;i++)
+    if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
+      ((OFLayer *)lvec[i])->settarget(Dtrain);
+
 }
+
 void Net::testOut(FILE *fs)
 {
   int i,j;
 
-  if (Dtest!=NULL) {
-    fprintf(stderr,"writting test output\n");
-    testmode();
-    Dtest->preparebatch(0);
-    for(i=0;i<Dtest->num/Dtest->batch;i++) {
-      fprintf(stderr,"%d of %d batches\r",i+1,Dtest->num/Dtest->batch);
-      resetLayers();
-      getbatch(Dtest);
-      forward();
-      calcerr(Dtest); // to update Targets needed in printOut
-      printOut(Dtest,fs,Dtest->batch);
-      Dtest->next();
-    }
-    // last batch
-    if (Dtest->num%Dtest->batch) {
-      fprintf(stderr,"...\n");
-      resetLayers();
-      getbatch(Dtest);
-      forward();
-      calcerr(Dtest,Dtest->num%Dtest->batch);    
-      printOut(Dtest,fs,Dtest->num%Dtest->batch);
-    }
-  }
+  if (Dtest==NULL) return;
 
+  for(i=0;i<layers;i++)
+    if (lvec[i]->lin==0) 
+      ((IFLayer *)lvec[i])->setsource(Dtest);
+  
+  for(i=0;i<layers;i++)
+    if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
+      ((OFLayer *)lvec[i])->settarget(Dtest);
+  
+
+  fprintf(stderr,"writting test output\n");
+  testmode();
+  preparebatch(Dtest,0);
+  int numbatch=calcbatch(Dtest);
+  fprintf(stderr,"%d batches\n",numbatch);
+
+  for(i=0;i<numbatch;i++) {
+    fprintf(stderr,"%d of %d batches\r",i+1,numbatch);
+    /////
+    resetLayers();
+    getbatch();
+    forward();
+    printOut(fs,batch);
+    next();
+  }
+  // last batch
+  if (Dtest->num%Dtest->batch) {
+    resetLayers();
+    getbatch();
+    forward();
+    printOut(fs,(Dtest->num)%batch);
+  }
   fclose(fs);
 
-}
-
-
-void Net::fillData(Data *D,Layer *l1,Layer *l2)
-{
-  int i,it,k;
-
-
-  fprintf(stderr,"Forward to Data %s,%d -> %s,%d\n",l1->name,l1->din,l2->name,l2->din);
-
-  testmode();
-  Dtrain->preparebatch(0);
-  for(i=0;i<Dtrain->num/Dtrain->batch;i++) {
-    fprintf(stderr,"%d of %d batches\r",i+1,Dtrain->num/Dtrain->batch);
-    resetLayers();
-    getbatch(Dtrain);
-    forward();
-    l1->fillData(D,i);
-    l2->fillTarget(D,i);
-    Dtrain->next();
-  }
-  // last samples not complete batch
-  if (Dtrain->num%Dtrain->batch) {
-    resetLayers();
-    getbatch(Dtrain);
-    forward();
-    l1->fillData(D,i);
-    l2->fillTarget(D,i);
-    Dtrain->next();
-  }
-  fprintf(stderr,"\n");
-}
-
-
-///////////////////////////////////////////
-// FOR TRAINIG SEVERAL NETS FROM MAIN
-///////////////////////////////////////////
-void Net::trainbatch(int b,int epoch)
-{
-  int i,d;
-  int adv=0,bn;
-
-  fprintf(stderr,"Epoch %d: training %s %d batches\r",epoch+1,name,b);
-
-  //setvalues();
-
-  for(i=0;i<layers;i++) 
-    if (lvec[i]->adv) adv=1;
-
-  for(i=0;i<layers;i++) 
-    if (lvec[i]->bn) bn=1;
-
   trainmode();
-  if (bn) resetstats();
-  for(i=0;i<b;i++) {
-    /////Layer %s setting noiser %f\n",name,
-    resetLayers();
-    /////
-    getbatch(Dtrain);
-    /////
-    forward();
-    /////
-    backward();
-    /////
-    if (!adv) {
-      calcerr(Dtrain);
-      /////
-      applygrads();
-    }
-    else {
-      setaddelta(1);
-      /////
-      resetLayers();
-      /////
-      getbatch(Dtrain);
-      /////
-      forward();
-      /////
-      calcerr(Dtrain);
-      /////
-      backward();
-      /////
-      applygrads();
-      /////
-      setaddelta(0);
-    }
-     
-    /////
-    Dtrain->next();
-    if (VERBOSE) getchar();
-
-  }
+  for(i=0;i<layers;i++)
+    if (lvec[i]->lin==0) 
+      ((IFLayer *)lvec[i])->setsource(Dtrain);
   
-  decmu(decay);
+  for(i=0;i<layers;i++)
+    if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
+      ((OFLayer *)lvec[i])->settarget(Dtrain);
+
 }
-
-
 
 
