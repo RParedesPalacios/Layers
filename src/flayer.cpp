@@ -293,7 +293,6 @@ void FLayer::forward()
   FLayer *l;
   CLayer *cin;
 
- 
   if (reshape) {
     
     if (Lin[0]->type==OLAYER) {
@@ -331,6 +330,7 @@ void FLayer::forward()
     ////////////////////////////
     // ACTIVATION
     ////////////////////////////
+  
     if (bn) 
       Tensor::activation(BNE,N,act);
     else 
@@ -343,6 +343,7 @@ void FLayer::forward()
     if (drop>0.0) {
       if (trmode) {
 	dvec->set_rand_binary(drop);
+   
 	Tensor::maskZeros(dvec,N);
       }
       else 

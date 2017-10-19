@@ -284,11 +284,13 @@ void Tensor::fromLin(Tensor *T)
     for(int i=0;i<a;i++) {
       int p=i*b;
       for(int j=0;j<b;j++,p++)
-	ptr2(i,j)=T->ptr1(p);
+      {
+	ptr2(i,j)=T->ptr1(p);  
+      }
     }
   }
   else if (dim==3) {
-#pragma omp parallel for
+   #pragma omp parallel for
     for(int i=0;i<a;i++) {
       int p=i*b*c;
       for(int j=0;j<b;j++)
@@ -492,7 +494,6 @@ void Tensor::set_rand_binary(LType val)
     else n->ptr1(i)=0;
   }
   ////
-
   fromLin(n);
   delete n;
 }
@@ -1055,8 +1056,8 @@ void Tensor::maskZeros(Tensor *mask,Tensor *A)
 {
   if (A->dim==1) 
       A->ptr1=mask->ptr1.cwiseProduct(A->ptr1);
-  if (A->dim==2) 
-      A->ptr2=mask->ptr2.cwiseProduct(A->ptr2);
+  if (A->dim==2)  
+      A->ptr2=A->ptr2.array().rowwise()*mask->ptr1.array();
   else {
     for(int i=0;i<A->a;i++)
       Tensor::maskZeros(mask->ptr[i],A->ptr[i]);

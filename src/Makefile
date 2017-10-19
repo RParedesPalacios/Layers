@@ -1,8 +1,72 @@
-###########################################################################Eige
-OBJ =	asin.o alex.o nettable.o utils.o tensor.o data.o layer.o flayer.o \
-	clayer.o player.o catlayer.o addlayer.o olayer.o net.o
+#############################
+# FOR LINUX
+############################
 
-all:	$(OBJ) ascii2bin bin2ascii layers
+## REGULAR
+#LIBFLAGS = -lm -lfl
+#CXXFLAGS = -fopenmp -I Eigen -O3
+
+## SIMD instructions SSE2 ENABLED
+#LIBFLAGS = -lm -lfl 
+#CXXFLAGS = -fopenmp -I Eigen -march=native -msse2 -O3
+
+## SIMD instructions AVX ENABLED
+LIBFLAGS = -lm -lfl 
+CXXFLAGS = -fopenmp -I Eigen -march=native -mavx -O3
+## DEBUGING
+#LIBFLAGS = -lm -lfl
+#CXXFLAGS = -fopenmp -I Eigen -g
+
+############################
+# FOR MAC:
+############################
+#CXXFLAGS = -I . -O3
+#LIBFLAGS = -ll
+
+##GPU FLAGS
+GPU_CXXFLAGS = 
+GPU_LIBFLAGS =
+LAYERS = layers
+
+
+##########################################################################Eige
+OBJ =	asin.o alex.o nettable.o utils.o data.o layer.o flayer.o \
+	clayer.o player.o catlayer.o net.o tensor.o addlayer.o olayer.o
+GPU_OBJ =
+
+
+all: checkGPU
+
+#---------------------------------- Compile for GPU
+checkGPU:
+#compile for GPU
+ifdef CORE
+
+ifeq ($(CORE),1)
+cuda_path := $(LAYERS_CUDA_PATH)
+
+ifeq ($(cuda_path),)
+$(error Set enviroment variable LAYERS_CUDA_PATH with directory to cuda)
+endif
+
+	CXXFLAGS :=  $(CXXFLAGS) -DfGPU -I $(cuda_path)include/
+	GPU_CXXFLAGS := -I $(cuda_path)include/ -L  $(cuda_path)lib64/
+	GPU_OBJ := gpu_utils.o cublas_env.o gpu_env.o gpu_kernels.o
+        GPU_LIBFLAGS := -lcudart -lcublas -lcurand
+	GPU_CXX := $(cuda_path)bin/nvcc
+	LAYERS = gayers
+#ifeq ($(GPU),CUDNN)
+#	GPU_LIBFLAGS := $(GPU_LIBFLAGS) -lcudnn
+#	CXXFLAGS := $(CXXFLAGS) -DfCUDNN
+#endif
+endif
+else
+ifneq ($(MAKECMDGOALS),clean)
+$(error Execute make CORE=0 for CPU compiling and make CORE=1 for gpu and cpu compiling)
+endif
+endif
+
+all: $(GPU_OBJ) $(OBJ) bin2ascii ascii2bin $(LAYERS)
 #---------------------------------- Netparser
 C_OPT = -pedantic
 C_OBJ    = alex.o asin.o 
@@ -20,49 +84,14 @@ asin.c: asin.y
 	bison -oasin.c -d asin.y
 
 alex.c: alex.l 
-	flex -o alex.c alex.l
+	flex -oalex.c alex.l
 #---------------------------------- layers
 CXX = g++
-MKLROOT=/opt/intel/mkl
-
-############################
-# FOR LINUX
-############################
-
-## REGULAR
-#LIBFLAGS = -lm -lfl
-#CXXFLAGS = -fopenmp -I Eigen -O3
-
-## SIMD instructions SSE2 ENABLED
-#LIBFLAGS = -lm -lfl 
-#CXXFLAGS = -fopenmp -I Eigen -march=native -msse2 -O3
-
-## SIMD instructions AVX ENABLED
-LIBFLAGS = -lm -lfl 
-CXXFLAGS = -fopenmp -I Eigen -march=native -mavx -O3
-
-# FOR INTEL MKL
-# you need to install the libmkl libs 
-#LIBFLAGS =  -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lm -ldl -lfl
-#CXXFLAGS = -m64 -I${MKLROOT}/include -fopenmp -mavx -I Eigen -O3  
-
-
-## DEBUGING
-#LIBFLAGS = -lm -lfl
-#CXXFLAGS = -fopenmp -I Eigen -g
-
-
-
-############################
-# FOR MAC:
-############################
-CXXFLAGS = -I . -O3
-LIBFLAGS = -ll
 
 utils:	utils.cpp utils.h
 	$(CXX) $(CXXFLAGS) -c utils.cpp
 
-tensor:	tensor.cpp tensor.h utils.h
+tensor: tensor.cpp tensor.h utils.h
 	$(CXX) $(CXXFLAGS) -c tensor.cpp
 
 data:	data.cpp data.h utils.h
@@ -77,10 +106,10 @@ flayer:	flayer.cpp layer.h utils.h tensor.h
 clayer:	clayer.cpp layer.h utils.h tensor.h
 	$(CXX) $(CXXFLAGS) -c clayer.cpp
 
-player:	player.cpp layer.h utils.h
+player:	player.cpp layer.h utils.h 
 	$(CXX) $(CXXFLAGS) -c player.cpp
 
-catlayer: catlayer.cpp layer.h utils.h
+catlayer: catlayer.cpp layer.h utils.h 
 	$(CXX) $(CXXFLAGS) -c catlayer.cpp
 
 addlayer: addlayer.cpp layer.h utils.h
@@ -89,17 +118,54 @@ addlayer: addlayer.cpp layer.h utils.h
 olayer: olayer.cpp layer.h utils.h
 	$(CXX) $(CXXFLAGS) -c olayer.cpp
 
-net:	net.cpp net.h utils.h
+net:	net.cpp net.h utils.h tensor.h
 	$(CXX) $(CXXFLAGS) -c net.cpp
 
-ascii2bin: ascii2bin.cpp data.o utils.o
-	$(CXX) $(CXXFLAGS) -o ascii2bin ascii2bin.cpp data.o utils.o
+#---------------------------------- gpu code
+cublas_env.o: ../gpu_code_class/cublas_env.h ../gpu_code_class/gpu_utils.h
+	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ../gpu_code_class/cublas_env.cu
+
+gpu_env.o: ../gpu_code_class/gpu_env.h ../gpu_code_class/gpu_kernels.h ../gpu_code_class/gpu_utils.h
+	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ../gpu_code_class/gpu_env.cu
+
+gpu_kernels.o:  ../gpu_code_class/gpu_kernels.h 
+	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ../gpu_code_class/gpu_kernels.cu
+
+gpu_utils.o: ../gpu_code_class/gpu_utils.h ../gpu_code_class/gpu_env.h
+	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ../gpu_code_class/gpu_utils.cu
+
+#-------------------------
+
+ascii2bin: ascii2bin.cpp data.o utils.o $(GPU_OBJ) 
+	$(CXX) $(CXXFLAGS) $(GPU_CXXFLAGS)  -o ascii2bin ascii2bin.cpp data.o utils.o $(GPU_OBJ) $(GPU_LIBFLAGS)
 
 bin2ascii: bin2ascii.cpp data.o utils.o
-	$(CXX) $(CXXFLAGS) -o bin2ascii bin2ascii.cpp data.o utils.o
+	$(CXX) $(CXXFLAGS)  $(GPU_CXXFLAGS) -o bin2ascii bin2ascii.cpp data.o utils.o  $(GPU_OBJ) $(GPU_LIBFLAGS)
 
-layers:	main.cpp $(OBJ)
-	$(CXX) $(CXXFLAGS) -o layers main.cpp $(OBJ) $(LIBFLAGS)
+$(LAYERS): main.cpp $(OBJ)
+	$(CXX) $(CXXFLAGS) $(GPU_CXXFLAGS) -o $(LAYERS) main.cpp $(OBJ) $(GPU_OBJ) $(LIBFLAGS) $(GPU_LIBFLAGS)
 clean:
-	rm *.o *~
+	rm *.o 
+
+
 ###########################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

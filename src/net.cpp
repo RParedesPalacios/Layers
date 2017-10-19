@@ -544,8 +544,9 @@ void Net::forward()
   double e;
 
 #ifdef USETIME
-
+  
   if (SHOW_TIME) {
+
     fprintf(stderr,"===== FORWARD ======\n");
   }
   clock_gettime(CLOCK_MONOTONIC, &ft0);
@@ -556,6 +557,7 @@ void Net::forward()
       clock_gettime(CLOCK_MONOTONIC, &t0);
     }
     fts[i]->rnet=this;
+    printf("Layer %d of %d layers\n",i,layers);
     fts[i]->forward();
     if (SHOW_TIME) {
       clock_gettime(CLOCK_MONOTONIC, &t1);
