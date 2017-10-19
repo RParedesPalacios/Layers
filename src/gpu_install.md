@@ -48,4 +48,4 @@ Maybe you are interested in using both GPUs for working into two monitors (or ma
 however using the dedicated GPU for displaying is a good idea. For this cannot let the nvidia driver installation to generate a xconf file. Tell not
 to generate this file when installing, because this will set specific parameters to use the NVIDIA GPU for graphic interface.
 
-After installing reboot your computer and enter into the bios settings. In my computer you have to.
+After installing reboot your computer and enter into the bios settings. In my computer you have to press F7 to go to advanced mode, then go to advanced, go to System Agent config, go to graphics config. Here you have to enable IGPU, then select PCI as primary display and select adecuated memory in DVMT pre allocated. Maybe you have to enable IGPU and reboot to get the DVMT option. Try different memory sizes until you get the two screens working. DVMT is how much size of the RAM is dedicated for GPU working.
