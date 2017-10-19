@@ -14,8 +14,14 @@ make clean
 make
 ~~~
 
-
 DONE!
+
+*This will be enabled soon.*
+*For GPU usage please first check [GPU set up guide](https://github.com/RParedesPalacios/Layers/blob/master/src/gpu_install.md*
+*cd src;*
+*make CORE=0;*
+*make CORE=1;*
+*option 0 compiles Layers only for CPU. option 1 compiles both for GPU and CPU. You then select what to use from the parser.*
 
 ### Compiling on MAC:
 
