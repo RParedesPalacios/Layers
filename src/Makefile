@@ -50,8 +50,8 @@ $(error Set enviroment variable LAYERS_CUDA_PATH with directory to cuda)
 endif
 
 	CXXFLAGS :=  $(CXXFLAGS) -DfGPU -I $(cuda_path)include/
-	GPU_CXXFLAGS := -I $(cuda_path)include/ -L  $(cuda_path)lib64/
-	GPU_OBJ := gpu_utils.o cublas_env.o gpu_env.o gpu_kernels.o
+	GPU_CXXFLAGS := -I $(cuda_path)include/ -L  $(cuda_path)lib64/ -DfGPU
+	GPU_OBJ := execution.o cublas_env.o gpu_env.o gpu_kernels.o
         GPU_LIBFLAGS := -lcudart -lcublas -lcurand
 	GPU_CXX := $(cuda_path)bin/nvcc
 	LAYERS = gayers
@@ -122,17 +122,17 @@ net:	net.cpp net.h utils.h tensor.h
 	$(CXX) $(CXXFLAGS) -c net.cpp
 
 #---------------------------------- gpu code
-cublas_env.o: ../gpu_code_class/cublas_env.h ../gpu_code_class/gpu_utils.h
-	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ../gpu_code_class/cublas_env.cu
+cublas_env.o: ./gpu/cublas_env.h ./utils.h  ./gpu/execution.h
+	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ./gpu/cublas_env.cu
 
-gpu_env.o: ../gpu_code_class/gpu_env.h ../gpu_code_class/gpu_kernels.h ../gpu_code_class/gpu_utils.h
-	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ../gpu_code_class/gpu_env.cu
+gpu_env.o: ./gpu/gpu_env.h ./gpu/gpu_kernels.h ./utils.h ./gpu/execution.h
+	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ./gpu/gpu_env.cu
 
-gpu_kernels.o:  ../gpu_code_class/gpu_kernels.h 
-	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ../gpu_code_class/gpu_kernels.cu
+gpu_kernels.o:  ./gpu/gpu_kernels.h ./utils.h  
+	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ./gpu/gpu_kernels.cu
 
-gpu_utils.o: ../gpu_code_class/gpu_utils.h ../gpu_code_class/gpu_env.h
-	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ../gpu_code_class/gpu_utils.cu
+execution.o: ./gpu/gpu_env.h ./utils.h 
+	$(GPU_CXX) $(GPU_CXXFLAGS) $(GPU_LIBFLAGS) -c ./gpu/execution.cu
 
 #-------------------------
 

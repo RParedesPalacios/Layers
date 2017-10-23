@@ -49,6 +49,13 @@ int batch=100;
 char logname[MAX_CHAR];
 int seed=123456;
 
+extern bool useCPU;
+#ifdef fGPU
+
+  #include "./gpu/execution.h"
+
+#endif
+
 //////////////////////////////////////
 
 class IBlock {
@@ -1184,6 +1191,19 @@ public:
 
 
 int main(int argc, char **argv) {
+  //Juan-> Fix as you want
+  #ifdef fGPU
+   if(!useCPU)
+   {
+    cublasInit();
+    curandInit();
+    gpu_tensor_op.gpu_info(0);//aqui se pasa la gpu que seleccionas con JMB. Entendemos que JMB nos pasa algo que es o bien cpu o bien gpu0, gpu1,gpu2. Esta funcion debe recibir ese numerito.
+   }
+  #else
+    if(!useCPU)
+	{fprintf(stderr,"Not compiled for GPU\n");exit(-1);}
+  #endif
+
   if (argc<2) {
     if (VERBOSE) fprintf(stderr,"use: layers netfile\n");
     exit(1);

@@ -33,4 +33,48 @@ double gauss(double mean,double sd);
 double gaussgen();
 
 
+//stuff for controlling both gpu and cpu
+extern long int gpu_seed;//change this to what you want but gpu for the moment use this variable
+extern bool useCPU;
+
+//stuff only for gpu generation
+#ifdef fGPU
+#include<stdint.h>
+
+typedef enum
+{
+BIN,
+GAUSS,
+SUNI,
+UUNI
+}rand_type;
+
+typedef enum
+{
+TOGPU,
+FROMGPU
+}tr_type;
+
+typedef struct
+{
+int batch;//only for convolutional
+int featureMap;//only for convolutional
+int row;
+int col;
+}tensor_gpu_specs;
+
+typedef struct
+{
+uint8_t warpSize;
+uint8_t maxThreadPerBlock;
+uint8_t multiCores;
+uint8_t totalGlobMem;
+uint8_t sharedMemPerBlock;
+uint8_t totalConstMem;
+uint8_t clockRate;
+}gpu_specs;
+
+//variables
+
+#endif
 #endif

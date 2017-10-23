@@ -858,6 +858,7 @@ void Net::train(int epochs)
       forward();
       /////
       backward();
+      //printf("TERMINA EL BACKWARD EMPIEZA CALCERR\n");
       /////
       calcerr(batch);
       /////

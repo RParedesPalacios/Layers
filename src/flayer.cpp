@@ -20,6 +20,29 @@ using namespace Eigen;
 using namespace std;
 
 
+/////////
+//Helper funciton
+#ifdef fGPU
+#include "./gpu/execution.h"
+void printDebug(float* p, const char*, int total)
+{
+float* aux = (float*)malloc(total*sizeof(float));
+
+gpu_tensor_op.copy_data(aux,p,FROMGPU,total*sizeof(float));
+float suma=0.0;
+
+for (int i=0;i<total;i++)
+{
+	printf("%f ",aux[i]);
+        suma+=aux[i];
+}
+
+printf("\nvalor de la suma:%f \n",suma);
+}
+
+#endif
+////////
+
 ////////////////////////////////////
 ///// FULLY CONNECTED LAYER CLASS
 ////////////////////////////////////
@@ -35,7 +58,6 @@ void FLayer::mem()
   int i;
 
   W=new Tensor(MAX_CONNECT,UNSET,UNSET);
-  W->set(0.0);
   gW=new Tensor(MAX_CONNECT,UNSET,UNSET);
   pgW=new Tensor(MAX_CONNECT,UNSET,UNSET);
   b=new Tensor(MAX_CONNECT,UNSET);
@@ -68,7 +90,6 @@ void FLayer::mem()
   gbn_g=new Tensor(din);
   gbn_b=new Tensor(din);
   gbn_E=new Tensor(batch,din);
-
 }
 
 FLayer::FLayer(int batch,char *name):Layer(batch,name)
@@ -335,15 +356,27 @@ void FLayer::forward()
       Tensor::activation(BNE,N,act);
     else 
       Tensor::activation(E,N,act);
-  
-
+  /*
+    printf("==========VALORES EN FORWARD\n") ;
+    printf("====== ACTIVATION\n");
+    printf("%d \n",act); 
+    printf("======E\n");
+    printDebug(E->gptr,"E",20);
+    printf("======N\n");
+    printDebug(N->gptr,"N",20);
+    printf("======W\n");
+    if(act!=ACT_SOF)
+    {
+    printDebug(W->subTensor(0)->gptr,"N",20);
+    printf("======B\n");
+    printDebug(b->subTensor(0)->gptr,"N",10);}
+    getchar();*/
     ////////////////////////////
     // POST-ACTIVATION
     ////////////////////////////
     if (drop>0.0) {
       if (trmode) {
 	dvec->set_rand_binary(drop);
-   
 	Tensor::maskZeros(dvec,N);
       }
       else 
@@ -480,6 +513,12 @@ void FLayer::bBN()
 
 void FLayer::backward()
 {
+/*
+    printf("==========VALORES EN BACKWARD\n");
+    printf("====== ACTIVATION\n");
+    printf("%d \n",act); */
+
+
   int i,j,k,ind;
 
   if (drop>0.0) Tensor::maskZeros(dvec,Delta);
@@ -506,14 +545,49 @@ void FLayer::backward()
     if (VERBOSE) fprintf(stderr,"%s Delta norm %f\n",name,Delta->norm());
 
     // Delta*DerivAct
+
+//    printf("======delta antes de activacion\n");
+//    printDebug(Delta->gptr,"gW",20);
+
+    //printf("===========BACKWARD NORMAL LAYER %d\n",act);
+   // printf("===== pre activation\n");
+   // printf("==E \n");
+   // printDebug(E->gptr,"",10);
+   // printf("==N \n");
+   // printDebug(N->gptr,"",10);
+   // getchar();
+
+ 
     if (act!=ACT_SOF) { // To prevent for output layers with softmax
       if (bn) 
 	Tensor::dactivation(BNE,N,dE,act);
       else 
 	Tensor::dactivation(E,N,dE,act);
-      
-      Tensor::el_mult(Delta,0,dE,0,Delta,0);
+
+    //printf("===== Deactivatcion \n");
+   // printf("==E \n");
+   // printDebug(E->gptr,"",10);
+   // printf("==N \n");
+   // printDebug(N->gptr,"",10);
+   // printf("==dE \n");
+   // printDebug(dE->gptr,"",10);
+   // getchar();
+
+    //printf("===== Delta pre\n");
+    //printf("==Delta \n");
+    //printDebug(Delta->gptr,"",10);
+
+    Tensor::el_mult(Delta,0,dE,0,Delta,0);
+
+    //printf("===== Delta pos apply dE\n");
+    //printf("==Delta*dE \n");
+    //printDebug(Delta->gptr,"",10);
+
+
     }
+//printf("======delta despues de activacion\n");
+//    printDebug(Delta->gptr,"gW",20);
+
 
 
     if (bn) bBN();
@@ -521,7 +595,6 @@ void FLayer::backward()
     for(i=0;i<lin;i++) {
       if (rnet->isIn(Lin[i])) {
 	if (Lin[i]->type==FLAYER) { // Fully connected
-
 	  l=(FLayer *)Lin[i];
 
 	  ind=-1;
@@ -531,6 +604,9 @@ void FLayer::backward()
 
 	  // Compute grads
 	  if (VERBOSE) fprintf(stderr,"%f %f -->\n",l->N->norm(),Delta->norm());
+  
+  //  printf("======delta antes de backpropaegar\n");
+  //  printDebug(Delta->gptr,"gW",20);
 
 	  Tensor::mult(l->N,1,Delta,0,l->gW->subTensor(ind),0);
 
@@ -540,6 +616,11 @@ void FLayer::backward()
 
 	  // back-propagate Delta
 	  Tensor::mult(Delta,0,l->W->subTensor(ind),1,l->Delta,1);
+   
+    //printf("======gW\n");
+   // printDebug(l->gW->subTensor(ind)->gptr,"gW",20);
+   // getchar();
+
 	}
       }
     }
@@ -556,13 +637,52 @@ void FLayer::applygrads()
   for(k=0;k<lout;k++) {
 
     // WEIGHTS
+   // printf("=============APPLY GRADS");
+   // printf("=============mu %f %f\n",mu,batch);
+
+   // printf("=========W antes\n");
+    //printDebug(W->subTensor(k)->gptr,"adsfad",10);
+
+   // printf("=========gW antes del momentum\n");
+   // printDebug(gW->subTensor(k)->gptr,"adsfad",10);
+
+
     Tensor::sum((mu/batch),gW->subTensor(k),0,mmu,pgW->subTensor(k),0,pgW->subTensor(k),0);
+
+ //   printf("=========gW despues del momentum\n");
+ //   printDebug(gW->subTensor(k)->gptr,"adsfad",10);
+
+
     Tensor::inc(pgW->subTensor(k),W->subTensor(k));
+/*
+    printf("=========W despues\n");
+    printDebug(W->subTensor(k)->gptr,"adsfad",10);
+    getchar();
+*/
     if (VERBOSE) fprintf(stderr,"W (%s) norm = %f\n",name,W->subTensor(k)->norm());
 
+
     // BIAS
+/*
+    printf("=========Bias antes\n");
+    printDebug(b->subTensor(k)->gptr,"adsfad",10);
+    printf("=========gb antes del momentum\n");
+    printDebug(gb->subTensor(k)->gptr,"adsfad",10);
+    printf("=========pgb antes del momentum\n");
+    printDebug(pgb->subTensor(k)->gptr,"adsfad",10);
+*/
     Tensor::sum((mu/batch),gb->subTensor(k),0,mmu,pgb->subTensor(k),0,pgb->subTensor(k),0);
-    Tensor::inc(pgW->subTensor(k),W->subTensor(k));
+/*
+    printf("=========pgb despuest del momentum\n");
+    printDebug(pgb->subTensor(k)->gptr,"adsfad",10);
+*/
+    Tensor::inc(pgb->subTensor(k),b->subTensor(k));
+/*
+    printf("=========b despuest del incremento de gradiente\n");
+    printDebug(b->subTensor(k)->gptr,"adsfad",10);
+*/
+
+
 
     // REGULARIZATION    
     if (l2!=0.0)
@@ -589,7 +709,22 @@ void FLayer::applygrads()
     gb->subTensor(k)->set(0.0);
     //gW[k].setZero();
     //gb[k].setZero();
-
+  /*
+    printf("==========APPLY GRAD\n");
+    printf("====== ACTIVATION\n");
+    printf("%d \n",act); 
+    printf("======E\n");
+    printDebug(E->gptr,"E",20);
+    printf("======N\n");
+    printDebug(N->gptr,"N",20);
+    printf("======W\n");
+    if(act!=ACT_SOF)
+    {
+    printDebug(W->subTensor(0)->gptr,"N",10);
+    printf("======B\n");
+    printDebug(b->subTensor(0)->gptr,"N",10);}
+    getchar();
+*/
   }
 
   // BATCH NORM g,b
@@ -850,26 +985,59 @@ double OFLayer::get_err(int n)
       for(i=0;i<n;i++) 
         for(j=0;j<din;j++) 
           T->set(i,j,D->M(D->getpos(i),j+D->dim));
-  
     else if (opt==2) // autoencoder
       for(i=0;i<n;i++)
 	for(j=0;j<din;j++) 
 	  T->set(i,j,D->M(D->getpos(i),j));
 	
   }
-  
   //////////////////////
   if (opt==0) {
-    for(i=0;i<n;i++) {
-      T->row_max(i,&rindex);
-      N->row_max(i,&nindex);
+//    printf("==========VALORES EN GET ERROR\n");
+/*
+    printf("====== ACTIVATION\n");
+    printf("%d \n",act); 
+    printf("======E\n");
+    printDebug(E->gptr,"E",20);
+    printf("======N\n");
+    printDebug(N->gptr,"N",20);
+    if(act!=ACT_SOF)
+    {
+    printDebug(W->subTensor(0)->gptr,"N",20);
+    printf("======B\n");
+    printDebug(b->subTensor(0)->gptr,"N",20);}
 
+printf("========N %d\n",n);
+getchar();
+    printf("======T total con todo\n");
+    printDebug(T->gptr,"T total con todo",20);
+    printf("======N Total con todo\n");
+    printDebug(N->gptr,"N total con todo",20);
+*/
+    for(i=0;i<n;i++) {
+  /*  
+    printf("======T\n");
+    printDebug(T->gptr+i*T->gsp.col,"T",10);
+*/
+    T->row_max(i,&rindex);
+/*
+    printf("======N\n");
+    printDebug(N->gptr+i*T->gsp.col,"N",10);
+*/
+    N->row_max(i,&nindex);
+/*
+    printf("======Tindex %d  ",rindex);
+    printf("=====Nindex %d\n",nindex);
+    getchar();
+*/
       if (rindex!=nindex) cerr++;
       for(j=0;j<din;j++) {
 	if (j==rindex) {if (N->get(i,j)!=0.0) ent-=log(N->get(i,j));}
 	else if (N->get(i,j)!=1.0) ent-=log(1-N->get(i,j));
       }
     }
+
+    //getchar();
   }
   else if (opt<3) {
     for(i=0;i<n;i++)
@@ -904,13 +1072,17 @@ double OFLayer::get_err(int n)
     for(i=0;i<n;i++)
       for(j=0;j<din;j++) loss+=log(N->get(i,j))/din;
   }
-
   return 0.0;
   
 }
 
 void OFLayer::backward()
 {
+
+//  printf("===========================\n");
+//  printf("===========================\n");
+//  printf("=========INIT BACKWARD\n");
+
   int i,j,k,p;
   double sum;
   
@@ -937,7 +1109,29 @@ void OFLayer::backward()
 	  Delta->set(i,j,Delta->get(i,j)*(val-(val*val))); //deriv softmax w.r.t pre-activation: y_i-(y_i)^2
 	}
     }
+/*
+    printf("======= DELTA EN SOFTMAX\n");
+    printDebug(Delta->gptr,"aa",10);
+    printf("======= T EN SOFTMAX\n");
+    printDebug(T->gptr,"aa",10);
+    printf("======= N EN SOFTMAX\n");
+    printDebug(N->gptr,"aa",10);
+    printf("Lambda vale %f",lambda);
+*/
+ //   printf("===========DELTA oflayer backward\n");
     Tensor::sum(lambda,T,0,-lambda,N,0,Delta,1);
+ /*   printf("==delta \n");
+    printDebug(Delta->gptr,"",10);
+    printf("==T \n");
+    printDebug(T->gptr,"",10);
+    printf("==N \n");
+    printDebug(N->gptr,"",10);
+ getchar();*/
+/*
+    printf("======= DELTA APLICADO EN SOFTMAX\n");
+    printDebug(Delta->gptr,"aa",10);
+    getchar();*/
+
     //Delta+=(T-N)*lambda;
   }
   else if (opt<3) {
@@ -961,6 +1155,22 @@ void OFLayer::backward()
   }
 
   if (VERBOSE) fprintf(stderr,"OFLayer %s Delta norm %f\n",name,Delta->norm());
+/*
+    printf("==========VALORES EN BACKWARD\n");
+    printf("====== ACTIVATION\n");
+    printf("%d \n",act); 
+    printf("======E\n");
+    printDebug(E->gptr,"E",20);
+    printf("======N\n");
+    printDebug(N->gptr,"N",20);
+    printf("======W\n");
+    if(act!=ACT_SOF)
+    {
+    printDebug(W->subTensor(0)->gptr,"N",20);
+    printf("======B\n");
+    printDebug(b->subTensor(0)->gptr,"N",20);}
+    getchar();
+*/
   FLayer::backward();
 
 }

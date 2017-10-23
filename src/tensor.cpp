@@ -20,6 +20,15 @@ extern double un[LUT];
 
 Tensor * Tensor::AUX;
 
+//GLOBAL,EXTERN VARIABLES DIRECTIVES INCLUDES FOR GPU COMPUTATION
+
+extern bool useCPU;
+#ifdef fGPU
+
+#include "./gpu/execution.h" // Data structures variables and functions for GPU computation setup
+
+#endif
+
 
 //// FOR CPU with Eigen
 void Tensor::replace_unset()
@@ -34,9 +43,11 @@ void Tensor::replace_unset()
 Tensor::Tensor() 
 {
   dim=0;
+  lin=NULL;
   T=NULL;
 }
 
+//JUAN: implemented
 Tensor::Tensor(int d1)
 {
   dim=1;
@@ -46,15 +57,28 @@ Tensor::Tensor(int d1)
   T=NULL;
 
   // CPU
-  ptr1.resize(a);
+  if(useCPU) 
+    ptr1.resize(a);
+  #ifdef fGPU
+  else
+  {
+   if (a!=1)
+   {	
+     gptr=gpu_tensor_op.makeTensor(a);
+     gsp.row=1;gsp.col=a;gsp.batch=1;gsp.featureMap=1;	
+   }
+  }
+ #endif
 }
 
+//JUAN: implemented
 Tensor::Tensor(int d1,int d2)
 {
   dim=2;
   T=NULL;
 
-  if ((d1!=UNSET)&&(d2==UNSET)) { // dim=2 but it0s a vector of 1D vectors with different sizes
+  if ((d1!=UNSET)&&(d2==UNSET)) { // matrix but a vectors of 1D vectors with different sizes
+
     a=d1;
     b=d2;
     replace_unset();
@@ -63,16 +87,27 @@ Tensor::Tensor(int d1,int d2)
       ptr[i]=new Tensor(b);
     size=a*b; // take care
   }
-  else { // Regular Matrix
+  else { // Matrix
     a=d1;
     b=d2;
     replace_unset();
     size=a*b;
-    //CPU
+  //CPU
+  if(useCPU)
     ptr2.resize(a,b);
+ #ifdef fGPU
+  else
+  {
+    if(a!=1 && b!=1) //as we cannot realloc memory on gpu we just alloc only if a!=1 and b!=1. We do allocation on resize methods
+    {	
+      gptr=gpu_tensor_op.makeTensor(a,b);
+      gsp.row=a;gsp.col=b;gsp.batch=1;gsp.featureMap=1;	
+    }
+  }
+ #endif
   }
 }
-
+//JUAN:  implemented
 Tensor::Tensor(int d1,int d2,int d3)
 {
   dim=3;
@@ -92,6 +127,7 @@ Tensor::Tensor(int d1,int d2,int d3)
 
 }
 
+//Juan: Not implemented for the moment
 Tensor::Tensor(int d1,int d2,int d3,int d4)
 {
   dim=4;
@@ -110,8 +146,9 @@ Tensor::Tensor(int d1,int d2,int d3,int d4)
     ptr[i]=new Tensor(b,c,d);
 }
 
-
+/////
 // Only for 4D Tensors
+//Juan: Not implemented for the moment
 void Tensor::Transpose()
 {
   if (dim==4) {
@@ -140,9 +177,21 @@ void Tensor::resize(int d1)
   
   
   // CPU
-  ptr1.resize(d1);
-  a=d1;
-  size=d1;
+  if(useCPU)
+  {
+    ptr1.resize(d1);
+    a=d1;
+    size=d1;
+  }
+ #ifdef fGPU
+  else
+  {
+     a=d1;
+     size=d1;	
+     gptr=gpu_tensor_op.makeTensor(a);
+     gsp.row=1;gsp.col=a;gsp.batch=1;gsp.featureMap=1;	
+  }
+ #endif
 }
 
 void Tensor::resize(int d1,int d2) {
@@ -150,12 +199,25 @@ void Tensor::resize(int d1,int d2) {
     fprintf(stderr,"Error resize tensor.dim=%d != call resize 2\n",dim);
     exit(1);
   }
-  
   // CPU
-  ptr2.resize(d1,d2);
-  a=d1;
-  b=d2;
-  size=d1*d2;
+  if(useCPU)
+  {
+    ptr2.resize(d1,d2);
+    a=d1;
+    b=d2;
+    size=d1*d2;
+  }
+  #ifdef fGPU
+  else
+  {
+   a=d1;
+   b=d2;	
+   size=a*b;
+   gptr=gpu_tensor_op.makeTensor(a,b);
+   gsp.row=a;gsp.col=b;gsp.batch=1;gsp.featureMap=1;	 
+  }
+ #endif
+
 }
 
 
@@ -187,7 +249,7 @@ void Tensor::resize(int d1,int d2,int d3) {
 
 void Tensor::resize(int d1,int d2,int d3,int d4) {
   if (dim!=4) {
-    fprintf(stderr,"Error resize tensor.dim=%d != call resize 4\n",dim);
+    fprintf(stderr,"Error resize tensor.dim=%d != call resize 4sssssssss\n",dim);
     exit(1);
   }
 
@@ -213,22 +275,32 @@ void Tensor::resize(int d1,int d2,int d3,int d4) {
 }
 //////////////////////////////////////////////////
 
-
+//JUAN: Implemented
 Tensor::~Tensor() 
 {
 
   // CPU
-  if (dim==1) ptr1.resize(0);
-  else if (dim==2) ptr2.resize(0,0);
-  else if (dim>2) {
-    for(int i=0;i<a;i++) {
-      delete ptr[i];
-    }
+  if(useCPU)
+  {
+    if (dim==1) ptr1.resize(0);
+    else if (dim==2) ptr2.resize(0,0);
+    else if (dim>2) {
+      for(int i=0;i<a;i++) {
+        delete ptr[i];
+      }
     delete ptr;
+    }
   }
+  #ifdef fGPU
+  else
+  {
+	int asadfafd=0;
+    //gpu_tensor_op.destroyTensor(gptr);
+  }
+  #endif
 }
 
-
+//Juan: GPU not use this
 Tensor* Tensor::toLin()
 {
   Tensor *n=new Tensor(size);
@@ -243,7 +315,7 @@ Tensor* Tensor::toLin()
       int p=i*b;
       for(int j=0;j<b;j++,p++)
 	n->ptr1(p)=ptr2(i,j);
-    }
+    } 
   }
   else if (dim==3) {
 #pragma omp parallel for
@@ -267,30 +339,25 @@ Tensor* Tensor::toLin()
   return n;
 }
 
+//Juan: GPU not use this
 void Tensor::fromLin(Tensor *T)
 {
-  if (size!=T->size) {
-
-    fprintf(stderr,"Error sizes fromLin %d!=%d\n",size,T->size);
-    exit(1);
-  }
-
   // CPU
+  if(useCPU)
+  {
   if (dim==1) {
     ptr1=T->ptr1;
   }
   else if (dim==2) {
-    #pragma omp parallel for
+#pragma omp parallel for
     for(int i=0;i<a;i++) {
       int p=i*b;
       for(int j=0;j<b;j++,p++)
-      {
-	ptr2(i,j)=T->ptr1(p);  
-      }
+	ptr2(i,j)=T->ptr1(p);
     }
   }
   else if (dim==3) {
-   #pragma omp parallel for
+#pragma omp parallel for
     for(int i=0;i<a;i++) {
       int p=i*b*c;
       for(int j=0;j<b;j++)
@@ -308,34 +375,56 @@ void Tensor::fromLin(Tensor *T)
 	    ptr[i]->ptr[j]->ptr2(k,l)=T->ptr1(p);
     }
   }
-}
+  }
+   #ifdef fGPU
+  else
+	{fprintf(stderr,"Not implemented from LIn\n");exit(-1);}
+  #endif
 
+}
+//Juan: Implemented
 int Tensor::equal(Tensor *T)
 {
   if (size!=T->size) return 0;
 
-  Tensor *n1=toLin();
-  Tensor *n2=T->toLin();
+  if(useCPU)
+  {
+    Tensor *n1=toLin();
+    Tensor *n2=T->toLin();
 
-  for(int i=0;i<size;i++) 
-    if (n1->ptr1(i)!=n2->ptr1(i)) return 0;
+    for(int i=0;i<size;i++) 
+      if (n1->ptr1(i)!=n2->ptr1(i)) return 0;
   
-  delete n1;
-  delete n2;
+    delete n1;
+    delete n2;
+  }
+  #ifdef fGPU
+  else
+    return gpu_tensor_op.tensor_equal(T->gptr,gptr,&gsp);
+  #endif
 
   return 1;
 
 }
 
-
+//Juan: Implemented. Subtensor is for tensor 3D. Tensor 3D keep tensor array. Each element of array is tensor 2D which has GPU support
 Tensor * Tensor::subTensor(int ind)
 {
-  return ptr[ind];
+    return ptr[ind];
 }
 
+//Juan: Not implemented
 Tensor * Tensor::subTensor(int a,int b)
 {
-  return ptr[a]->ptr[b];
+  if(useCPU)
+     return ptr[a]->ptr[b];
+  #ifdef fGPU
+  else
+  {
+  fprintf(stderr,"Not implementet subtensor 2D\n");exit(-1);
+  }
+
+  #endif
 }
 
 void Tensor::copy(Tensor *T)  //copy, reshape etc...
@@ -347,6 +436,8 @@ void Tensor::copy(Tensor *T)  //copy, reshape etc...
   }
 
   /// CPU
+  if (useCPU)
+  {
   if (dim==T->dim) {
     if (T->dim==1) 
       ptr1=T->ptr1;
@@ -358,44 +449,77 @@ void Tensor::copy(Tensor *T)  //copy, reshape etc...
     }
   }
   else {
-    if (VERBOSE) fprintf(stderr,"COPY dim! %d %d, %d %d\n",dim,T->dim,size,T->size);
-    if (T->dim!=1) {
-      Tensor *n=T->toLin();
-      fromLin(n);
-      delete n;
-    }
-    else {
-      fromLin(T);
+      if (VERBOSE) fprintf(stderr,"COPY dim!\n");
+    Tensor *n=T->toLin();
+    fromLin(n);
+    delete n;
     }
   }
+  #ifdef fGPU
+  else
+  {
+  fprintf(stderr,"Imlementear copy\n");exit(-1);
+  }
+  #endif
+  
   ////////
 }
 
+//Juan: Not implemented
 void Tensor::copyfromData(Data *D)
 {
-  
-  if (dim==2) {
-    #pragma omp parallel for
-    for(int i=0;i<a;i++) 
-      for(int j=0;j<b;j++)
-	ptr2(i,j)=D->M(D->getpos(i),j);
-  }
-  else if (dim==4) {
-    #pragma omp parallel for
-    for(int i=0;i<a;i++) {
-      int p=0;
-      for(int j=0;j<b;j++)
-	for(int k=0;k<c;k++)
-	  for(int l=0;l<d;l++,p++)
-	    ptr[i]->ptr[j]->ptr2(k,l)=D->M(D->getpos(i),p);
+ if(useCPU)
+ {
+   //a_batch 
+    if (dim==2) {
+      #pragma omp parallel for
+      for(int i=0;i<a;i++) 
+        for(int j=0;j<b;j++)
+	  ptr2(i,j)=D->M(D->getpos(i),j);
     }
-  }  
+    else if (dim==4) {
+      #pragma omp parallel for
+      for(int i=0;i<a;i++) {
+        int p=0;
+        for(int j=0;j<b;j++)
+	  for(int k=0;k<c;k++)
+	    for(int l=0;l<d;l++,p++)
+	      ptr[i]->ptr[j]->ptr2(k,l)=D->M(D->getpos(i),p);
+      }
+    }  
 
+ }
+ #ifdef fGPU
+ else
+ {
+  float* data_aux;
+  float* batch_aux= new float[b];
+    if (dim==2)
+    { 
+      size_t counter=0;
+      data_aux = (float*)malloc(a*b*sizeof(float));
+  
+
+      for (int i=0;i<a;i++)
+      {
+        for(int j=0;j<b;j++)
+        	batch_aux[j]=D->M(D->getpos(i),j);
+        memcpy((void*)data_aux+counter,batch_aux,b*sizeof(float));
+        counter+=b*sizeof(float);
+      }
+
+      }
+    gpu_tensor_op.copy_data(data_aux,gptr,TOGPU,a*b*sizeof(float));
+    free(data_aux);
+    delete batch_aux;
+  }
+ #endif
 }
-
+//Juan:: Implemented
 void Tensor::set(LType val)
 {
-  
+ if(useCPU)
+ { 
   if (dim==1) {
 #pragma omp parallel for
     for(int i=0;i<a;i++) ptr1(i)=val;
@@ -408,27 +532,66 @@ void Tensor::set(LType val)
   else 
     for(int i=0;i<a;i++)
       ptr[i]->set(val);
+ }
+ #ifdef fGPU
+ else
+   if (dim==1 || dim==2)
+   {
+       gpu_tensor_op.set_sc(gptr,val,&gsp);
+   }
+   else
+   {
+      //#pragma omp parallel for
+      for(int i=0;i<a;i++)
+      {
+         printf("%d of %d",i,a);
+         ptr[i]->set(val); 
+      }
+   }
+ #endif 
 }
 
-
+//Juan: implemented
 void Tensor::set(int a,LType val)
 {
-  if (dim!=1) {
-    fprintf(stderr,"Error set with 1 param for dim=%d\n",dim);
+  if(useCPU)
+  {
+    if (dim!=1) {
+      fprintf(stderr,"Error set with 1 param for dim=%d\n",dim);
+    }
+    //CPU
+    ptr1(a)=val;
   }
-  //CPU
-  ptr1(a)=val;
+  #ifdef fGPU
+  else
+  {
+  gpu_tensor_op.copy_data(&val,&(gptr[a]),TOGPU,sizeof(float));
+  }
+  #endif
+  
 }
+//Juan: implemented
 void Tensor::set(int a,int b,LType val)
 {
-  if (dim!=2) {
-    fprintf(stderr,"Error set with 2 params for dim=%d\n",dim);
+  if (useCPU)
+  {
+    if (dim!=2) {
+      fprintf(stderr,"Error set with 2 params for dim=%d\n",dim);
+    }
+    //CPU
+    ptr2(a,b)=val;
   }
-  //CPU
-  ptr2(a,b)=val;
+   #ifdef fGPU
+  else
+  {
+   gpu_tensor_op.copy_data(&val,&(gptr[a*this->b+b]),TOGPU,sizeof(float));
+  }
+  #endif
+  
+ 
 }
 
-
+//Juan: Not implemented
 void Tensor::set(int a,int b,int c,LType val)
 {
   if (dim!=3) {
@@ -447,22 +610,38 @@ void Tensor::set(int a,int b,int c,int d,LType val)
   ptr[a]->ptr[b]->ptr2(c,d)=val;
 }
 
+//Juan: Not implemented
 void Tensor::inc(int a,LType val)
 {
   if (dim!=1) {
     fprintf(stderr,"Error set with 1 param for dim=%d\n",dim);
   }
   //CPU
-  ptr1(a)+=val;
+  if(useCPU)
+    ptr1(a)+=val;
+  #ifdef fGPU
+  else
+	{fprintf(stderr,"Not implemented inc 1d\n");exit(-1);}
+
+  #endif
 }
+//Juan: Not implemented
 void Tensor::inc(int a,int b,LType val)
 {
   if (dim!=2) {
     fprintf(stderr,"Error set with 2 params for dim=%d\n",dim);
   }
   //CPU
+  if(useCPU)
   ptr2(a,b)+=val;
+ #ifdef fGPU
+  else
+	{fprintf(stderr,"Not implemented inc 2d\n");exit(-1);}
+
+  #endif
+
 }
+//Juan:Not implemented
 void Tensor::inc(int a,int b,int c,LType val)
 {
   if (dim!=3) {
@@ -471,6 +650,7 @@ void Tensor::inc(int a,int b,int c,LType val)
   //CPU
   ptr[a]->ptr2(b,c)+=val;
 }
+//Juan:Not implemented
 void Tensor::inc(int a,int b,int c,int d,LType val)
 {
   if (dim!=4) {
@@ -482,9 +662,12 @@ void Tensor::inc(int a,int b,int c,int d,LType val)
   for(int i=0;i<a;i++)
     ptr[a]->ptr[b]->ptr2(c,d)+=val;
 }
-
+/////////////RANDOM FOR THE MOMENTO NO IMPLEMNTED WE NEED TO STUDY CURAND API//////////////////////////
+//Juan: Implemented
 void Tensor::set_rand_binary(LType val)
 {
+  if(useCPU)
+  {
   Tensor *n=new Tensor(size);
   int s=rand()%LUT;
   //CPU
@@ -496,10 +679,20 @@ void Tensor::set_rand_binary(LType val)
   ////
   fromLin(n);
   delete n;
+  }
+  #ifdef fGPU
+  else
+  {
+   gpu_tensor_op.random_number_host_binary(gptr,&gsp,val);
+  }
+  #endif
+  
 }
 
 void Tensor::set_rand_signed_uniform(LType val)
 {
+  if(useCPU)
+  {
   Tensor *n=new Tensor(size);
 
   //CPU
@@ -509,11 +702,14 @@ void Tensor::set_rand_signed_uniform(LType val)
 
   fromLin(n);
   delete n;
+  }
 }
 
 
 void Tensor::set_rand_uniform(LType val)
 {
+  if(useCPU)
+  {
   int i,j,k,l;
 
   Tensor *n=new Tensor(size);
@@ -525,22 +721,38 @@ void Tensor::set_rand_uniform(LType val)
   
   fromLin(n);
   delete n;
-  
+  }
 }
+//Juan: Implemented
 void Tensor::set_rand_gauss(LType m,LType sd)
 {
+  if(useCPU)
+  {
   Tensor *n=new Tensor(size);
 
   //CPU
   for(int i=0;i<n->ptr1.size();i++) 
       n->ptr1(i)=gauss(m,sd);
   //////
+
   fromLin(n);
   delete n;
+  }
+  #ifdef fGPU
+  else
+  {
+    gpu_tensor_op.random_number_host_gaussian(gptr,&gsp,m,sd);
+
+  }
+  #endif
+
 }
 
+//Juan: Implemented
 void Tensor::add_noise_gauss(LType noiser,LType mean,LType noisesd)
 {
+  if(useCPU)
+  {
   Tensor *n=toLin();
   int s=rand();
   //CPU
@@ -572,43 +784,99 @@ void Tensor::add_noise_gauss(LType noiser,LType mean,LType noisesd)
   fromLin(n);
 
   delete n;
+  }
+#ifdef fGPU
+  else
+  {
+   float* gptr_aux=gpu_tensor_op.makeTensor(gsp.row,gsp.col,gsp.batch,gsp.featureMap);
+   gpu_tensor_op.random_number_host_gaussian(gptr_aux,&gsp,mean,noisesd);
+   gpu_tensor_op.add_noise(gptr,gptr_aux,noiser,&gsp);
+   gpu_tensor_op.destroyTensor(gptr_aux); 
+  }
+  #endif
+
 }
 
 /////
+///////////////////////////////////////////////////////////////////////////
+//Juan: Not implemented
 LType Tensor::get(int a)
 {
   if (dim!=1) {
     fprintf(stderr,"Error get with 1 param for dim=%d\n",dim);
   }
+  if(useCPU)
   //CPU
   return ptr1(a);
+  #ifdef fGPU
+  else
+  {
+  fprintf(stderr,"get  \n");exit(-1);
+  }
+  #endif
+
+
 }
+//Juan: implemented
 LType Tensor::get(int a,int b)
 {
   if (dim!=2) {
     fprintf(stderr,"Error get with 2 params for dim=%d\n",dim);
   }
   //CPU
+  if(useCPU)
+  {
   return ptr2(a,b);
+  }
+  #ifdef fGPU
+  else
+  {
+     float aux1;
+     gpu_tensor_op.copy_data(&aux1, &(gptr[a*this->b+b]),FROMGPU,sizeof(float));
+     return aux1;
+  }
+  #endif
+
+
 }
+//Juan: Not implemented
 LType Tensor::get(int a,int b,int c)
 {
   if (dim!=3) {
     fprintf(stderr,"Error get with 3 params for dim=%d\n",dim);
   }
   //CPU
+  if(useCPU)
   return ptr[a]->ptr2(b,c);
+ #ifdef fGPU
+  else
+  {
+  fprintf(stderr,"get 3D\n");exit(-1);
+  }
+  #endif
+
+
 }
+//Juan: Not implemented
 LType Tensor::get(int a,int b,int c,int d)
 {
   if (dim!=4) {
     fprintf(stderr,"Error get with 4 params for dim=%d\n",dim);
   }
   //CPU
+  if(useCPU)
   return ptr[a]->ptr[b]->ptr2(c,d);
+ #ifdef fGPU
+  else
+  {
+  fprintf(stderr,"get 4D\n");exit(-1);
+  }
+  #endif
+
+
 }
 
-
+//Juan: Not implemented
 void Tensor::save(FILE *fs)
 {
   if (dim==1) 
@@ -623,7 +891,7 @@ void Tensor::save(FILE *fs)
       ptr[i]->save(fs);
   
 }
-
+//Juan: Not implemented
 void Tensor::load(FILE *fs)
 {
   float fv;
@@ -644,7 +912,7 @@ void Tensor::load(FILE *fs)
       ptr[i]->save(fs);
 
 }
-
+//Juan: Not implemented
 LType Tensor::norm()
 {
   LType n=0.0;
@@ -662,9 +930,11 @@ LType Tensor::norm()
 
   return n;
 }
-
+//Juan: Not implemented
 LType Tensor::sum()
 {
+  if(useCPU)
+  {
   if (dim==1) return ptr1.sum();
   else if (dim==2) return ptr2.sum();
   else {
@@ -674,57 +944,125 @@ LType Tensor::sum()
 
     return sum;
   }
+  }
+  #ifdef fGPU
+  else
+  {
+  fprintf(stderr,"tensor sum\n");exit(-1);
+  }
+  #endif
+
+
 }
 
-////// TODO: 
-// col_sum: devolver void y dejar resultado en algún sitio
+//Juan: Not implemented
 LType Tensor::col_sum(int ind)
 {
-  return ptr2.col(ind).sum();
+  if(useCPU)
+  	return ptr2.col(ind).sum();
+  #ifdef fGPU
+  else
+  {
+    float* A;
+    float b;
+    A=gpu_tensor_op.col_sum(gptr,&gsp);
+    gpu_tensor_op.copy_data(&b,&A[ind],FROMGPU,sizeof(float));
+    gpu_tensor_op.destroyTensor(A);
+    return b;
+  }
+  #endif
+  
+
 }
 
+//Juan: Not implemented
 LType Tensor::row_sum(int ind)
 {
-  return ptr2.row(ind).sum();
+  if(useCPU)
+ 	 return ptr2.row(ind).sum();
+ #ifdef fGPU
+  else
+  {
+  fprintf(stderr,"Imlementear row sumr 2D\n");exit(-1);
+  }
+  #endif
+  
+
 }
 
+//Juan: Not implemented
 LType Tensor::col_max(int ind,int *imax)
 {
-  return ptr2.col(ind).maxCoeff(imax);
+  if(useCPU)
+ 	 return ptr2.col(ind).maxCoeff(imax);
+ #ifdef fGPU
+  else
+  {
+  fprintf(stderr,"Imlementear col max 2D\n");exit(-1);
+  }
+  #endif
+
 }
 
+//Juan:  implemented
+//JUAN_FIX: returned aux value for max_pooling
 LType Tensor::row_max(int ind,int *imax)
 {
+if (useCPU)
   return ptr2.row(ind).maxCoeff(imax);
+ #ifdef fGPU
+  else
+  {
+  *imax = gpu_tensor_op.row_max(gptr,&(gsp),ind);
+  float aux;
+  gpu_tensor_op.copy_data(&aux,&gptr[*imax],FROMGPU,sizeof(float));
+   
+  //printf("====gpu routine %d \n",*imax);
+  return aux;
+  }
+  #endif
+
+
 }
 
 
+//Juan:  implemented
 void Tensor::inc_2Drowwise(Tensor *T)
 {
+
   if ((dim!=2)||(T->dim!=1)) {
     fprintf(stderr,"inc_2Drowise is for 2D Tensor + 1D Tensor\n");
     exit(1);
   }
-    
+  if (useCPU)    
   //CPU
   ptr2.rowwise()+=T->ptr1;
+  #ifdef fGPU
+  else
+  {
+    gpu_tensor_op.mat_elwise_vec(gptr,T->gptr,&gsp,0);
+  }
+  #endif
+
 
 }
 
 
 
 /// STATIC FUNCS
+
 ///////////////////////////////////////
 //// MULT C=(a*A)*(b*B)
 //// Dimensions must fit
 ////
-////      ONLY FOR >=2D TENSORS
+////      ONLY FOR 2D TENSORS
 ////
 //// tA,tB {0,1} to transpose A and B
 //// inc {0,1} 
 ////           0: set the result in C
 ////           1: increment the result in C
 ///////////////////////////////////////
+//Juan: Implemented
 Tensor *Tensor::mult(Tensor *A, int tA, Tensor *B, int tB, Tensor *C, int inc)
 {
   int aux=0;
@@ -732,29 +1070,33 @@ Tensor *Tensor::mult(Tensor *A, int tA, Tensor *B, int tB, Tensor *C, int inc)
   if (VERBOSE) {
     fprintf(stderr,"Tensor::mult %d %d %d %d %d\n",A->dim,B->dim,tA,tB,inc);
   }
-
-  if (C==NULL) {
-    if (VERBOSE) {fprintf(stderr,"NULL dest creating tmp\n");}
-    if (AUX!=NULL) delete AUX;
-    AUX=C=new Tensor();
-  }
+  if (useCPU)
+  {
+   if (C==NULL) {
+     if (VERBOSE) {fprintf(stderr,"NULL dest creating tmp\n");}
+     if (AUX!=NULL) delete AUX;
+     AUX=C=new Tensor();
+   }
   
-  if (A->dim==2) {
-    if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr2=A->ptr2*B->ptr2;
-    if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr2+=A->ptr2*B->ptr2;
-    if ((tA==0)&&(tB==1)&&(inc==0)) C->ptr2=A->ptr2*B->ptr2.transpose();
-    if ((tA==0)&&(tB==1)&&(inc==1)) C->ptr2+=A->ptr2*B->ptr2.transpose();
+   if (A->dim==2) {
+     if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr2=A->ptr2*B->ptr2;
+     if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr2+=A->ptr2*B->ptr2;
+     if ((tA==0)&&(tB==1)&&(inc==0)) C->ptr2=A->ptr2*B->ptr2.transpose();
+     if ((tA==0)&&(tB==1)&&(inc==1)) C->ptr2+=A->ptr2*B->ptr2.transpose();
 
-    if ((tA==1)&&(tB==0)&&(inc==0)) C->ptr2=A->ptr2.transpose()*B->ptr2;
-    if ((tA==1)&&(tB==0)&&(inc==1)) C->ptr2+=A->ptr2.transpose()*B->ptr2;
-    if ((tA==1)&&(tB==1)&&(inc==0)) C->ptr2=A->ptr2.transpose()*B->ptr2.transpose();
-    if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr2+=A->ptr2.transpose()*B->ptr2.transpose();
-    C->dim=2;
+     if ((tA==1)&&(tB==0)&&(inc==0)) C->ptr2=A->ptr2.transpose()*B->ptr2;
+     if ((tA==1)&&(tB==0)&&(inc==1)) C->ptr2+=A->ptr2.transpose()*B->ptr2;
+     if ((tA==1)&&(tB==1)&&(inc==0)) C->ptr2=A->ptr2.transpose()*B->ptr2.transpose();
+     if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr2+=A->ptr2.transpose()*B->ptr2.transpose();
+     C->dim=2;
+   }
   }
-  else if (A->dim>2) {
-    for(int i=0;i<A->a;i++) 
-      Tensor::mult(A->subTensor(i),tA,B->subTensor(i),tB,C->subTensor(i),inc);
-  }
+  #ifdef fGPU
+  else
+  {
+      gpu_tensor_op.matMul(A->gptr,B->gptr,C->gptr,&(A->gsp),&(B->gsp),&(C->gsp),inc,tA,tB);
+  } 
+  #endif
 
   return C;
 }
@@ -769,20 +1111,31 @@ Tensor *Tensor::mult(Tensor *A, int tA, Tensor *B, int tB, Tensor *C, int inc)
 ////           0: set the result in B
 ////           1: increment the result in B
 ///////////////////////////////////////////////
+//Juan: Implemented
 Tensor * Tensor::sc_mult(Tensor *A, LType sc, Tensor *B, int inc)
 {
-  if (A->dim==1) {
-    if (inc) B->ptr1+=sc*A->ptr1;
-    else B->ptr1=sc*A->ptr1;
+  if (useCPU)
+  {
+    if (A->dim==1) {
+      if (inc) B->ptr1+=sc*A->ptr1;
+      else B->ptr1=sc*A->ptr1;
+    }
+    else if (A->dim==2) {
+      if (inc) B->ptr2+=sc*A->ptr2;
+      else B->ptr2=sc*A->ptr2;
+    }
+    else {
+      for(int i=0;i<A->a;i++)
+        Tensor::sc_mult(A->ptr[i],sc,B->ptr[i],inc);
+    }
   }
-  else if (A->dim==2) {
-    if (inc) B->ptr2+=sc*A->ptr2;
-    else B->ptr2=sc*A->ptr2;
+  #ifdef fGPU
+  else
+  {
+    gpu_tensor_op.scMat(B->gptr,A->gptr,&(A->gsp),sc,1,inc);
   }
-  else {
-    for(int i=0;i<A->a;i++)
-      Tensor::sc_mult(A->ptr[i],sc,B->ptr[i],inc);
-  }
+
+  #endif
 
   return B;
 }
@@ -797,41 +1150,51 @@ Tensor * Tensor::sc_mult(Tensor *A, LType sc, Tensor *B, int inc)
 ////           0: set the result in C
 ////           1: increment the result in C
 ///////////////////////////////////////////////
+//Juan:Implemented
 Tensor * Tensor::el_mult(Tensor *A, int tA, Tensor *B, int tB, Tensor *C, int inc)
 {
-  if (C==NULL) {
-    if (AUX!=NULL) delete AUX;
-    AUX=C=new Tensor();
-  }
+  if(useCPU)
+  {
+    if (C==NULL) {
+      if (AUX!=NULL) delete AUX;
+      AUX=C=new Tensor();
+    }
 
-  if (A->dim==1) {
-    if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr1=A->ptr1.cwiseProduct(B->ptr1);
-    if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr1+=A->ptr1.cwiseProduct(B->ptr1);
-    if ((tA==0)&&(tB==1)&&(inc==0)) C->ptr1=A->ptr1.cwiseProduct(B->ptr1.transpose());
-    if ((tA==0)&&(tB==1)&&(inc==1)) C->ptr1+=A->ptr1.cwiseProduct(B->ptr1.transpose());
+    if (A->dim==1) {
+      if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr1=A->ptr1.cwiseProduct(B->ptr1);
+      if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr1+=A->ptr1.cwiseProduct(B->ptr1);
+      if ((tA==0)&&(tB==1)&&(inc==0)) C->ptr1=A->ptr1.cwiseProduct(B->ptr1.transpose());
+      if ((tA==0)&&(tB==1)&&(inc==1)) C->ptr1+=A->ptr1.cwiseProduct(B->ptr1.transpose());
 
-    if ((tA==1)&&(tB==0)&&(inc==0)) C->ptr1=A->ptr1.transpose().cwiseProduct(B->ptr1);
-    if ((tA==1)&&(tB==0)&&(inc==1)) C->ptr1+=A->ptr1.transpose().cwiseProduct(B->ptr1);
-    if ((tA==1)&&(tB==1)&&(inc==0)) C->ptr1=A->ptr1.transpose().cwiseProduct(B->ptr1.transpose());
-    if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr1+=A->ptr1.transpose().cwiseProduct(B->ptr1.transpose());
-  }
-  else if (A->dim==2) {
-    if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr2=A->ptr2.cwiseProduct(B->ptr2);
-    if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr2+=A->ptr2.cwiseProduct(B->ptr2);
-    if ((tA==0)&&(tB==1)&&(inc==0)) C->ptr2=A->ptr2.cwiseProduct(B->ptr2.transpose());
-    if ((tA==0)&&(tB==1)&&(inc==1)) C->ptr2+=A->ptr2.cwiseProduct(B->ptr2.transpose());
+      if ((tA==1)&&(tB==0)&&(inc==0)) C->ptr1=A->ptr1.transpose().cwiseProduct(B->ptr1);
+      if ((tA==1)&&(tB==0)&&(inc==1)) C->ptr1+=A->ptr1.transpose().cwiseProduct(B->ptr1);
+      if ((tA==1)&&(tB==1)&&(inc==0)) C->ptr1=A->ptr1.transpose().cwiseProduct(B->ptr1.transpose());
+      if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr1+=A->ptr1.transpose().cwiseProduct(B->ptr1.transpose());
+    }
+    else if (A->dim==2) {
+      if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr2=A->ptr2.cwiseProduct(B->ptr2);
+      if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr2+=A->ptr2.cwiseProduct(B->ptr2);
+      if ((tA==0)&&(tB==1)&&(inc==0)) C->ptr2=A->ptr2.cwiseProduct(B->ptr2.transpose());
+      if ((tA==0)&&(tB==1)&&(inc==1)) C->ptr2+=A->ptr2.cwiseProduct(B->ptr2.transpose());
 
-    if ((tA==1)&&(tB==0)&&(inc==0)) C->ptr2=A->ptr2.transpose().cwiseProduct(B->ptr2);
-    if ((tA==1)&&(tB==0)&&(inc==1)) C->ptr2+=A->ptr2.transpose().cwiseProduct(B->ptr2);
-    if ((tA==1)&&(tB==1)&&(inc==0)) C->ptr2=A->ptr2.transpose().cwiseProduct(B->ptr2.transpose());
-    if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr2+=A->ptr2.transpose().cwiseProduct(B->ptr2.transpose());
+      if ((tA==1)&&(tB==0)&&(inc==0)) C->ptr2=A->ptr2.transpose().cwiseProduct(B->ptr2);
+      if ((tA==1)&&(tB==0)&&(inc==1)) C->ptr2+=A->ptr2.transpose().cwiseProduct(B->ptr2);
+      if ((tA==1)&&(tB==1)&&(inc==0)) C->ptr2=A->ptr2.transpose().cwiseProduct(B->ptr2.transpose());
+      if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr2+=A->ptr2.transpose().cwiseProduct(B->ptr2.transpose());
+    }
+    else {
+      for(int i=0;i<A->a;i++)
+        Tensor::el_mult(A->ptr[i],tA,B->ptr[i],tB,C->ptr[i],inc);
+    }
   }
-  else {
-    for(int i=0;i<A->a;i++)
-      Tensor::el_mult(A->ptr[i],tA,B->ptr[i],tB,C->ptr[i],inc);
-  }
+  #ifdef fGPU
+  else{
+      gpu_tensor_op.mat_elwise_mat(A->gptr,B->gptr,C->gptr,&(A->gsp),&(B->gsp),&(C->gsp),1,inc,tA,tB);
+  }                                       
+  #endif
   return C;
 }
+
 
 ///////////////////////////////////////////////
 //// C=A*B  (outter product of vectors)
@@ -841,17 +1204,22 @@ Tensor * Tensor::el_mult(Tensor *A, int tA, Tensor *B, int tB, Tensor *C, int in
 ///////////////////////////////////////////////
 Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
 {
-  if (C==NULL) {
-    if (AUX!=NULL) delete AUX;
-    AUX=C=new Tensor();
-  }
-  
+  if(useCPU)
+  {
   for(int i=0;i<A->a;i++) {
     LMatrix Res=A->ptr2.row(i).transpose()*B->ptr2.row(i);
     Map<RowVectorXf> v(Res.data(), Res.size());
     C->ptr2.row(i)=v;
   }
+  }
+  #ifdef fGPU
+  else{
+      gpu_tensor_op.matMul(A->gptr,B->gptr,C->gptr,&(A->gsp),&(B->gsp),&(C->gsp),inc,0,0);
+  }
+  #endif
+
   
+
   return C;
 }
 
@@ -867,46 +1235,64 @@ Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
  ////           0: set the result in C                                                                   
  ////           1: increment the result in C                                                               
  ///////////////////////////////////////////////           
+ //Juan: Implemented
  Tensor * Tensor::sum(LType sca,Tensor *A, int tA, LType scb,Tensor *B, int tB, Tensor *C, int inc)
-
 {
-   if (C==NULL) {
-    if (AUX!=NULL) delete AUX;
-    if (A->dim<3) AUX=C=new Tensor();
+
+   if(useCPU)
+   {
+     if (C==NULL) {
+      if (AUX!=NULL) delete AUX;
+      if (A->dim<3) AUX=C=new Tensor();
+      else {
+        if (A->dim==3) C=new Tensor(A->a,A->b,A->c);
+        if (A->dim==4) C=new Tensor(A->a,A->b,A->c,A->d);
+      }
+    }
+
+    if (A->dim==1) {
+      if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr1=(sca*A->ptr1)+(scb*B->ptr1);
+      if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr1+=(sca*A->ptr1)+(scb*B->ptr1);
+      if ((tA==0)&&(tB==1)&&(inc==0)) C->ptr1=(sca*A->ptr1)+(scb*B->ptr1.transpose());
+      if ((tA==0)&&(tB==1)&&(inc==1)) C->ptr1+=(sca*A->ptr1)+(scb*B->ptr1.transpose());
+
+      if ((tA==1)&&(tB==0)&&(inc==0)) C->ptr1=(sca*A->ptr1.transpose())+(scb*B->ptr1);
+      if ((tA==1)&&(tB==0)&&(inc==1)) C->ptr1+=(sca*A->ptr1.transpose())+(scb*B->ptr1);
+      if ((tA==1)&&(tB==1)&&(inc==0)) C->ptr1=(sca*A->ptr1.transpose())+(scb*B->ptr1.transpose());
+      if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr1+=(sca*A->ptr1.transpose())+(scb*B->ptr1.transpose());
+    }
+    else  if (A->dim==2) {
+      if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr2=(sca*A->ptr2)+(scb*B->ptr2);
+      if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr2+=(sca*A->ptr2)+(scb*B->ptr2);
+      if ((tA==0)&&(tB==1)&&(inc==0)) C->ptr2=(sca*A->ptr2)+(scb*B->ptr2.transpose());
+      if ((tA==0)&&(tB==1)&&(inc==1)) C->ptr2+=(sca*A->ptr2)+(scb*B->ptr2.transpose());
+
+      if ((tA==1)&&(tB==0)&&(inc==0)) C->ptr2=(sca*A->ptr2.transpose())+(scb*B->ptr2);
+      if ((tA==1)&&(tB==0)&&(inc==1)) C->ptr2+=(sca*A->ptr2.transpose())+(scb*B->ptr2);
+      if ((tA==1)&&(tB==1)&&(inc==0)) C->ptr2=(sca*A->ptr2.transpose())+(scb*B->ptr2.transpose());
+      if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr2+=(sca*A->ptr2.transpose())+(scb*B->ptr2.transpose());
+    }
     else {
-      if (A->dim==3) C=new Tensor(A->a,A->b,A->c);
-      if (A->dim==4) C=new Tensor(A->a,A->b,A->c,A->d);
+      for(int i=0;i<A->a;i++)
+        Tensor::sum(sca,A->ptr[i], tA, scb,B->ptr[i],tB, C->ptr[i],inc);
+
     }
   }
+  #ifdef fGPU
+  else{
 
-  if (A->dim==1) {
-    if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr1=(sca*A->ptr1)+(scb*B->ptr1);
-    if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr1+=(sca*A->ptr1)+(scb*B->ptr1);
-    if ((tA==0)&&(tB==1)&&(inc==0)) C->ptr1=(sca*A->ptr1)+(scb*B->ptr1.transpose());
-    if ((tA==0)&&(tB==1)&&(inc==1)) C->ptr1+=(sca*A->ptr1)+(scb*B->ptr1.transpose());
 
-    if ((tA==1)&&(tB==0)&&(inc==0)) C->ptr1=(sca*A->ptr1.transpose())+(scb*B->ptr1);
-    if ((tA==1)&&(tB==0)&&(inc==1)) C->ptr1+=(sca*A->ptr1.transpose())+(scb*B->ptr1);
-    if ((tA==1)&&(tB==1)&&(inc==0)) C->ptr1=(sca*A->ptr1.transpose())+(scb*B->ptr1.transpose());
-    if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr1+=(sca*A->ptr1.transpose())+(scb*B->ptr1.transpose());
+     if (A->dim==2)
+     {
+       gpu_tensor_op.mat_elwise_mat(A->gptr,B->gptr,C->gptr,&(A->gsp),&(B->gsp),&(C->gsp),0,inc,tA,tB,sca,scb);
+
+     }
+     else if(A->dim==1)
+	gpu_tensor_op.vec_elwise_vec(A->gptr,B->gptr,C->gptr,&(A->gsp),0,inc,sca,scb);
+     else
+      {fprintf(stderr,"Not implemented\n");exit(-1);}
   }
-  else  if (A->dim==2) {
-    if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr2=(sca*A->ptr2)+(scb*B->ptr2);
-    if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr2+=(sca*A->ptr2)+(scb*B->ptr2);
-    if ((tA==0)&&(tB==1)&&(inc==0)) C->ptr2=(sca*A->ptr2)+(scb*B->ptr2.transpose());
-    if ((tA==0)&&(tB==1)&&(inc==1)) C->ptr2+=(sca*A->ptr2)+(scb*B->ptr2.transpose());
-
-    if ((tA==1)&&(tB==0)&&(inc==0)) C->ptr2=(sca*A->ptr2.transpose())+(scb*B->ptr2);
-    if ((tA==1)&&(tB==0)&&(inc==1)) C->ptr2+=(sca*A->ptr2.transpose())+(scb*B->ptr2);
-    if ((tA==1)&&(tB==1)&&(inc==0)) C->ptr2=(sca*A->ptr2.transpose())+(scb*B->ptr2.transpose());
-    if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr2+=(sca*A->ptr2.transpose())+(scb*B->ptr2.transpose());
-  }
-  else {
-    for(int i=0;i<A->a;i++)
-      Tensor::sum(sca,A->ptr[i], tA, scb,B->ptr[i],tB, C->ptr[i],inc);
-
-  }
-
+#endif
   return C;
 }
 
@@ -915,23 +1301,33 @@ Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
  ////                                                                                                     
  //// ANY D                                                                                               
  ///////////////////////////////////////////////           
+ //Juan Implemented
  Tensor * Tensor::inc(Tensor *A, Tensor *C)
 {
-  if (C==NULL) {
-    if (AUX!=NULL) delete AUX;
-    if (A->dim<3) AUX=C=new Tensor();
+  if(useCPU)
+  {
+    if (C==NULL) {
+      if (AUX!=NULL) delete AUX;
+      if (A->dim<3) AUX=C=new Tensor();
+      else {
+        if (A->dim==3) AUX=C=new Tensor(A->a,A->b,A->c);
+        if (A->dim==4) AUX=C=new Tensor(A->a,A->b,A->c,A->d);
+      }
+    }
+
+    if (A->dim==1) C->ptr1+=A->ptr1;
+    else  if (A->dim==2) C->ptr2+=A->ptr2;
     else {
-      if (A->dim==3) AUX=C=new Tensor(A->a,A->b,A->c);
-      if (A->dim==4) AUX=C=new Tensor(A->a,A->b,A->c,A->d);
+      for(int i=0;i<A->a;i++)
+        Tensor::inc(A->ptr[i],C->ptr[i]);
     }
   }
-
-  if (A->dim==1) C->ptr1+=A->ptr1;
-  else  if (A->dim==2) C->ptr2+=A->ptr2;
-  else {
-    for(int i=0;i<A->a;i++)
-      Tensor::inc(A->ptr[i],C->ptr[i]);
+  #ifdef fGPU
+  else
+  {
+       gpu_tensor_op.mat_elwise_mat(A->gptr,C->gptr,C->gptr,&(A->gsp),&(C->gsp),&(C->gsp),0,0,0,0);
   }
+  #endif 
 
   return C;
 }
@@ -946,63 +1342,75 @@ Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
 ////           0: set the result in B
 ////           1: increment the result in B
 ///////////////////////////////////////////////
+//Juan:Implemented
 Tensor * Tensor::sc_sum(Tensor *A, LType sc,Tensor *B,int inc) 
 {
-  if (A->dim==1) {
-    for (int i=0;i<B->a;i++)
-      if (inc)
-	B->ptr1(i)+=sc+A->ptr2(i);
-      else
-	B->ptr1(i)=sc+A->ptr2(i);
+  if (useCPU)
+  {
+    if (A->dim==1) {
+      for (int i=0;i<B->a;i++)
+        if (inc)
+	  B->ptr1(i)+=sc+A->ptr2(i);
+        else
+	  B->ptr1(i)=sc+A->ptr2(i);
+    }
+    else if (A->dim==2) {
+      for (int i=0;i<B->a;i++)
+        for(int j=0;j<B->b;j++)
+	  if (inc) B->ptr2(i,j)+=sc+A->ptr2(i,j);
+	  else B->ptr2(i,j)=sc+A->ptr2(i,j);
+    }
+    else {
+      for(int i=0;i<A->a;i++)
+        Tensor::sc_sum(A->ptr[i], sc, B->ptr[i],inc);
+    }
   }
-  else if (A->dim==2) {
-    for (int i=0;i<B->a;i++)
-      for(int j=0;j<B->b;j++)
-	if (inc) B->ptr2(i,j)+=sc+A->ptr2(i,j);
-	else B->ptr2(i,j)=sc+A->ptr2(i,j);
+  #ifdef fGPU
+  else{
+    gpu_tensor_op.scMat(B->gptr,A->gptr,&(A->gsp),sc,0,inc);
   }
-  else {
-    for(int i=0;i<A->a;i++)
-      Tensor::sc_sum(A->ptr[i], sc, B->ptr[i],inc);
-  }
+
+  #endif
 
   return B;
 }
  
 
 
-
+//Juan:Implemented
 void Tensor::activation(Tensor *E,Tensor *N,int act)
 { 
 
   //CPU
-  if (E->dim==2) {
-    if (act==ACT_LIN) N->ptr2=E->ptr2;
-    else if (act==ACT_RLU) ReLu(E->ptr2,N->ptr2);
-    else if (act==ACT_SIG) Sigmoid(E->ptr2,N->ptr2);
-    else if (act==ACT_ELU) ELU(E->ptr2,N->ptr2,1.0);
-    else if (act==ACT_SOF) Softmax(E->ptr2,N->ptr2);
-    else {
-      fprintf(stderr,"Wrong activation function\n");
-      exit(1);
+  if(useCPU)
+  {
+    if (E->dim==2) {
+      if (act==ACT_LIN) N->ptr2=E->ptr2;
+      else if (act==ACT_RLU) ReLu(E->ptr2,N->ptr2);
+      else if (act==ACT_SIG) Sigmoid(E->ptr2,N->ptr2);
+      else if (act==ACT_ELU) ELU(E->ptr2,N->ptr2,1.0);
+      else if (act==ACT_SOF) Softmax(E->ptr2,N->ptr2);
+      else {
+        fprintf(stderr,"Wrong activation function\n");
+        exit(1);
+      }
+    }
+    /////
+    if (E->dim>2) {
+      for(int i=0;i<E->a;i++) 
+        Tensor::activation(E->ptr[i],N->ptr[i],act);
     }
   }
-  /////
-  if (E->dim>2) {
-    for(int i=0;i<E->a;i++) 
-      Tensor::activation(E->ptr[i],N->ptr[i],act);
+  #ifdef fGPU
+  else
+  {
+    gpu_tensor_op.activation(E->gptr,N->gptr,act,&(E->gsp));
   }
+
+  #endif
 }
 
-void Tensor::info()
-{
-  fprintf(stderr,"Tensor %dD ",dim);
-  if (dim==1) fprintf(stderr,"%d\n",a);
-  if (dim==2) fprintf(stderr,"%dx%d\n",a,b);
-  if (dim==3) fprintf(stderr,"%dx%dx%d\n",a,b,c);
-  if (dim==4) fprintf(stderr,"%dx%dx%dx%d\n",a,b,c,d);
 
-}
 void Tensor::print()
 {
   if (dim==2) {
@@ -1025,8 +1433,11 @@ void Tensor::print()
     }
   }
 }
+//Juan: implemented
 void Tensor::dactivation(Tensor *E,Tensor *N, Tensor *D, int act) 
 {
+  if(useCPU)
+  {
   //E->print();
   if (E->dim==2) {
   for(int i=0;i<E->a;i++)
@@ -1048,24 +1459,36 @@ void Tensor::dactivation(Tensor *E,Tensor *N, Tensor *D, int act)
     for(int i=0;i<E->a;i++)
       Tensor::dactivation(E->ptr[i],N->ptr[i],D->ptr[i],act);
   }
+  }
+  #ifdef fGPU
+  else
+     gpu_tensor_op.dactivation(E->gptr,N->gptr,D->gptr,act,&(E->gsp));
+  #endif
   //D->print();
 }
 
-
+//For apply dropout
+//Juan: implemented
 void Tensor::maskZeros(Tensor *mask,Tensor *A)
 {
+  if(useCPU)
+  {
   if (A->dim==1) 
       A->ptr1=mask->ptr1.cwiseProduct(A->ptr1);
-  if (A->dim==2)  
+  if (A->dim==2) 
       A->ptr2=A->ptr2.array().rowwise()*mask->ptr1.array();
   else {
     for(int i=0;i<A->a;i++)
       Tensor::maskZeros(mask->ptr[i],A->ptr[i]);
   }
+  }
+  #ifdef fGPU
+  else
+  {
+  gpu_tensor_op.mat_elwise_vec(A->gptr,mask->gptr,&(A->gsp),1);
+  }
+  #endif
 }
-
-
-
 
 
 //////////// HASTA AQUI GPU ////////////////////////

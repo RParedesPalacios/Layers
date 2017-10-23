@@ -7,6 +7,12 @@
 
 #define unset -1
 
+//FOR GPU COMPUTATION
+#ifdef fGPU
+ #include "utils.h"
+#endif
+
+
 using namespace Eigen;
 using namespace std;
 
@@ -16,6 +22,9 @@ typedef LMatrix Tensor2D;
 typedef LVector Tensor1D;
 
 
+
+
+
 class Tensor {
   public:
   // CPU
@@ -23,9 +32,17 @@ class Tensor {
   LMatrix ptr2;
   ////
 
+  // GPU
+  #ifdef fGPU
+    float* gptr;	
+    tensor_gpu_specs gsp;
+  #endif
+  ///
+
   static Tensor *AUX;
 
   Tensor **ptr;
+  Tensor *lin;
   Tensor *T;
 
   int dim;
@@ -93,7 +110,7 @@ class Tensor {
   LType row_sum(int ind);
   LType col_max(int ind,int *imax);
   LType row_max(int ind,int *imax);
-  void info();
+
   void print();
   void save(FILE *fs);
   void load(FILE *fs);
@@ -105,12 +122,11 @@ class Tensor {
 
   static Tensor * mult(Tensor *A, int tA, Tensor *B, int tB, Tensor *C, int inc);
   static Tensor * el_mult(Tensor *A, int tA, Tensor *B, int tB, Tensor *C, int inc);
-  static Tensor * out_mult(Tensor *A, Tensor *B, Tensor *C, int inc);
   static Tensor * sc_mult(Tensor *A, LType sc, Tensor *B, int inc);
   static Tensor * sum(LType sca,Tensor *A, int tA, LType scb,Tensor *B, int tB, Tensor *C, int inc);
   static Tensor * inc(Tensor *A, Tensor *C);
   static Tensor * sc_sum(Tensor *A, LType sc, Tensor *B, int inc);
-  
+  static Tensor * out_mult(Tensor *A, Tensor *B, Tensor *C, int inc);
 
 
   static void Convol2D(Tensor *A,Tensor *K,Tensor *B,int inc,int stride,int pad);

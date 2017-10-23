@@ -133,3 +133,7 @@ void Linear(LMatrix E,LMatrix &N)
 {
   N=E;
 }
+
+//GPU
+bool useCPU=0;
+long int gpu_seed=1;
