@@ -8,7 +8,7 @@ instructions.
 
 # Step 1: install drivers
 
-For driver installation we assume you have plug in your Nvidia Card in the PCI bus. Check [nvidia](www.nvidia.com) 
+For driver installation we assume you have plug in your Nvidia Card in the PCI bus. Check [nvidia](http://www.nvidia.es/page/home.html) 
 for the hardware resources needed for your specific GPU (type of PCI, number of slots...). 
 
 After plug in start your linux grub  (typically pressing esc key).  After move to the Ubuntu launcher and press key "e", go to the line 
