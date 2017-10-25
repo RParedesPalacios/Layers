@@ -860,31 +860,13 @@ double OFLayer::get_err(int n)
     else if (opt==2) // autoencoder
       T->copyfromData(D);
   }
-  
+
+
   if (opt==0) Tensor::loss_cross_entropy(T,N,cerr,ent);
+  else if (opt==1) Tensor::loss_sse(T,N,D,0,mae,mse);
+  else if (opt==2) Tensor::loss_sse(T,N,D,D->dim,mae,mse);
+
   
-  else if (opt<3) {
-    for(i=0;i<n;i++)
-      for(j=0;j<din;j++) {
-        float Tn,Nn;
-        if (D!=NULL) {
-          if (opt==1) {
-            Tn=(T->get(i,j)*D->fsd[j+D->dim])+D->fmu[j+D->dim];
-            Nn=(N->get(i,j)*D->fsd[j+D->dim])+D->fmu[j+D->dim];
-          }
-          else {//opt=2
-            Tn=(T->get(i,j)*D->fsd[j])+D->fmu[j];
-            Nn=(N->get(i,j)*D->fsd[j])+D->fmu[j];
-          }
-        }
-        else {
-          Tn=T->get(i,j);
-          Nn=N->get(i,j);
-        }
-        mse+=(Tn-Nn)*(Tn-Nn)/din;
-        mae+=fabs(Tn-Nn)/din;
-      }
-  }
   else if (opt<5) {
     // max min                                                                            
     for(i=0;i<n;i++)

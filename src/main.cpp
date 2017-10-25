@@ -2,7 +2,7 @@
 #include <stdlib.h>     /* malloc, fOBree, rand */
 #include <string.h>
 
-#include "lsayer.h"
+#include "layer.h"
 #include "data.h"
 #include "net.h"
 #include "utils.h"

@@ -967,6 +967,30 @@ LType Tensor::norm()
   return n;
 }
 //Juan: Not implemented
+void Tensor::abs()
+{
+  if(useCPU)
+    {
+      if (dim==1)
+	for(int i=0;i<a;i++) ptr1(i)=fabs(ptr1(i));
+      else if (dim==2)
+	for(int i=0;i<a;i++)
+	  for(int j=0;i<b;i++)
+	    ptr2(i,j)=fabs(ptr2(i,j));
+      else 
+	for(int i=0;i<a;i++)
+	  ptr[i]->abs();
+    }
+#ifdef fGPU
+  else
+    {
+      fprintf(stderr,"tensor absolute value\n");exit(-1);
+    }
+#endif
+
+
+}
+
 LType Tensor::sum()
 {
   if(useCPU)
@@ -1067,6 +1091,57 @@ void Tensor::inc_2Drowwise(Tensor *T)
 
 
 /// STATIC FUNCS
+void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double &mse)
+{
+
+  if (T->dim!=2) msgerr("loss_sse","error T dim!=2");
+  if (N->dim!=2) msgerr("loss_sse","error N dim!=2");
+
+  // Lo mismo para CPU o GPU está refactorizado para que sea genérico
+  // ATENCION JUAN tienes que implementar el sum() y el abs()
+  if (D==NULL) {
+    Tensor *Res=new Tensor(T->a,T->b);
+
+    Tensor::sum(1,T,0,1,N,0,Res,0); // T-N
+    Tensor::el_mult(Res,0,Res,0,Res,0); //(T-N)*(T-N)
+    mse+=Res->sum()/T->b;
+
+    Tensor::sum(1,T,0,1,N,0,Res,0); // T-N
+    Res->abs();
+    mae+=Res->sum()/T->b;
+    delete Res;
+  }
+  else { //D!=NULL hay que deshacer normalización
+    if (useCPU) {
+      for(int i=0;i<N->a;i++)
+	for(int j=0;j<N->b;j++) {
+	  float Tn,Nn;
+	  Tn=(T->ptr2(i,j)*D->fsd[j+offset])+D->fmu[j+offset];
+	  Nn=(N->ptr2(i,j)*D->fsd[j+offset])+D->fmu[j+offset];
+	  
+	  mse+=(Tn-Nn)*(Tn-Nn)/T->b;
+	  mae+=fabs(Tn-Nn)/T->b;
+	}
+    }
+#ifdef fGPU
+    else {
+      for(int i=0;i<N->a;i++)
+	for(int j=0;j<N->b;j++) {
+	  float Tn,Nn;
+	  Tn=(T->get(i,j)*D->fsd[j+offset])+D->fmu[j+offset];
+	  Nn=(N->get(i,j)*D->fsd[j+offset])+D->fmu[j+offset];
+
+	  mse+=(Tn-Nn)*(Tn-Nn)/T->b;
+	  mae+=fabs(Tn-Nn)/T->b;
+	}
+      
+    }
+#endif
+  }
+
+}
+
+
 void Tensor::loss_cross_entropy(Tensor *T,Tensor *N,double &cerr,double &ent)
 {
   

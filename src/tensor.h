@@ -106,6 +106,7 @@ class Tensor {
 
   LType norm();
   LType sum();
+  void abs();
   int equal(Tensor *T);
   LType row_sum(int ind);
   LType col_max(int ind,int *imax);
@@ -117,7 +118,8 @@ class Tensor {
 
   // STATIC METHODS
   static void loss_cross_entropy(Tensor *T,Tensor *N,double &cerr,double &ent);
-  
+  static void loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double &mse);
+
   static void dactivation(Tensor *E, Tensor *N, Tensor *D, int act);
   static void activation(Tensor *E, Tensor *N,int act);
   static void maskZeros(Tensor *mask,Tensor *A);
