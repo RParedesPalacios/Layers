@@ -54,7 +54,7 @@ endif
 	GPU_OBJ := execution.o cublas_env.o gpu_env.o gpu_kernels.o
         GPU_LIBFLAGS := -lcudart -lcublas -lcurand
 	GPU_CXX := $(cuda_path)bin/nvcc
-	LAYERS = gayers
+	LAYERS = layers
 #ifeq ($(GPU),CUDNN)
 #	GPU_LIBFLAGS := $(GPU_LIBFLAGS) -lcudnn
 #	CXXFLAGS := $(CXXFLAGS) -DfCUDNN

@@ -76,6 +76,7 @@ class Tensor {
     
   void copy(Tensor *T);
   void copyfromData(Data *D);
+  void copylabels(Data *D);
 
   void set(LType val);  
   void set(int a,LType val);
@@ -106,7 +107,6 @@ class Tensor {
   LType norm();
   LType sum();
   int equal(Tensor *T);
-  LType col_sum(int ind);
   LType row_sum(int ind);
   LType col_max(int ind,int *imax);
   LType row_max(int ind,int *imax);
@@ -116,6 +116,8 @@ class Tensor {
   void load(FILE *fs);
 
   // STATIC METHODS
+  static void loss_cross_entropy(Tensor *T,Tensor *N,double &cerr,double &ent);
+  
   static void dactivation(Tensor *E, Tensor *N, Tensor *D, int act);
   static void activation(Tensor *E, Tensor *N,int act);
   static void maskZeros(Tensor *mask,Tensor *A);
@@ -127,7 +129,7 @@ class Tensor {
   static Tensor * inc(Tensor *A, Tensor *C);
   static Tensor * sc_sum(Tensor *A, LType sc, Tensor *B, int inc);
   static Tensor * out_mult(Tensor *A, Tensor *B, Tensor *C, int inc);
-
+  static void sumcol(Tensor *A,Tensor *B);
 
   static void Convol2D(Tensor *A,Tensor *K,Tensor *B,int inc,int stride,int pad);
   static void Convol2DT(Tensor *A,Tensor *K,Tensor *B,int inc,int stride,int pad);

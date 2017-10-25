@@ -10,25 +10,28 @@
 #include "utils.h"
 #include "Eigen/Dense"
 
+#ifdef fGPU
+#include "./gpu/execution.h"
+// Data structures variables and functions for GPU computation setup
+#endif
+
+
 using namespace Eigen;
 using namespace std;
-
 
 extern double gn[LUT];
 extern double un[LUT];
 
 
-Tensor * Tensor::AUX;
-
 //GLOBAL,EXTERN VARIABLES DIRECTIVES INCLUDES FOR GPU COMPUTATION
 
-extern bool useCPU;
-#ifdef fGPU
+extern int useCPU;
 
-#include "./gpu/execution.h" // Data structures variables and functions for GPU computation setup
-
-#endif
-
+void msgerr(char *s1,char *s2) {
+  fprintf(stderr,"%s\n",s1);
+  fprintf(stderr,"%s\n",s2);
+  exit(1);
+}
 
 //// FOR CPU with Eigen
 void Tensor::replace_unset()
@@ -466,6 +469,39 @@ void Tensor::copy(Tensor *T)  //copy, reshape etc...
 }
 
 //Juan: Not implemented
+void Tensor::copylabels(Data *D)
+{
+  if (dim!=2) msgerr("copylabels","Labels only copy to 2D Tensors");
+
+  if(useCPU) {
+#pragma omp parallel for
+    for(int i=0;i<a;i++)
+      for(int j=0;j<b;j++)
+	ptr2(i,j)=D->M(D->getpos(i),j+D->dim);
+    
+  }
+#ifdef fGPU
+  else
+    {
+      float* data_aux;
+      float* batch_aux= new float[b];
+      size_t counter=0;
+      data_aux = (float*)malloc(a*b*sizeof(float));
+      
+      for (int i=0;i<a;i++)
+	{
+	  for(int j=0;j<b;j++)
+	    batch_aux[j]=D->M(D->getpos(i),j+D->dim);
+	  memcpy((void*)data_aux+counter,batch_aux,b*sizeof(float));
+	  counter+=b*sizeof(float);
+	}
+	
+      gpu_tensor_op.copy_data(data_aux,gptr,TOGPU,a*b*sizeof(float));
+      free(data_aux);
+      delete batch_aux;
+    }
+#endif
+}
 void Tensor::copyfromData(Data *D)
 {
  if(useCPU)
@@ -955,25 +991,6 @@ LType Tensor::sum()
 
 }
 
-//Juan: Not implemented
-LType Tensor::col_sum(int ind)
-{
-  if(useCPU)
-  	return ptr2.col(ind).sum();
-  #ifdef fGPU
-  else
-  {
-    float* A;
-    float b;
-    A=gpu_tensor_op.col_sum(gptr,&gsp);
-    gpu_tensor_op.copy_data(&b,&A[ind],FROMGPU,sizeof(float));
-    gpu_tensor_op.destroyTensor(A);
-    return b;
-  }
-  #endif
-  
-
-}
 
 //Juan: Not implemented
 LType Tensor::row_sum(int ind)
@@ -1050,6 +1067,42 @@ void Tensor::inc_2Drowwise(Tensor *T)
 
 
 /// STATIC FUNCS
+void Tensor::loss_cross_entropy(Tensor *T,Tensor *N,double &cerr,double &ent)
+{
+  
+  if (T->dim!=2) msgerr("loss_cross_entropy","error T dim!=2");
+  if (N->dim!=2) msgerr("loss_cross_entropy","error N dim!=2");
+  
+  if (useCPU) {
+    int i,j,rindex,nindex;
+    for(i=0;i<T->a;i++) {
+      T->row_max(i,&rindex);
+      N->row_max(i,&nindex);
+      if (rindex!=nindex) cerr++;
+      for(j=0;j<T->b;j++) {
+	if (j==rindex) {if (N->ptr2(i,j)!=0.0) ent-=log(N->ptr2(i,j));}
+	else if (N->ptr2(i,j)!=1.0) ent-=log(1-N->ptr2(i,j));
+      }
+    }
+  }
+#ifdef fGPU
+  else {
+    int i,j,rindex,nindex;
+    for(i=0;i<T->a;i++) {
+      T->row_max(i,&rindex);
+      N->row_max(i,&nindex);
+      if (rindex!=nindex) cerr++;
+      for(j=0;j<T->b;j++) {
+	if (j==rindex) {if (N->get(i,j)!=0.0) ent-=log(N->get(i,j));}
+	else if (N->get(i,j)!=1.0) ent-=log(1-N->get(i,j));
+      }
+    }
+    
+    
+  }
+#endif
+  
+}
 
 ///////////////////////////////////////
 //// MULT C=(a*A)*(b*B)
@@ -1072,12 +1125,6 @@ Tensor *Tensor::mult(Tensor *A, int tA, Tensor *B, int tB, Tensor *C, int inc)
   }
   if (useCPU)
   {
-   if (C==NULL) {
-     if (VERBOSE) {fprintf(stderr,"NULL dest creating tmp\n");}
-     if (AUX!=NULL) delete AUX;
-     AUX=C=new Tensor();
-   }
-  
    if (A->dim==2) {
      if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr2=A->ptr2*B->ptr2;
      if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr2+=A->ptr2*B->ptr2;
@@ -1155,10 +1202,6 @@ Tensor * Tensor::el_mult(Tensor *A, int tA, Tensor *B, int tB, Tensor *C, int in
 {
   if(useCPU)
   {
-    if (C==NULL) {
-      if (AUX!=NULL) delete AUX;
-      AUX=C=new Tensor();
-    }
 
     if (A->dim==1) {
       if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr1=A->ptr1.cwiseProduct(B->ptr1);
@@ -1241,15 +1284,6 @@ Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
 
    if(useCPU)
    {
-     if (C==NULL) {
-      if (AUX!=NULL) delete AUX;
-      if (A->dim<3) AUX=C=new Tensor();
-      else {
-        if (A->dim==3) C=new Tensor(A->a,A->b,A->c);
-        if (A->dim==4) C=new Tensor(A->a,A->b,A->c,A->d);
-      }
-    }
-
     if (A->dim==1) {
       if ((tA==0)&&(tB==0)&&(inc==0)) C->ptr1=(sca*A->ptr1)+(scb*B->ptr1);
       if ((tA==0)&&(tB==0)&&(inc==1)) C->ptr1+=(sca*A->ptr1)+(scb*B->ptr1);
@@ -1280,21 +1314,36 @@ Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
   }
   #ifdef fGPU
   else{
-
-
-     if (A->dim==2)
-     {
-       gpu_tensor_op.mat_elwise_mat(A->gptr,B->gptr,C->gptr,&(A->gsp),&(B->gsp),&(C->gsp),0,inc,tA,tB,sca,scb);
-
-     }
-     else if(A->dim==1)
-	gpu_tensor_op.vec_elwise_vec(A->gptr,B->gptr,C->gptr,&(A->gsp),0,inc,sca,scb);
-     else
-      {fprintf(stderr,"Not implemented\n");exit(-1);}
+    gpu_tensor_op.mat_elwise_mat(A->gptr,B->gptr,C->gptr,&(A->gsp),&(B->gsp),&(C->gsp),0,inc,tA,tB,sca,scb);
   }
 #endif
   return C;
 }
+
+
+void Tensor::sumcol(Tensor *A,Tensor *B)
+{
+  int j;
+  
+  if (useCPU) {
+    for(j=0;j<A->a;j++)
+      A->set(j,B->ptr2.col(j).sum());
+  }
+  #ifdef fGPU
+  else{
+    float* sum;
+    float b;
+    sum=gpu_tensor_op.col_sum(B->gptr,&(B->gsp));
+
+    cudaMemcpy(A->gptr,sum,A->a*sizeof(float),cudaMemcpyDeviceToDevice);
+    
+    gpu_tensor_op.destroyTensor(sum);
+
+  }
+  #endif
+}
+
+
 
  ///////////////////////////////////////////////                                                          
  //// C+=A 
@@ -1306,15 +1355,6 @@ Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
 {
   if(useCPU)
   {
-    if (C==NULL) {
-      if (AUX!=NULL) delete AUX;
-      if (A->dim<3) AUX=C=new Tensor();
-      else {
-        if (A->dim==3) AUX=C=new Tensor(A->a,A->b,A->c);
-        if (A->dim==4) AUX=C=new Tensor(A->a,A->b,A->c,A->d);
-      }
-    }
-
     if (A->dim==1) C->ptr1+=A->ptr1;
     else  if (A->dim==2) C->ptr2+=A->ptr2;
     else {

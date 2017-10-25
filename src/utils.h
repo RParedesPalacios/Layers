@@ -32,12 +32,6 @@ double suniform();
 double gauss(double mean,double sd);
 double gaussgen();
 
-
-//stuff for controlling both gpu and cpu
-extern long int gpu_seed;//change this to what you want but gpu for the moment use this variable
-extern bool useCPU;
-
-//stuff only for gpu generation
 #ifdef fGPU
 #include<stdint.h>
 

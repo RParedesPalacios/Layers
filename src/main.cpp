@@ -2,10 +2,15 @@
 #include <stdlib.h>     /* malloc, fOBree, rand */
 #include <string.h>
 
-#include "layer.h"
+#include "lsayer.h"
 #include "data.h"
 #include "net.h"
 #include "utils.h"
+
+
+#ifdef fGPU
+#include "./gpu/execution.h"
+#endif
 
 extern "C" int netparser (char *nfich) ;
 
@@ -16,7 +21,7 @@ extern "C" int netparser (char *nfich) ;
 
 ////////////////////////////////////
 // GLOBAL
-int cpu,gpu;
+extern int useCPU;
 int blas,cdnn;
 
 // DATA
@@ -49,12 +54,6 @@ int batch=100;
 char logname[MAX_CHAR];
 int seed=123456;
 
-extern bool useCPU;
-#ifdef fGPU
-
-  #include "./gpu/execution.h"
-
-#endif
 
 //////////////////////////////////////
 
@@ -124,23 +123,25 @@ public:
     if (!strcmp(cad,"device")) {
       sscanf(line,"Const %s %s\n",cad,cad2);
       if (!strcmp(cad2,"cpu")) {
-	cpu=1;
-	gpu=0;
+	useCPU=1;
 	fprintf(stderr,"Layers using CPU\n");
       }
       else {
-	cpu=0;
-	gpu=1;
-	fprintf(stderr,"Layers using GPU\n");
+#ifdef fGPU
+	int dev;
+	sscanf(line,"Const device gpu %d\n",&dev);
+
+	cublasInit();
+	curandInit();
+	gpu_tensor_op.gpu_info(dev);
+	useCPU=0;
+	fprintf(stderr,"Layers using GPU %d\n",dev);
+
+#else
+	fprintf(stderr,"Not compiled for GPU\n");
+	exit(-1);
+#endif
       }
-    }
-    if (!strcmp(cad,"cuDNN")) {
-      sscanf(line,"Const %s %d\n",cad,&cdnn);
-      fprintf(stderr,"Layers using cuDNN library\n");
-    }
-    if (!strcmp(cad,"cuBLAS")) {
-      sscanf(line,"Const %s %d\n",cad,&blas);
-      fprintf(stderr,"Layers using cuBLAS library\n");
     }
   }
 
@@ -1192,18 +1193,6 @@ public:
 
 int main(int argc, char **argv) {
   //Juan-> Fix as you want
-  #ifdef fGPU
-   if(!useCPU)
-   {
-    cublasInit();
-    curandInit();
-    gpu_tensor_op.gpu_info(0);//aqui se pasa la gpu que seleccionas con JMB. Entendemos que JMB nos pasa algo que es o bien cpu o bien gpu0, gpu1,gpu2. Esta funcion debe recibir ese numerito.
-   }
-  #else
-    if(!useCPU)
-	{fprintf(stderr,"Not compiled for GPU\n");exit(-1);}
-  #endif
-
   if (argc<2) {
     if (VERBOSE) fprintf(stderr,"use: layers netfile\n");
     exit(1);

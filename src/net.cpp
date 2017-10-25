@@ -11,7 +11,7 @@
 #define SHOW_TIME 0
 
 // Comment this line for Mac
-//#define USETIME 
+#define USETIME 
 
 ////////////////////////////////////
 ///// NET CLASS
@@ -557,7 +557,6 @@ void Net::forward()
       clock_gettime(CLOCK_MONOTONIC, &t0);
     }
     fts[i]->rnet=this;
-    printf("Layer %d of %d layers\n",i,layers);
     fts[i]->forward();
     if (SHOW_TIME) {
       clock_gettime(CLOCK_MONOTONIC, &t1);

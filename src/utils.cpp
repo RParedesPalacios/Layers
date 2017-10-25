@@ -14,6 +14,8 @@
 
 #define PI 3.1415926
 
+//GPU
+int useCPU=0;
 
 using namespace Eigen;
 using namespace std;
@@ -134,6 +136,3 @@ void Linear(LMatrix E,LMatrix &N)
   N=E;
 }
 
-//GPU
-bool useCPU=0;
-long int gpu_seed=1;

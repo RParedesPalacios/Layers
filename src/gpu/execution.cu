@@ -16,6 +16,7 @@ curandGenerator_t random_generator; //for random routines
 curandStatus_t rand_error;// random error
 
 gpu_specs gpuI;
+long int gpu_seed=1;
 
 //initialice cublas handle
 void cublasInit()

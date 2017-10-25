@@ -219,7 +219,7 @@ __global__ void kernel_col_sum(float* I, float* O, int rows,int cols ,long int o
 
 int thread_id_x = threadIdx.x +blockIdx.x*blockDim.x;
 int i=0;
-if (thread_id_x < ops)
+ if (thread_id_x < ops)
    #pragma omp parallel for
    for(i=0;i<rows;i++)
    	O[thread_id_x]+=I[thread_id_x+cols*i];
