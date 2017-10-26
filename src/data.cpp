@@ -161,8 +161,10 @@ FILE *fe;
   fsc=fscanf(fe,"%d %d %d\n",&num,&dim,&out);
   fprintf(stderr,"Reading %s %d %d %d\n",this->name,num,dim,out);
 
+  
 
-  if (dim>0) {
+ if (dim>0) {
+   size=dim+out;
     Mem();
 
     for(i=0;i<num;i++) {

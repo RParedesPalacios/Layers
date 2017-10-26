@@ -27,7 +27,7 @@ extern double un[LUT];
 
 extern int useCPU;
 
-void msgerr(char *s1,char *s2) {
+void msgerr(const char *s1,const char *s2) {
   fprintf(stderr,"%s\n",s1);
   fprintf(stderr,"%s\n",s2);
   exit(1);
@@ -606,6 +606,27 @@ void Tensor::set(int a,LType val)
   #endif
   
 }
+
+
+//Juan: implemented
+void Tensor::inc(int a,LType val)
+{
+  if(useCPU)
+  {
+    if (dim!=1) {
+      fprintf(stderr,"Error set with 1 param for dim=%d\n",dim);
+    }
+    //CPU
+    ptr1(a)+=val;
+  }
+  #ifdef fGPU
+  else
+  {
+
+  }
+  #endif
+  
+}
 //Juan: implemented
 void Tensor::set(int a,int b,LType val)
 {
@@ -621,6 +642,27 @@ void Tensor::set(int a,int b,LType val)
   else
   {
    gpu_tensor_op.copy_data(&val,&(gptr[a*this->b+b]),TOGPU,sizeof(float));
+  }
+  #endif
+  
+ 
+}
+
+//Juan: implemented
+void Tensor::inc(int a,int b,LType val)
+{
+  if (useCPU)
+  {
+    if (dim!=2) {
+      fprintf(stderr,"Error set with 2 params for dim=%d\n",dim);
+    }
+    //CPU
+    ptr2(a,b)+=val;
+  }
+   #ifdef fGPU
+  else
+  {
+ 
   }
   #endif
   
@@ -646,58 +688,8 @@ void Tensor::set(int a,int b,int c,int d,LType val)
   ptr[a]->ptr[b]->ptr2(c,d)=val;
 }
 
-//Juan: Not implemented
-void Tensor::inc(int a,LType val)
-{
-  if (dim!=1) {
-    fprintf(stderr,"Error set with 1 param for dim=%d\n",dim);
-  }
-  //CPU
-  if(useCPU)
-    ptr1(a)+=val;
-  #ifdef fGPU
-  else
-	{fprintf(stderr,"Not implemented inc 1d\n");exit(-1);}
 
-  #endif
-}
-//Juan: Not implemented
-void Tensor::inc(int a,int b,LType val)
-{
-  if (dim!=2) {
-    fprintf(stderr,"Error set with 2 params for dim=%d\n",dim);
-  }
-  //CPU
-  if(useCPU)
-  ptr2(a,b)+=val;
- #ifdef fGPU
-  else
-	{fprintf(stderr,"Not implemented inc 2d\n");exit(-1);}
 
-  #endif
-
-}
-//Juan:Not implemented
-void Tensor::inc(int a,int b,int c,LType val)
-{
-  if (dim!=3) {
-    fprintf(stderr,"Error set with 3 params for dim=%d\n",dim);
-  }
-  //CPU
-  ptr[a]->ptr2(b,c)+=val;
-}
-//Juan:Not implemented
-void Tensor::inc(int a,int b,int c,int d,LType val)
-{
-  if (dim!=4) {
-    fprintf(stderr,"Error set with 4 params for dim=%d\n",dim);
-  }
-
-  //CPU
-  #pragma omp parallel for
-  for(int i=0;i<a;i++)
-    ptr[a]->ptr[b]->ptr2(c,d)+=val;
-}
 /////////////RANDOM FOR THE MOMENTO NO IMPLEMNTED WE NEED TO STUDY CURAND API//////////////////////////
 //Juan: Implemented
 void Tensor::set_rand_binary(LType val)
@@ -948,25 +940,56 @@ void Tensor::load(FILE *fs)
       ptr[i]->save(fs);
 
 }
+
 //Juan: Not implemented
-LType Tensor::norm()
+void Tensor::mul(LType val)
 {
-  LType n=0.0;
+  if(useCPU)
+    {
+      if (dim==1)
+	for(int i=0;i<a;i++) ptr1(i)*=val;
+      else if (dim==2)
+	for(int i=0;i<a;i++)
+	  for(int j=0;j<b;j++)
+	    ptr2(i,j)*=val;
+      else 
+	for(int i=0;i<a;i++)
+	  ptr[i]->mul(val);
+    }
+#ifdef fGPU
+  else
+    {
+      fprintf(stderr,"tensor absolute value\n");exit(-1);
+    }
+#endif
 
-  if (dim==1) 
-    for(int i=0;i<a;i++) n+=ptr1(i);
-  else if (dim==2) {
-    for(int i=0;i<a;i++) 
-      for(int j=0;j<b;j++) n+=ptr2(i,j);
-  }
-  else {
-    for(int i=0;i<a;i++) 
-      n+=ptr[i]->norm();
-  }
 
-  return n;
+
 }
-//Juan: Not implemented
+
+void Tensor::add(LType val)
+{
+  if(useCPU)
+    {
+      if (dim==1)
+	for(int i=0;i<a;i++) ptr1(i)+=val;
+      else if (dim==2)
+	for(int i=0;i<a;i++)
+	  for(int j=0;i<b;i++)
+	    ptr2(i,j)+=val;
+      else 
+	for(int i=0;i<a;i++)
+	  ptr[i]->add(val);
+    }
+#ifdef fGPU
+  else
+    {
+      fprintf(stderr,"tensor absolute value\n");exit(-1);
+    }
+#endif
+}
+
+
 void Tensor::abs()
 {
   if(useCPU)
@@ -991,6 +1014,33 @@ void Tensor::abs()
 
 }
 
+void Tensor::sqr()
+{
+  if(useCPU)
+    {
+      if (dim==1)
+	for(int i=0;i<a;i++) ptr1(i)=sqrt(ptr1(i));
+      else if (dim==2)
+	for(int i=0;i<a;i++)
+	  for(int j=0;i<b;i++)
+	    ptr2(i,j)=sqrt(ptr2(i,j));
+      else 
+	for(int i=0;i<a;i++)
+	  ptr[i]->sqr();
+    }
+#ifdef fGPU
+  else
+    {
+      fprintf(stderr,"tensor sqrt\n");exit(-1);
+    }
+#endif
+
+
+}
+
+LType Tensor::norm() {
+  return sum();
+}
 LType Tensor::sum()
 {
   if(useCPU)
@@ -1012,22 +1062,6 @@ LType Tensor::sum()
   }
   #endif
 
-
-}
-
-
-//Juan: Not implemented
-LType Tensor::row_sum(int ind)
-{
-  if(useCPU)
- 	 return ptr2.row(ind).sum();
- #ifdef fGPU
-  else
-  {
-  fprintf(stderr,"Imlementear row sumr 2D\n");exit(-1);
-  }
-  #endif
-  
 
 }
 
@@ -1725,119 +1759,164 @@ void Tensor::Convol(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int 
 
 
 
-
-// FOR BN
-
-void Tensor::forwardBN_training(int batch,Tensor *E,Tensor *bn_mean,Tensor *bn_var,Tensor *bn_E,Tensor *bn_g,Tensor *bn_b,Tensor *BNE,Tensor *bn_gmean,Tensor *bn_gvar,int bnc,int noiser,LType noisesd) 
+// REDUCED FUNCTIONS 2D <--> 1D
+void Tensor::reduceTosum(Tensor *A, Tensor *B,int row)
 {
-  
-  //CPU
-#pragma omp parallel for
-  for(int i=0;i<E->b;i++) {
-    int b;
-    double m,var,eps=0.00001;
-    int cn=(i*bnc%LUT);
-    m=0;
-    for(b=0;b<batch;b++)
-      m+=E->ptr2(b,i);
-    m/=batch;
-    bn_mean->ptr1(i)=m;
+  if (A->dim!=2) msgerr("reduceTosum","error A dim!=2\n");
+  if (B->dim!=1) msgerr("reduceTosum","error B dim!=1\n");
 
-    var=0;
-    for(b=0;b<batch;b++)
-      var+=(m-E->ptr2(b,i))*(m-E->ptr2(b,i));
-    var/=batch;
-    bn_var->ptr1(i)=var;
-
-    for(b=0;b<batch;b++) {
-      bn_E->ptr2(b,i)=(E->ptr2(b,i)-bn_mean->ptr1(i))/sqrt(bn_var->ptr1(i)+eps); //this is \hat{x}
-      if (noiser>0.0) {
-	if (noiser>=un[(cn++)%LUT])
-	  bn_E->ptr2(b,i)+=noisesd*gn[(cn++)%LUT];
+  if (useCPU) {
+    if (row) {
+      #pragma omp parallel for
+      for(int i=0;i<A->b;i++) {
+        B->ptr1(i)=0;
+	for(int j=0;j<A->a;j++)
+	  B->ptr1(i)+=A->ptr2(j,i);
       }
-      BNE->ptr2(b,i)=(bn_g->ptr1(i)*bn_E->ptr2(b,i))+bn_b->ptr1(i);
+    }
+    else {
+      #pragma omp parallel for
+      for(int i=0;i<A->a;i++) {
+	B->ptr1(i)=0;
+	for(int j=0;j<A->b;j++)
+	  B->ptr1(i)+=A->ptr2(i,j);
+      }
     }
   }
-  bn_gmean->ptr1+=bn_mean->ptr1;
-  bn_gvar->ptr1+=bn_var->ptr1;
+#ifdef fGPU
+  else
+    {
+  
+    }
+#endif
+}
+void Tensor::reduceTomean(Tensor *A, Tensor *B,int row)
+{
+  if (A->dim!=2) msgerr("reduceTomean","error A dim!=2\n");
+  if (B->dim!=1) msgerr("reduceTomean","error B dim!=1\n");
+
+  if (row) {
+    Tensor::reduceTosum(A,B,row);
+    B->mul(((float)1.0)/A->a);
+  }
+  else {
+    Tensor::reduceTosum(A,B,row);
+    B->mul(((float)1.0)/A->b);
+  }
 }
 
-void Tensor::forwardBN_inference(int batch,Tensor *E,Tensor *bn_gmean,Tensor *bn_gvar,Tensor *bn_E,Tensor *bn_g,Tensor *bn_b,Tensor *BNE,int bnc) 
+void Tensor::reduceTovariance(Tensor *A, Tensor *B,int row)
 {
-  //CPU
-  for(int i=0;i<E->b;i++) {
-    int b;
-    double var,eps=0.00001;
+  if (A->dim!=2) msgerr("reduceTovariance","error A dim!=2\n");
+  if (B->dim!=1) msgerr("reduceTovariance","error B dim!=1\n");
 
-    for(b=0;b<batch;b++){
-      bn_E->ptr2(b,i)=(E->ptr2(b,i)-bn_gmean->ptr1(i)/bnc)/sqrt(bn_gvar->ptr1(i)/bnc+eps);
-      BNE->ptr2(b,i)=(bn_g->ptr1(i)*bn_E->ptr2(b,i))+bn_b->ptr1(i);
-    }
-  }
+  Tensor *M;
+  
+  if (row)
+    M=new Tensor(A->b);
+  else
+    M=new Tensor(A->a);
+
+  Tensor *AM=new Tensor(A->a,A->b);
+
+  Tensor::reduceTomean(A,M,row);
+  
+  Tensor::reduced_sum(1,A,-1,M,AM,0,row);
+  Tensor::el_mult(AM,0,AM,0,AM,0);
+
+  Tensor::reduceTomean(AM,B,row);
+
+  delete M;
+  delete AM;
 }
 
-void Tensor::backwardBN(int batch,
-			Tensor *E,
-			Tensor *bn_E,
-			Tensor *bn_g,
-			Tensor *bn_mean,
-			Tensor *bn_var,
-			Tensor *Delta,
-			Tensor *gbn_g,
-			Tensor *gbn_b,
-			Tensor *gbn_E,
-			Tensor *gbn_mean,
-			Tensor *gbn_var
-			)
+void Tensor::reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int inc,int row)
 {
-  int i;
-#pragma omp parallel for
-  for(int i=0;i<bn_E->b;i++) {
-    int b;
-    double m,var,eps=0.00001;
-    double sqvar,var32;
+  if (A->dim!=2) msgerr("reduced_sum","error A dim!=2\n");
+  if (B->dim!=1) msgerr("reduced_sum","error B dim!=1\n");
+  if (C->dim!=2) msgerr("reduced_sum","error C dim!=2\n");
 
-    m=batch;
-
-    //1 Gamma
-    gbn_g->set(i,0.0);
-    for(b=0;b<batch;b++)
-      gbn_g->set(i,Delta->get(b,i)*bn_E->get(b,i));
-
-    //2 Beta
-    gbn_b->set(i,0.0);
-    for(b=0;b<batch;b++)
-      gbn_b->inc(i,Delta->get(b,i));
-
-
-    //3 bnE
-    for(b=0;b<batch;b++)
-      gbn_E->set(b,i,Delta->get(b,i)*bn_g->get(i));
-
-
-    //4 Var
-    sqvar=sqrt(bn_var->get(i)+eps);
-    var32=(bn_var->get(i)+eps)*sqvar;
-
-    gbn_var->set(i,0);
-    for(b=0;b<batch;b++)
-      gbn_var->inc(i,-0.5*gbn_E->get(b,i)*(E->get(b,i)-bn_mean->get(i))/var32);
-
-
-    //5 Mean
-    gbn_mean->set(i,0);
-    for(b=0;b<batch;b++) {
-      gbn_mean->inc(i,-gbn_E->get(b,i)/sqvar);
-      //gbn_mean(i)+=-2*gbn_var(i)*(E(b,i)-bn_mean(i))/m;
-    }
-
-    //6 x
-    for(b=0;b<batch;b++) {
-      Delta->set(b,i,gbn_E->get(b,i)/sqvar);
-      Delta->inc(b,i,gbn_var->get(i)*2*(E->get(b,i)-bn_mean->get(i))/m);
-      Delta->inc(b,i,gbn_mean->get(i)/m);
-    }
+  if (useCPU) {
+    if (row)
+      #pragma omp parallel for
+      for(int i=0;i<A->a;i++)
+	for(int j=0;j<A->b;j++)
+	  if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
+	  else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
+    else
+      #pragma omp parallel for
+      for(int i=0;i<A->a;i++)
+	for(int j=0;j<A->b;j++)
+	  if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
+	  else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
   }
+  #ifdef fGPU
+  else
+    {
+      
+    }
+#endif
+  
+}
+
+void Tensor::reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int row)
+{
+  if (A->dim!=2) msgerr("reduced_div","error A dim!=2\n");
+  if (B->dim!=1) msgerr("reduced_div","error B dim!=1\n");
+  if (C->dim!=2) msgerr("reduced_div","error C dim!=2\n");
+
+  if (useCPU) {
+    if (row)
+      #pragma omp parallel for
+      for(int i=0;i<A->a;i++)
+	for(int j=0;j<A->b;j++)
+	  if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(j);
+	  else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(j);
+    else
+      #pragma omp parallel for
+      for(int i=0;i<A->a;i++)
+	for(int j=0;j<A->b;j++)
+	  if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(i);
+	  else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(i);
+
+  }
+#ifdef fGPU
+  else
+    {
+      
+    }
+#endif
+  
+}
+void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row)
+{
+  if (A->dim!=2) msgerr("reduced_mult","error A dim!=2\n");
+  if (B->dim!=1) msgerr("reduced_mult","error B dim!=1\n");
+  if (C->dim!=2) msgerr("reduced_mult","error C dim!=2\n");
+
+  if (useCPU) {
+    if (row)
+      #pragma omp parallel for
+      for(int i=0;i<A->a;i++)
+	for(int j=0;j<A->b;j++)
+	  if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(j);
+	  else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(j);
+    else
+      #pragma omp parallel for
+      for(int i=0;i<A->a;i++)
+	for(int j=0;j<A->b;j++)
+	  if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(i);
+	  else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(i);
+
+  }
+#ifdef fGPU
+  else
+    {
+      
+    }
+#endif
+  
+
 
 }
 

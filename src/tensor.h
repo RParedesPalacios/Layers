@@ -80,7 +80,9 @@ class Tensor {
 
   void set(LType val);  
   void set(int a,LType val);
+  void inc(int a,LType val);
   void set(int a,int b,LType val);
+  void inc(int a,int b,LType val);
   void set(int a,int b,int c,LType val);
   void set(int a,int b,int c,int d,LType val);
 
@@ -89,32 +91,36 @@ class Tensor {
   LType get(int a,int b,int c);
   LType get(int a,int b,int c,int d);
 
-  void inc(LType val);  
-  void inc(int a,LType val);
-  void inc(int a,int b,LType val);
-  void inc(int a,int b,int c,LType val);
-  void inc(int a,int b,int c,int d,LType val);
+  // stats
+  LType sum();
+  LType norm();
+  LType col_max(int ind,int *imax);
+  LType row_max(int ind,int *imax);
+  int equal(Tensor *T);
+  
+  // math element wise
+  void mul(LType val);
+  void add(LType val);
+  void abs();
+  void sqr();
 
-  void inc_2Drowwise(Tensor *T);
-
-
+  // noise
   void set_rand_gauss(LType m,LType sd);
   void set_rand_signed_uniform(LType val);
   void set_rand_uniform(LType val);
   void set_rand_binary(LType val);
   void add_noise_gauss(LType noiser,LType m,LType noisesd);
-
-  LType norm();
-  LType sum();
-  void abs();
-  int equal(Tensor *T);
-  LType row_sum(int ind);
-  LType col_max(int ind,int *imax);
-  LType row_max(int ind,int *imax);
-
+  
+  // I/O
   void print();
   void save(FILE *fs);
   void load(FILE *fs);
+
+
+
+  
+  void inc_2Drowwise(Tensor *T);
+
 
   // STATIC METHODS
   static void loss_cross_entropy(Tensor *T,Tensor *N,double &cerr,double &ent);
@@ -137,45 +143,16 @@ class Tensor {
   static void Convol2DT(Tensor *A,Tensor *K,Tensor *B,int inc,int stride,int pad);
   static void Convol3D(Tensor *A,Tensor *K,Tensor *B,int stride,int pad);
   static void Convol(Tensor *A,Tensor *K,int tK,Tensor *B,int tB,int stride, int pad);
-
-
-
   static void ConvolT(Tensor *A,Tensor *K,Tensor *B,int stride, int pad);
+  
 
-
-
-
-
-
-  static void forwardBN_training(int batch,
-				 Tensor *E,
-				 Tensor *bn_mean,
-				 Tensor *bn_var,
-				 Tensor *bn_E,
-				 Tensor *bn_g,
-				 Tensor *bn_b,
-				 Tensor *BNE,
-				 Tensor *bn_gmean,
-				 Tensor *bn_gvar,
-				 int bnc,
-				 int noiser,
-				 LType noisesd);
-
-  static void forwardBN_inference(int batch,Tensor *E,Tensor *bn_mean,Tensor *bn_var,Tensor *bn_E,Tensor *bn_g,Tensor *bn_b,Tensor *BNE,int bnc); 
-
-  static void backwardBN(int batch,
-			Tensor *E,
-			Tensor *bn_E,
-			Tensor *bn_g,
-			Tensor *bn_mean,
-			Tensor *bn_var,
-			Tensor *Delta,
-			Tensor *gbn_g,
-			Tensor *gbn_b,
-			Tensor *gbn_E,
-			Tensor *gbn_mean,
-			Tensor *gbn_var
-			 );
+  // REDUCTIONS
+  static void reduceTomean(Tensor *A, Tensor *B,int rowcol);
+  static void reduceTosum(Tensor *A, Tensor *B,int rowcol);
+  static void reduceTovariance(Tensor *A, Tensor *B,int rowcol);
+  static void reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int inc,int row);
+  static void reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int row);
+  static void reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row);
 
 
 };

@@ -283,30 +283,50 @@ void FLayer::resetstats()
 void FLayer::fBN()
 {
   int i,j;
-
-
-  //CPU
+  float eps=0.0001;
+  
   if (trmode) {
-    bnc++;
+    Tensor::reduceTomean(E,bn_mean,1);  
+    Tensor::reduceTovariance(E,bn_var,1);
 
-    Tensor::forwardBN_training(batch,
-			       E,
-			       bn_mean,
-			       bn_var,
-			       bn_E,
-			       bn_g,
-			       bn_b,
-			       BNE,
-			       bn_gmean,
-			       bn_gvar,
-			       bnc,
-			       noiser,
-			       noisesd);
+    Tensor::inc(bn_mean,bn_gmean);
+    Tensor::inc(bn_var,bn_gvar);
+    bnc++;
+    
+    bn_var->add(eps); 
+    bn_var->sqr();  
+    
+    Tensor::reduced_sum(1,E,-1,bn_mean,bn_E,0,1);
+    Tensor::reduced_div(bn_E,bn_var,bn_E,0,1);
+
+    Tensor::reduced_mult(bn_E,bn_g,BNE,0,1);
+    Tensor::reduced_sum(1,BNE,1,bn_b,BNE,0,1);
   }
   else { // testmode
-    Tensor::forwardBN_inference(batch,E,bn_mean,bn_var,bn_E,bn_g,bn_b,BNE,bnc);
+    /*
+      for(int i=0;i<din;i++) {
+      int b;
+      float var,eps=0.0001;
+
+      for(b=0;b<batch;b++){
+	bn_E(b,i)=(E(b,i)-bn_gmean(i)/bnc)/sqrt(bn_gvar(i)/bnc+eps);
+	BNE(b,i)=(bn_g(i)*bn_E(b,i))+bn_b(i);
+      }
+      
+    */
+    Tensor::reduced_sum(1,E,-1.0/bnc,bn_gmean,bn_E,0,1);
+    bn_var->copy(bn_gvar);
+    bn_var->mul(1.0/bnc);
+    bn_var->add(eps); 
+    bn_var->sqr();  
+
+    Tensor::reduced_div(bn_E,bn_var,bn_E,0,1);
+    
+    Tensor::reduced_mult(bn_E,bn_g,BNE,0,1);
+    Tensor::reduced_sum(1,BNE,1,bn_b,BNE,0,1);
   }
 }
+
 
 void FLayer::forward()
 {
@@ -320,14 +340,14 @@ void FLayer::forward()
       OLayer *l;
       l=(OLayer *)Lin[0];
       N->copy(l->N);
-      if (VERBOSE) fprintf(stderr,"from OP(%s) = %f\n",l->name,N->norm());
+      if (VERBOSE) fprintf(stderr,"from OP(%s) = %f\n",l->name,N->sum());
 
     }
     else {
       cin=(CLayer *)Lin[0];
       N->copy(cin->N);
     
-      if (VERBOSE) fprintf(stderr,"from CNN (%s) = %f\n",cin->name,N->norm());
+      if (VERBOSE) fprintf(stderr,"from CNN (%s) = %f\n",cin->name,N->sum());
 
     }
   }
@@ -346,7 +366,7 @@ void FLayer::forward()
       }
     }
   
-    if (VERBOSE) fprintf(stderr,"E(%s) = %f\n",name,E->norm());
+    if (VERBOSE) fprintf(stderr,"E(%s) = %f\n",name,E->sum());
   
     ////////////////////////////
     // ACTIVATION
@@ -369,7 +389,7 @@ void FLayer::forward()
 	Tensor::sc_mult(N,1.0-drop,N,0);
     }
   
-    if (VERBOSE) fprintf(stderr,"N(%s,%d) = %f\n",name,act,N->norm());
+    if (VERBOSE) fprintf(stderr,"N(%s,%d) = %f\n",name,act,N->sum());
   }
 
   //////////////////////////////
@@ -381,7 +401,7 @@ void FLayer::forward()
 	if (VERBOSE) fprintf(stderr,"Forward %s-->%s\n",name,Lout[i]->name);
 	l=(FLayer *)Lout[i];
 	
-	if (VERBOSE) fprintf(stderr,"Forward %s W norm %f\n",name,W->subTensor(i)->norm());
+	if (VERBOSE) fprintf(stderr,"Forward %s W norm %f\n",name,W->subTensor(i)->sum());
 
 	Tensor::mult(N,0,W->subTensor(i),0,l->E,1);
 	
@@ -480,19 +500,51 @@ void FLayer::printkernels(FILE *fe)
 //////////////////////////////////////////
 void FLayer::bBN()
 {
-  Tensor::backwardBN(batch,
-			E,
-			bn_E,
-			bn_g,
-			bn_mean,
-			bn_var,
-			Delta,
-			gbn_g,
-			gbn_b,
-			gbn_E,
-			gbn_mean,
-			gbn_var
-			 );
+ 
+  Tensor *A=new Tensor(Delta->a,Delta->b);
+  Tensor *Tvar32=new Tensor(bn_var->a);
+  Tensor *Tsqvar=new Tensor(bn_var->a);
+  float eps=0.0001;
+  
+  //1 Gamma
+  Tensor::el_mult(Delta,0,bn_E,0,A,0);
+  Tensor::reduceTosum(A,gbn_g,1);
+
+  //2 Beta  
+  Tensor::reduceTosum(Delta,gbn_b,1);
+  
+  //3 bnE
+  Tensor::reduced_mult(Delta,bn_g,gbn_E,0,1);
+  
+  //4 Var 
+  Tsqvar->copy(bn_var);
+  Tsqvar->add(eps);
+  Tsqvar->sqr();
+
+  Tvar32->copy(bn_var);
+  Tvar32->add(eps);
+
+  Tensor::el_mult(Tvar32,0,Tsqvar,0,Tvar32,0);
+  Tensor::reduced_sum(-0.5,E,0.5,bn_mean,A,0,1);
+  Tensor::reduced_div(A,Tvar32,A,0,1);
+  Tensor::el_mult(A,0,gbn_E,0,A,0);
+  Tensor::reduceTosum(A,gbn_var,1);
+
+  //5 Mean
+  Tensor::reduced_div(gbn_E,Tsqvar,A,0,1);
+  A->mul(-1);
+  Tensor::reduceTosum(A,gbn_mean,1);
+
+  //6 Delta
+  Tensor::reduced_div(gbn_E,Tsqvar,Delta,0,1);
+  Tensor::reduced_sum(2.0/batch,E,-2.0/batch,bn_mean,A,0,1);
+  Tensor::reduced_mult(A,gbn_var,A,0,1);
+  Tensor::reduced_sum(1,A,1.0/batch,gbn_mean,Delta,1,1);
+
+    
+  delete A;
+  delete Tvar32;
+  delete Tsqvar;
 
 }
 
@@ -512,7 +564,7 @@ void FLayer::backward()
   
   if (reshape) {
     if (VERBOSE) {
-      fprintf(stderr,"%s Delta norm %f\n",name,Delta->norm());
+      fprintf(stderr,"%s Delta norm %f\n",name,Delta->sum());
     }
     
     if (Lin[0]->type==OLAYER) {
@@ -528,7 +580,7 @@ void FLayer::backward()
   else { //!reshape
     FLayer *l;
 
-    if (VERBOSE) fprintf(stderr,"%s Delta norm %f\n",name,Delta->norm());
+    if (VERBOSE) fprintf(stderr,"%s Delta norm %f\n",name,Delta->sum());
 
     if (act!=ACT_SOF) { // To prevent for output layers with softmax
       if (bn) 
@@ -553,7 +605,7 @@ void FLayer::backward()
 	  if (ind==-1) {fprintf(stderr,"Error no connection!!\n"); exit(1);}
 
 	  // Compute grads
-	  if (VERBOSE) fprintf(stderr,"%f %f -->\n",l->N->norm(),Delta->norm());
+	  if (VERBOSE) fprintf(stderr,"%f %f -->\n",l->N->sum(),Delta->sum());
 
 	  Tensor::mult(l->N,1,Delta,0,l->gW->subTensor(ind),0);
 
@@ -579,7 +631,7 @@ void FLayer::applygrads()
     Tensor::sum((mu/batch),gW->subTensor(k),0,mmu,pgW->subTensor(k),0,pgW->subTensor(k),0);
     Tensor::inc(pgW->subTensor(k),W->subTensor(k));
 
-    if (VERBOSE) fprintf(stderr,"W (%s) norm = %f\n",name,W->subTensor(k)->norm());
+    if (VERBOSE) fprintf(stderr,"W (%s) norm = %f\n",name,W->subTensor(k)->sum());
 
 
     // BIAS
@@ -729,7 +781,7 @@ void IFLayer::backward() {
 
   if (L!=NULL) {
     // pass Delta to parent (FC) Layer
-    if (VERBOSE) fprintf(stderr,"%s Delta norm %f\n",name,Delta->norm());
+    if (VERBOSE) fprintf(stderr,"%s Delta norm %f\n",name,Delta->sum());
     
     ((FLayer *)L)->Delta->copy(Delta);
   }
@@ -934,7 +986,7 @@ void OFLayer::backward()
 	  else  Delta->set(i,j,1/N->get(i,j));
   }
 
-  if (VERBOSE) fprintf(stderr,"OFLayer %s Delta norm %f\n",name,Delta->norm());
+  if (VERBOSE) fprintf(stderr,"OFLayer %s Delta norm %f\n",name,Delta->sum());
   FLayer::backward();
 
 }
