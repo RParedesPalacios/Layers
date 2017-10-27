@@ -100,6 +100,7 @@ class Tensor {
   
   // math element wise
   void mul(LType val);
+  void div(LType val);
   void add(LType val);
   void abs();
   void sqr();

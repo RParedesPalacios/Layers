@@ -947,8 +947,10 @@ void Tensor::mul(LType val)
   if(useCPU)
     {
       if (dim==1)
+#pragma omp parallel for
 	for(int i=0;i<a;i++) ptr1(i)*=val;
       else if (dim==2)
+#pragma omp parallel for
 	for(int i=0;i<a;i++)
 	  for(int j=0;j<b;j++)
 	    ptr2(i,j)*=val;
@@ -967,13 +969,42 @@ void Tensor::mul(LType val)
 
 }
 
+void Tensor::div(LType val)
+{
+  if(useCPU)
+    {
+      if (dim==1)
+	  #pragma omp parallel for
+	for(int i=0;i<a;i++) ptr1(i)/=val;
+      else if (dim==2)
+  #pragma omp parallel for
+	for(int i=0;i<a;i++)
+	  for(int j=0;j<b;j++)
+	    ptr2(i,j)/=val;
+      else 
+	for(int i=0;i<a;i++)
+	  ptr[i]->div(val);
+    }
+#ifdef fGPU
+  else
+    {
+      fprintf(stderr,"tensor absolute value\n");exit(-1);
+    }
+#endif
+
+
+
+}
+
 void Tensor::add(LType val)
 {
   if(useCPU)
     {
       if (dim==1)
+	  #pragma omp parallel for
 	for(int i=0;i<a;i++) ptr1(i)+=val;
       else if (dim==2)
+	  #pragma omp parallel for
 	for(int i=0;i<a;i++)
 	  for(int j=0;i<b;i++)
 	    ptr2(i,j)+=val;
@@ -995,8 +1026,10 @@ void Tensor::abs()
   if(useCPU)
     {
       if (dim==1)
+	  #pragma omp parallel for
 	for(int i=0;i<a;i++) ptr1(i)=fabs(ptr1(i));
       else if (dim==2)
+	  #pragma omp parallel for
 	for(int i=0;i<a;i++)
 	  for(int j=0;i<b;i++)
 	    ptr2(i,j)=fabs(ptr2(i,j));
@@ -1019,8 +1052,10 @@ void Tensor::sqr()
   if(useCPU)
     {
       if (dim==1)
+	  #pragma omp parallel for
 	for(int i=0;i<a;i++) ptr1(i)=sqrt(ptr1(i));
       else if (dim==2)
+	  #pragma omp parallel for
 	for(int i=0;i<a;i++)
 	  for(int j=0;i<b;i++)
 	    ptr2(i,j)=sqrt(ptr2(i,j));
@@ -1797,11 +1832,11 @@ void Tensor::reduceTomean(Tensor *A, Tensor *B,int row)
 
   if (row) {
     Tensor::reduceTosum(A,B,row);
-    B->mul(((float)1.0)/A->a);
+    B->div(A->a);
   }
   else {
     Tensor::reduceTosum(A,B,row);
-    B->mul(((float)1.0)/A->b);
+    B->div(A->b);
   }
 }
 

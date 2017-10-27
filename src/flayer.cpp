@@ -299,24 +299,17 @@ void FLayer::fBN()
     Tensor::reduced_sum(1,E,-1,bn_mean,bn_E,0,1);
     Tensor::reduced_div(bn_E,bn_var,bn_E,0,1);
 
+    if ((trmode)&&(noiser>0.0)) {
+      bn_E->add_noise_gauss(noiser,0.0,noisesd);
+    }
+
     Tensor::reduced_mult(bn_E,bn_g,BNE,0,1);
     Tensor::reduced_sum(1,BNE,1,bn_b,BNE,0,1);
   }
   else { // testmode
-    /*
-      for(int i=0;i<din;i++) {
-      int b;
-      float var,eps=0.0001;
-
-      for(b=0;b<batch;b++){
-	bn_E(b,i)=(E(b,i)-bn_gmean(i)/bnc)/sqrt(bn_gvar(i)/bnc+eps);
-	BNE(b,i)=(bn_g(i)*bn_E(b,i))+bn_b(i);
-      }
-      
-    */
     Tensor::reduced_sum(1,E,-1.0/bnc,bn_gmean,bn_E,0,1);
     bn_var->copy(bn_gvar);
-    bn_var->mul(1.0/bnc);
+    bn_var->div(bnc);
     bn_var->add(eps); 
     bn_var->sqr();  
 
@@ -520,7 +513,6 @@ void FLayer::bBN()
   Tsqvar->copy(bn_var);
   Tsqvar->add(eps);
   Tsqvar->sqr();
-
   Tvar32->copy(bn_var);
   Tvar32->add(eps);
 
@@ -551,12 +543,6 @@ void FLayer::bBN()
 
 void FLayer::backward()
 {
-/*
-    printf("==========VALORES EN BACKWARD\n");
-    printf("====== ACTIVATION\n");
-    printf("%d \n",act); */
-
-
   int i,j,k,ind;
 
   if (drop>0.0) Tensor::maskZeros(dvec,Delta);
