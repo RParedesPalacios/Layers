@@ -156,6 +156,38 @@ class Tensor {
   static void reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row);
 
 
+
+  static void forwardBN_training(int batch,
+				 Tensor *E,
+				 Tensor *bn_mean,
+				 Tensor *bn_var,
+				 Tensor *bn_E,
+				 Tensor *bn_g,
+				 Tensor *bn_b,
+				 Tensor *BNE,
+				 Tensor *bn_gmean,
+				 Tensor *bn_gvar,
+				 int bnc,
+				 int noiser,
+				 LType noisesd);
+
+  static void forwardBN_inference(int batch,Tensor *E,Tensor *bn_mean,Tensor *bn_var,Tensor *bn_E,Tensor *bn_g,Tensor *bn_b,Tensor *BNE,int bnc); 
+
+  static void backwardBN(int batch,
+			Tensor *E,
+			Tensor *bn_E,
+			Tensor *bn_g,
+			Tensor *bn_mean,
+			Tensor *bn_var,
+			Tensor *Delta,
+			Tensor *gbn_g,
+			Tensor *gbn_b,
+			Tensor *gbn_E,
+			Tensor *gbn_mean,
+			Tensor *gbn_var
+			 );
+
+
 };
 
 

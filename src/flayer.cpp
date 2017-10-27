@@ -83,7 +83,7 @@ void FLayer::mem()
   BNE=new Tensor(batch,din);
 
   bn_g->set(1.0);
-  bn_b->set(1.0);
+  bn_b->set(0.0);
 
   gbn_mean=new Tensor(din);
   gbn_var=new Tensor(din);
@@ -180,7 +180,7 @@ void FLayer::addchild(Layer *li)
       b->subTensor(lout)->resize(l->din);
       
       // initialice here!
-      double s=sqrt(2.0/din);
+      double s=sqrt(2.0/l->din);
       W->subTensor(lout)->set_rand_gauss(0,s);
       b->subTensor(lout)->set(0.1);
 
@@ -282,6 +282,29 @@ void FLayer::resetstats()
 //////////////////////
 void FLayer::fBN()
 {
+  if (trmode) {
+    bnc++;
+
+    Tensor::forwardBN_training(batch,
+                               E,
+                               bn_mean,
+                               bn_var,
+                               bn_E,
+                               bn_g,
+                               bn_b,
+                               BNE,
+                               bn_gmean,
+                               bn_gvar,
+                               bnc,
+                               noiser,
+                               noisesd);
+    
+  }
+  else { // testmode                                                                                           
+    Tensor::forwardBN_inference(batch,E,bn_mean,bn_var,bn_E,bn_g,bn_b,BNE,bnc);
+  }
+
+  /*
   int i,j;
   float eps=0.0001;
   
@@ -318,6 +341,7 @@ void FLayer::fBN()
     Tensor::reduced_mult(bn_E,bn_g,BNE,0,1);
     Tensor::reduced_sum(1,BNE,1,bn_b,BNE,0,1);
   }
+*/
 }
 
 
@@ -399,7 +423,7 @@ void FLayer::forward()
 	Tensor::mult(N,0,W->subTensor(i),0,l->E,1);
 	
 	//bias
-	l->E->inc_2Drowwise(b->subTensor(i));
+	//if (!bn) l->E->inc_2Drowwise(b->subTensor(i));
       }
     }
   }
@@ -493,6 +517,20 @@ void FLayer::printkernels(FILE *fe)
 //////////////////////////////////////////
 void FLayer::bBN()
 {
+  Tensor::backwardBN(batch,
+		     E,
+		     bn_E,
+		     bn_g,
+		     bn_mean,
+		     bn_var,
+		     Delta,
+		     gbn_g,
+		     gbn_b,
+		     gbn_E,
+		     gbn_mean,
+                        gbn_var
+		     ); 
+  /*
  
   Tensor *A=new Tensor(Delta->a,Delta->b);
   Tensor *Tvar32=new Tensor(bn_var->a);
@@ -537,7 +575,7 @@ void FLayer::bBN()
   delete A;
   delete Tvar32;
   delete Tsqvar;
-
+  */
 }
 
 
@@ -653,6 +691,7 @@ void FLayer::applygrads()
   // BATCH NORM g,b
   if (bn) {
     Tensor::sc_mult(gbn_g,(mu/batch),bn_g,1);
+    Tensor::sc_mult(gbn_b,(mu/batch),bn_b,1);
   }
 
 }

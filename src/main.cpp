@@ -52,7 +52,7 @@ FILE *flog;
 int threads=4;
 int batch=100;
 char logname[MAX_CHAR];
-int seed=123456;
+int seed;
 
 
 //////////////////////////////////////
@@ -97,8 +97,7 @@ public:
 
     sscanf(line,"Const %s %s\n",cad,cad2);
     
-    //fprintf(stderr,"#### %s\n",line);
-   
+
     if (!strcmp(cad,"threads")) {
       sscanf(line,"Const %s %d\n",cad,&threads);
       fprintf(stderr,"setting threads to %d\n",threads);
@@ -118,6 +117,7 @@ public:
     if (!strcmp(cad,"seed")) {
       sscanf(line,"Const %s %d\n",cad,&seed);
       fprintf(stderr,"setting random seed to %d\n",seed);
+
       srand(seed);
     }
     if (!strcmp(cad,"device")) {
