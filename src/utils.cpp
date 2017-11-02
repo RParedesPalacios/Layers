@@ -136,3 +136,26 @@ void Linear(LMatrix E,LMatrix &N)
   N=E;
 }
 
+
+//helper function
+#ifdef fGPU
+#include "./gpu/execution.h"
+/////////////////////////////
+void printDebug(float* p, const char*, int row,int col)
+{
+float* aux = (float*)malloc(row*col*sizeof(float));
+
+gpu_tensor_op.copy_data(aux,p,FROMGPU,row*col*sizeof(float));
+
+for (int i=0;i<row;i++)
+{
+for (int j=0;j<col;j++)
+{
+        printf("%f ",aux[i*col+j]);
+}
+printf("\n");
+}
+free(aux);
+}
+/////////////////////////////
+#endif

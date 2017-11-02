@@ -114,6 +114,76 @@ int thread_id_x = threadIdx.x + blockIdx.x*blockDim.x;
   }
 
 }
+//cost functions
+
+__global__ void MC_loss(float* T, float* N,float* acc,int cols, long int total_ops, int* MC_err)
+{
+
+int thread_id_x = threadIdx.x + blockIdx.x*blockDim.x;
+int result_t=T[thread_id_x*cols];
+float result_n=N[thread_id_x*cols]; //cross entropy is between 0 and 1
+
+int row_max_t=0;
+int row_max_n=0;
+bool err;
+
+int aux_t;
+float aux_n;
+if (thread_id_x < total_ops)
+{
+  //cublasIsamax(p_cublas_gpu,cols,&(T[thread_id_x*cols]),1,&result_t);
+  //cublasIsamax(p_cublas_gpu,cols,&(N[thread_id_x*cols]),1,&result_n);
+  for(int i=1;i<cols;i++)
+  {
+   aux_t=T[thread_id_x*cols+i];
+   aux_n=N[thread_id_x*cols+i];
+
+	if (aux_t>result_t)
+	 {
+		result_t=aux_t;
+                row_max_t=i;
+         }
+        if (aux_n>result_n)
+	 {
+		result_n=aux_n;
+                row_max_n=i;
+         }
+  }
+
+  acc[thread_id_x]=row_max_t;//store for crossentropy
+  atomicAdd(MC_err,(int)(row_max_t!=row_max_n));
+}
+
+}
+
+__global__ void CE_loss(float* N, float* max_row_vec,float* CE_vec,int cols ,long int total_ops)
+{
+
+int thread_id_x = threadIdx.x + blockIdx.x*blockDim.x;
+  if (thread_id_x<total_ops)
+  {
+
+    float aux1;
+    float aux2; 
+    bool pos;
+    bool neg;
+    bool selector;
+    int max_row=max_row_vec[thread_id_x];
+    for(int j=0;j<cols;j++)
+    {
+        selector=j==max_row;
+
+        pos=N[thread_id_x*cols+j]==0;
+        neg=N[thread_id_x*cols+j]==1;
+
+        aux1 = log(pos+!pos*N[thread_id_x*cols+j]);
+        aux2 = log(neg+!neg*(1-N[thread_id_x*cols+j]));
+
+        CE_vec[thread_id_x*cols+j]=selector*aux1+(1-selector)*aux2;
+    }
+  }
+}
+
 
 ////////////////////////////////////////////
 ////////////////////////////////////////////
@@ -180,16 +250,26 @@ __global__ void kern_tensor_equal(float* A, float* B, long int ops)
 }
 
 //MATRIX VECTOR OPERATOR
-__global__ void mat_ewcol_vec(float* mat, float* vec, long int ops, long int cols, int op)
+__global__ void mat_ewcol_vec(float* mat_o, float* mat, float* vec, long int ops, long int cols, int op,int acc)
 {
 
   int thread_id_x = threadIdx.x+blockIdx.x*blockDim.x;
- 
+ if (acc==1)
+ {
   if (thread_id_x < ops)
    if (op==0)
      mat[thread_id_x]+=vec[thread_id_x%cols];
    else
      mat[thread_id_x]*=vec[thread_id_x%cols];
+ }
+ else
+ {
+  if (thread_id_x < ops)
+   if (op==0)
+     mat_o[thread_id_x]=mat[thread_id_x]+vec[thread_id_x%cols];
+   else
+     mat_o[thread_id_x]=mat[thread_id_x]*vec[thread_id_x%cols];
+ }
 
 }
 
@@ -225,6 +305,56 @@ int i=0;
    	O[thread_id_x]+=I[thread_id_x+cols*i];
    
 }
+//sum all the elements in an array with a sum
+//possibly bad implemented. However we do not expect lot of output units
+__global__ void reduce_array_sum(float* array, long int ops, int cols,float* result)
+{
+extern __shared__ float arr_acc[];//this could not be enough and may call with recursion
+__shared__ float accumulate_result[1];
+
+int thread_id_x = threadIdx.x +blockIdx.x*blockDim.x;
+float ent=0;
+arr_acc[thread_id_x]=0.0;
+
+if(thread_id_x==0)
+	accumulate_result[thread_id_x]=0.0;
+
+__syncthreads();
+if (thread_id_x<ops)  
+{
+	for (int i=0; i<cols;i++)
+		ent-=array[thread_id_x*cols+i];
+
+__syncthreads();
+	arr_acc[thread_id_x]=ent;
+__syncthreads();
+
+}
+
+if (thread_id_x==0)
+{
+
+        #pragma omp parallel for
+	for (int i=0; i<ops;i++)
+               accumulate_result[thread_id_x]+=arr_acc[thread_id_x+i];
+
+result[thread_id_x]=accumulate_result[thread_id_x];//copy back to global memory from shared
+
+}	
+}
+/*
+for (unsigned int s=1; s< blockDim.x<s*=2)
+{
+  int index = 2*+thread_id_x;
+  if (index < blockDim.x)
+  {
+    +=operator
+  }
+
+}
+*/
+//}
+
 
 //////////////////////////////////////////////
 ///////////////RANDOM GENERATOR///////////////

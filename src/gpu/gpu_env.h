@@ -24,6 +24,7 @@ void set_sc(float* gpu, float sc, tensor_gpu_specs* sp);//set scalar;
 //neural networks
 void activation(float* E,float* N, int f,tensor_gpu_specs* sp);
 void dactivation(float* E,float* N,float* D, int f, tensor_gpu_specs* sp);
+void compute_loss(float* T, float* N,loss_type t,tensor_gpu_specs* gsp,double* ent, double* cerr);
 
 //linear algebra
 void matMul(float* a,float* b,float* c, tensor_gpu_specs* sA,tensor_gpu_specs* sB, tensor_gpu_specs* sC, int acc, int tA, int tB);
@@ -33,12 +34,14 @@ void scVec(float* vec_o,float* vec_i, tensor_gpu_specs* sA, float sc ,int op,int
 //elwise operator
 void mat_elwise_mat(float* A, float* B, float* C,tensor_gpu_specs* sA,tensor_gpu_specs* sB,tensor_gpu_specs* sC,int op, int acc, int tA, int tB,float sca=1.0, float scb=1.0);
 int tensor_equal(float* A, float* B, tensor_gpu_specs* sA);
-void mat_elwise_vec(float* mat, float* vec, tensor_gpu_specs* sA,int op);
+void mat_elwise_vec(float* mat_o,float* mat, float* vec, tensor_gpu_specs* sA,int op,int acc);
 void vec_elwise_vec(float* A, float* B, float* C,tensor_gpu_specs* sA,int op, int acc,float sca=1.0, float scb=1.0);
 
 //self operator
 float* col_sum(float* A, tensor_gpu_specs* sA);
 int row_max(float* A, tensor_gpu_specs* sA,int ind );
+void sum_abs(float* p,tensor_gpu_specs* gsp,float* acc);
+void reduce_operator(float* p,tensor_gpu_specs* gsp,float* acc);
 
 //random number
 

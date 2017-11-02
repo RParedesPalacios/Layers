@@ -34,6 +34,13 @@ double gaussgen();
 
 #ifdef fGPU
 #include<stdint.h>
+typedef enum
+{
+CE,
+SSE
+}loss_type;
+
+void printDebug(float* p, const char*, int row,int col); 
 
 typedef enum
 {
@@ -46,7 +53,9 @@ UUNI
 typedef enum
 {
 TOGPU,
-FROMGPU
+FROMGPU,
+GPU,
+CPU
 }tr_type;
 
 typedef struct

@@ -551,6 +551,41 @@ void Tensor::copyfromData(Data *D)
   }
  #endif
 }
+//
+void Tensor::copyStatistics(Data *D,int tipe)
+{
+  if (dim!=1) msgerr("copyStatistics","Statistics only copy to 1D tensor");
+
+#ifdef fGPU
+      float* data_aux;
+      float* batch_aux= new float[a];
+      size_t counter=0;
+      data_aux = (float*)malloc(a*sizeof(float));
+      if (tipe==1)//std
+      {
+	  for(int j=0;j<a;j++)
+	    batch_aux[j]=D->fsd[j+D->dim],j+D->dim;
+          
+	  memcpy((void*)data_aux+counter,batch_aux,a*sizeof(float));
+	  counter+=a*sizeof(float);
+      }
+      else if (tipe==2)	//mean
+      {
+	  for(int j=0;j<a;j++)
+	    batch_aux[j]=D->fmu[j+D->dim],j+D->dim;
+          
+	  memcpy((void*)data_aux+counter,batch_aux,a*sizeof(float));
+	  counter+=a*sizeof(float);
+      }
+
+      gpu_tensor_op.copy_data(data_aux,gptr,TOGPU,a*sizeof(float));
+      free(data_aux);
+      delete batch_aux;
+#endif
+}
+
+
+
 //Juan:: Implemented
 void Tensor::set(LType val)
 {
@@ -839,7 +874,10 @@ LType Tensor::get(int a)
   #ifdef fGPU
   else
   {
-  fprintf(stderr,"get  \n");exit(-1);
+     float aux1;
+     gpu_tensor_op.copy_data(&aux1, &(gptr[a]),FROMGPU,sizeof(float));
+     return aux1;
+
   }
   #endif
 
@@ -864,9 +902,8 @@ LType Tensor::get(int a,int b)
      return aux1;
   }
   #endif
-
-
 }
+
 //Juan: Not implemented
 LType Tensor::get(int a,int b,int c)
 {
@@ -1093,7 +1130,9 @@ LType Tensor::sum()
   #ifdef fGPU
   else
   {
-  fprintf(stderr,"tensor sum\n");exit(-1);
+    LType sum=0;
+    gpu_tensor_op.reduce_operator(gptr,&gsp,&sum);
+    return sum;
   }
   #endif
 
@@ -1150,7 +1189,7 @@ void Tensor::inc_2Drowwise(Tensor *T)
   #ifdef fGPU
   else
   {
-    gpu_tensor_op.mat_elwise_vec(gptr,T->gptr,&gsp,0);
+    gpu_tensor_op.mat_elwise_vec(NULL,gptr,T->gptr,&gsp,0,1);
   }
   #endif
 
@@ -1176,6 +1215,20 @@ void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double 
     mse+=Res->sum()/T->b;
 
     Tensor::sum(1,T,0,1,N,0,Res,0); // T-N
+    if(useCPU)
+    {
+      Res->abs();
+      mae+=Res->sum()/T->b;
+    }
+    #ifdef fGPU
+    else
+    {
+      float aux=0;
+      gpu_tensor_op.sum_abs(Res->gptr,&(Res->gsp),&aux);
+      mae+=aux/T->b;
+    }
+    #endif
+
     Res->abs();
     mae+=Res->sum()/T->b;
     delete Res;
@@ -1194,16 +1247,35 @@ void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double 
     }
 #ifdef fGPU
     else {
-      for(int i=0;i<N->a;i++)
-	for(int j=0;j<N->b;j++) {
-	  float Tn,Nn;
-	  Tn=(T->get(i,j)*D->fsd[j+offset])+D->fmu[j+offset];
-	  Nn=(N->get(i,j)*D->fsd[j+offset])+D->fmu[j+offset];
+     //desnormalizar
+     Tensor* Nn=new Tensor(N->a,N->b);
+     Tensor* Tn=new Tensor(T->a,T->b);     
+     Tensor *Res=new Tensor(T->a,T->b);
+     Tensor* mu = new Tensor(T->b);
+     Tensor* std = new Tensor(T->b);    
 
-	  mse+=(Tn-Nn)*(Tn-Nn)/T->b;
-	  mae+=fabs(Tn-Nn)/T->b;
-	}
-      
+ 
+     std->copyStatistics(D,1);//copy std
+     mu->copyStatistics(D,2);//copy mean
+
+    gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,std->gptr,&(N->gsp),1,0);//product by std     
+    gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,std->gptr,&(N->gsp),1,0);     
+    
+     gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,mu->gptr,&(N->gsp),0,0);//add mean     
+     gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,mu->gptr,&(N->gsp),0,0);     
+     Tensor::sum(1,Tn,0,1,Nn,0,Res,0); // T-N
+     Tensor::el_mult(Res,0,Res,0,Res,0); //(T-N)*(T-N)
+     mse+=Res->sum()/T->b;
+
+     Tensor::sum(1,Tn,0,1,Nn,0,Res,0); // T-N
+     float aux=0;
+     gpu_tensor_op.sum_abs(Res->gptr,&(Res->gsp),&aux);
+     mae+=aux/T->b;
+     delete Res;
+     delete Tn;
+     delete Nn; 
+     delete mu;
+     delete std;
     }
 #endif
   }
@@ -1231,7 +1303,10 @@ void Tensor::loss_cross_entropy(Tensor *T,Tensor *N,double &cerr,double &ent)
   }
 #ifdef fGPU
   else {
-    int i,j,rindex,nindex;
+   int op=0;
+    if (op)
+    {
+       int i,j,rindex,nindex;
     for(i=0;i<T->a;i++) {
       T->row_max(i,&rindex);
       N->row_max(i,&nindex);
@@ -1241,12 +1316,20 @@ void Tensor::loss_cross_entropy(Tensor *T,Tensor *N,double &cerr,double &ent)
 	else if (N->get(i,j)!=1.0) ent-=log(1-N->get(i,j));
       }
     }
-    
-    
-  }
+    }
+    else
+     {
+	double aux_ent;
+        double aux_cerr;
+	gpu_tensor_op.compute_loss(T->gptr,N->gptr,CE,&(T->gsp),&aux_ent,&aux_cerr);
+        ent+=aux_ent;
+        cerr+=aux_cerr;
+
+      }
+    }
 #endif
-  
 }
+  
 
 ///////////////////////////////////////
 //// MULT C=(a*A)*(b*B)
@@ -1478,8 +1561,8 @@ void Tensor::sumcol(Tensor *A,Tensor *B)
     float* sum;
     float b;
     sum=gpu_tensor_op.col_sum(B->gptr,&(B->gsp));
-
-    cudaMemcpy(A->gptr,sum,A->a*sizeof(float),cudaMemcpyDeviceToDevice);
+    
+    gpu_tensor_op.copy_data(A->gptr,sum,GPU,A->a*sizeof(float));
     
     gpu_tensor_op.destroyTensor(sum);
 
@@ -1669,7 +1752,7 @@ void Tensor::maskZeros(Tensor *mask,Tensor *A)
   #ifdef fGPU
   else
   {
-  gpu_tensor_op.mat_elwise_vec(A->gptr,mask->gptr,&(A->gsp),1);
+  gpu_tensor_op.mat_elwise_vec(NULL,A->gptr,mask->gptr,&(A->gsp),1,1);
   }
   #endif
 }

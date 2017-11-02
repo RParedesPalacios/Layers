@@ -103,7 +103,8 @@ class Layer {
   virtual void resetstats(){}
   virtual void getbatch(){}
   virtual void next(){}
-};
+  
+  };
 
 
 class FLayer : public Layer {
@@ -141,7 +142,6 @@ class FLayer : public Layer {
   void load(FILE *fe);
 
   void printkernels(FILE *fe);
-
 
 };
 

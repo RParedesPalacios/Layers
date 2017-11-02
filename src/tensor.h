@@ -77,6 +77,7 @@ class Tensor {
   void copy(Tensor *T);
   void copyfromData(Data *D);
   void copylabels(Data *D);
+  void copyStatistics(Data *D,int tipe);
 
   void set(LType val);  
   void set(int a,LType val);

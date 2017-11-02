@@ -134,6 +134,8 @@ void gpu_env::copy_data(float* cpu, float* gpu,tr_type t,size_t size)
 {
     error=cudaMemcpy(cpu,gpu,size,cudaMemcpyDeviceToHost);
 }
+  else if (t==GPU)
+    error=cudaMemcpy(cpu,gpu,size,cudaMemcpyDeviceToDevice);
   else
     {fprintf(stderr,"NOT IMPLEMENTED");exit(-1);} 
 
@@ -179,6 +181,7 @@ switch(f)
        {
         ops=sp->row;
         float* auxE = makeTensor(sp->col,sp->row);
+        set_sc(auxE, 0.0, sp);
 	Softmax<<<dimBlock,dimGrid>>>(E,N,auxE,sample_dim,ops);
 	break;
        }
@@ -204,7 +207,7 @@ if (E==NULL || N==NULL || D==NULL)
 	{fprintf(stderr,"Fill data in pointer.\n");exit(-1);}
 dim3 dimBlock(sp->col);
 dim3 dimGrid(sp->row);
-long int ops = 10000;
+long int ops = sp->row*sp->col;
 long int sample_dim=sp->col*sp->row;
 
 switch(f)
@@ -230,6 +233,80 @@ error=cudaDeviceSynchronize();
 error_f();
 
 }
+
+
+//loss functions
+void gpu_env::compute_loss(float* T, float* N,loss_type t,tensor_gpu_specs* gsp,double* ent, double* cerr)
+{
+dim3 dimBlock(gsp->row);
+dim3 dimGrid(1);
+long int ops = gsp->row;
+
+switch(t)
+{
+  case CE:
+       {
+       float* max_row=makeTensor(gsp->row);//store it from device but use in gpu
+       int* cerr_g;
+       error=cudaMalloc((void**)&cerr_g,sizeof(int));
+       error_f();
+       MC_loss<<<dimBlock,dimGrid>>>(T,N,max_row,gsp->col,ops,cerr_g);
+       error_f();
+       cudaDeviceSynchronize(); 
+       error_f();
+       float* CE_vec;
+       error=cudaMalloc((void**)&CE_vec,sizeof(float)*gsp->row*gsp->col);
+       error_f();
+       CE_loss<<<dimBlock,dimGrid>>>(N,max_row,CE_vec,gsp->col,ops);
+       cudaDeviceSynchronize(); 
+       error_f();
+      //////////////////////////////////////
+/*
+      float* CE_vec_cpu=(float*)malloc(gsp->col*gsp->row*sizeof(float ));
+      copy_data(CE_vec_cpu,CE_vec,FROMGPU,gsp->col*gsp->row*sizeof(float ));
+      printDebug(CE_vec,"",gsp->col,gsp->row);
+      for (int i=0;i<gsp->col*gsp->row;i++)
+      {
+	if (isnan(CE_vec_cpu[i]))
+        {
+       		printf ("%d\n",i);
+                printf ("%f\n",CE_vec_cpu[i]);
+
+        }
+       } 
+      getchar();
+*/
+///////////////////////////////////////////////
+       float* result_ce;
+       error=cudaMalloc((void**)&result_ce,sizeof(float));
+       error_f(); 
+       reduce_array_sum<<<dimGrid,dimBlock,ops*sizeof(float)>>>(CE_vec,ops, gsp->col,result_ce);
+       cudaDeviceSynchronize(); 
+       error_f();
+       float aux1;
+       error=cudaMemcpy(&aux1,result_ce,sizeof(float),cudaMemcpyDeviceToHost);
+       error_f();
+  //     printf("lA CE %f\n",aux1);
+  //     getchar();
+       *ent=(double)aux1;
+       int aux=0;
+       error=cudaMemcpy(&aux,cerr_g,sizeof(int),cudaMemcpyDeviceToHost);
+       *cerr=(double)aux;
+       break;
+       }
+  case SSE:
+	fprintf(stderr,"GPU COST NOT IMPLEMENTED\n");
+	exit(-1);
+	break;
+  default:
+	fprintf(stderr,"GPU COST NOT IMPLEMENTED\n");
+	exit(-1);
+
+}
+
+}
+
+
 /////////////////////////////////////////
 ///////////////gpu parsing///////////////
 ////////////////////////////////////////
@@ -372,7 +449,7 @@ void gpu_env::mat_elwise_mat(float* A, float* B, float* C,tensor_gpu_specs* sA,t
 	{//accumulate
 
 	 float* aux=makeTensor(sA->row,sA->col,1,1);
-
+         set_sc(aux,0.0, sA);
          cublas.mat_ewsum_mat(A,B,aux,sA,sB,trA,trB,sca,scb);
 	 cublas.mat_ewsum_mat(C,aux,C,sC,sC,0,0);
          destroyTensor(aux);
@@ -387,6 +464,7 @@ void gpu_env::mat_elwise_mat(float* A, float* B, float* C,tensor_gpu_specs* sA,t
 	{
 	   //transpose A
 	   tA=makeTensor(sA->row,sA->col,1,1);
+           set_sc(tA,0.0, sA);
    	   cublas.mat_transp(tA,A,sA);
        	   error=cudaDeviceSynchronize();
 	   error_f();
@@ -396,6 +474,7 @@ void gpu_env::mat_elwise_mat(float* A, float* B, float* C,tensor_gpu_specs* sA,t
 	{
 	   //transpose B
 	   tB=makeTensor(sB->row,sB->col,1,1);
+           set_sc(tB,0.0, sB);
    	   cublas.mat_transp(tB,B,sB);
        	   error=cudaDeviceSynchronize();
 	   error_f();
@@ -455,13 +534,13 @@ int gpu_env::tensor_equal(float* A, float* B,tensor_gpu_specs* sA)
 
 //elwise operator matrix vector
 //op=0 is sum and 1 is prod
-void gpu_env::mat_elwise_vec(float* mat, float* vec, tensor_gpu_specs* sA,int op)
+void gpu_env::mat_elwise_vec(float* mat_o,float* mat, float* vec, tensor_gpu_specs* sA,int op,int acc)
 {
   dim3 dimBlock(sA->col);
   dim3 dimGrid(sA->row);
   long int ops = sA->row*sA->col;
 
-  mat_ewcol_vec<<<dimBlock,dimGrid>>>(mat,vec,ops,sA->col,op);
+  mat_ewcol_vec<<<dimBlock,dimGrid>>>(mat_o,mat,vec,ops,sA->col,op,acc);
 
   error_f();
   error=cudaDeviceSynchronize();
@@ -499,6 +578,31 @@ void gpu_env::vec_elwise_vec(float* A, float* B, float* C,tensor_gpu_specs* sA,i
 //or cuBlas. For performance self-programmed or cuBlas is better.
 //We use cannonical float* whenever we can (always looking for avoiding
 //warping divergence )
+void gpu_env::sum_abs(float* p,tensor_gpu_specs* gsp,float* acc)
+{
+cublasStatus_t error_cb=cublasSasum(p_cublas,gsp->row*gsp->col,p,1,acc);
+if (error_cb!=CUBLAS_STATUS_SUCCESS)
+	fprintf(stderr,"Error calling sum_abs with cublasSasum routine\n");
+
+}
+
+void gpu_env::reduce_operator(float* p,tensor_gpu_specs* gsp,float* acc)
+{
+  float* sum_aux;
+  error = cudaMalloc((void**)&sum_aux,sizeof(float));
+  error_f();
+  dim3 dimGrid(1);
+  dim3 dimBlock(gsp->row);
+  long int ops = gsp->row;
+  reduce_array_sum<<<dimGrid,dimBlock,ops*sizeof(float)>>>(p,ops, gsp->col,sum_aux);
+  cudaDeviceSynchronize();
+  error_f();
+  copy_data(acc,sum_aux,FROMGPU,sizeof(float));
+ 
+
+}
+
+
 float* gpu_env::col_sum(float* A, tensor_gpu_specs* sA)
 {
   dim3 dimBlock(sA->col);
@@ -506,6 +610,11 @@ float* gpu_env::col_sum(float* A, tensor_gpu_specs* sA)
   long int ops = sA->col;
 
   float* O = makeTensor(sA->col);
+  tensor_set_value<<<dimBlock,dimGrid>>>(O,0.0,sA->col);
+  error_f();
+  error=cudaDeviceSynchronize();
+  error_f();
+
   kernel_col_sum<<<dimBlock,dimGrid>>>(A,O,(int)sA->row,(int)sA->col,ops);
  
   error_f();
@@ -530,9 +639,10 @@ int gpu_env::row_max(float* A, tensor_gpu_specs* sA,int ind)
 
 //printf("====columns routine %d \n",sA->col);
 //printf("====cublas routine %d \n",result);
-   
+   cudaDeviceSynchronize();
+   error_f();
    return result;
-}
+} 
 
 //////////////////////////////////////////////
 ///////////////RANDOM GENERATOR///////////////
