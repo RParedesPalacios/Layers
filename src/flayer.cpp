@@ -1377,19 +1377,15 @@ void OFLayer::backward()
   int i,j,k,p;
   double sum;
   
-  
+
   if (L!=NULL) {
     T->copy(((FLayer *)L)->N);
   }
   else {
-    if (opt==2)
-      for(i=0;i<batch;i++)
-	for(j=0;j<din;j++)
-	  T->set(i,j,D->M(D->getpos(i),j));
-    else
-      for(i=0;i<batch;i++)
-	for(j=0;j<din;j++)
-	  T->set(i,j,D->M(D->getpos(i),j+D->dim));
+    if (opt<2) // cross_entropy or sum_squared_errors                                                               
+      T->copylabels(D);
+    else if (opt==2) // autoencoder                                                                                 
+      T->copyfromData(D);
   }
 
   if (opt==0) {// Softmax, CrossEnt
