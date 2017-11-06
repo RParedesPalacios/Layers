@@ -297,8 +297,7 @@ Tensor::~Tensor()
   #ifdef fGPU
   else
   {
-	int asadfafd=0;
-    //gpu_tensor_op.destroyTensor(gptr);
+    gpu_tensor_op.destroyTensor(this->gptr);
   }
   #endif
 }
@@ -1210,11 +1209,11 @@ void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double 
   if (D==NULL) {
     Tensor *Res=new Tensor(T->a,T->b);
 
-    Tensor::sum(1,T,0,1,N,0,Res,0); // T-N
+    Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
     Tensor::el_mult(Res,0,Res,0,Res,0); //(T-N)*(T-N)
     mse+=Res->sum()/T->b;
 
-    Tensor::sum(1,T,0,1,N,0,Res,0); // T-N
+    Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
     if(useCPU)
     {
       Res->abs();
@@ -1257,20 +1256,29 @@ void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double 
  
      std->copyStatistics(D,1);//copy std
      mu->copyStatistics(D,2);//copy mean
+     
+//     mu->set(0.0);
+//     std->set(1.0);
 
-    gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,std->gptr,&(N->gsp),1,0);//product by std     
-    gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,std->gptr,&(N->gsp),1,0);     
+     printDebug(std->gptr,"",std->gsp.row,std->gsp.col);
+     printDebug(mu->gptr,"",mu->gsp.row,mu->gsp.col);
+     getchar();
+     gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,std->gptr,&(N->gsp),1,0);//product by std     
+     gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,std->gptr,&(N->gsp),1,0);     
     
      gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,mu->gptr,&(N->gsp),0,0);//add mean     
      gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,mu->gptr,&(N->gsp),0,0);     
-     Tensor::sum(1,Tn,0,1,Nn,0,Res,0); // T-N
-     Tensor::el_mult(Res,0,Res,0,Res,0); //(T-N)*(T-N)
-     mse+=Res->sum()/T->b;
 
-     Tensor::sum(1,Tn,0,1,Nn,0,Res,0); // T-N
+     Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
+     
+     Tensor::el_mult(Res,0,Res,0,Res,0); //(T-N)*(T-N)
+
+     mse+=Res->sum()/T->b*-1;
+     Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
      float aux=0;
      gpu_tensor_op.sum_abs(Res->gptr,&(Res->gsp),&aux);
      mae+=aux/T->b;
+
      delete Res;
      delete Tn;
      delete Nn; 
