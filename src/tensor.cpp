@@ -149,6 +149,22 @@ Tensor::Tensor(int d1,int d2,int d3,int d4)
     ptr[i]=new Tensor(b,c,d);
 }
 
+// Cloning                                                                           
+Tensor * Tensor::Clone()
+{
+  Tensor *N;
+
+  if (dim==1) N=new Tensor(a);
+  else if (dim==2) N=new Tensor(a,b);
+  else if (dim==3) N=new Tensor(a,b,c);
+  else N=new Tensor(a,b,c,d);
+
+  N->copy(this);
+
+  return N;
+}
+
+
 /////
 // Only for 4D Tensors
 //Juan: Not implemented for the moment
@@ -1686,12 +1702,18 @@ void Tensor::activation(Tensor *E,Tensor *N,int act)
 }
 
 
-void Tensor::print()
+void Tensor::print(const char *cad="")
 {
+  fprintf(stderr,"%s\n",cad);
+  if (dim==1) {
+    for(int i=0;i<a;i++)
+      fprintf(stderr,"%1.3f ",ptr1(i));
+    fprintf(stderr,"\n");
+  }
   if (dim==2) {
     for(int i=0;i<a;i++) {
       for(int j=0;j<b;j++)
-	fprintf(stderr,"%1.3f ",ptr2(i,j));
+        fprintf(stderr,"%1.3f ",ptr2(i,j));
       fprintf(stderr,"\n");
     }
   }
@@ -1708,6 +1730,8 @@ void Tensor::print()
     }
   }
 }
+
+
 //Juan: implemented
 void Tensor::dactivation(Tensor *E,Tensor *N, Tensor *D, int act) 
 {
@@ -1885,7 +1909,7 @@ void Tensor::Convol(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int 
 
 
 
-// REDUCED FUNCTIONS 2D <--> 1D
+// REDUCED FUNCTIONS 2D <--> 1D                                                      
 void Tensor::reduceTosum(Tensor *A, Tensor *B,int row)
 {
   if (A->dim!=2) msgerr("reduceTosum","error A dim!=2\n");
@@ -1896,23 +1920,23 @@ void Tensor::reduceTosum(Tensor *A, Tensor *B,int row)
       #pragma omp parallel for
       for(int i=0;i<A->b;i++) {
         B->ptr1(i)=0;
-	for(int j=0;j<A->a;j++)
-	  B->ptr1(i)+=A->ptr2(j,i);
+        for(int j=0;j<A->a;j++)
+          B->ptr1(i)+=A->ptr2(j,i);
       }
     }
     else {
       #pragma omp parallel for
       for(int i=0;i<A->a;i++) {
-	B->ptr1(i)=0;
-	for(int j=0;j<A->b;j++)
-	  B->ptr1(i)+=A->ptr2(i,j);
+        B->ptr1(i)=0;
+        for(int j=0;j<A->b;j++)
+          B->ptr1(i)+=A->ptr2(i,j);
       }
     }
   }
 #ifdef fGPU
   else
     {
-  
+
     }
 #endif
 }
@@ -1937,7 +1961,7 @@ void Tensor::reduceTovariance(Tensor *A, Tensor *B,int row)
   if (B->dim!=1) msgerr("reduceTovariance","error B dim!=1\n");
 
   Tensor *M;
-  
+
   if (row)
     M=new Tensor(A->b);
   else
@@ -1946,7 +1970,7 @@ void Tensor::reduceTovariance(Tensor *A, Tensor *B,int row)
   Tensor *AM=new Tensor(A->a,A->b);
 
   Tensor::reduceTomean(A,M,row);
-  
+
   Tensor::reduced_sum(1,A,-1,M,AM,0,row);
   Tensor::el_mult(AM,0,AM,0,AM,0);
 
@@ -1956,7 +1980,8 @@ void Tensor::reduceTovariance(Tensor *A, Tensor *B,int row)
   delete AM;
 }
 
-void Tensor::reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int inc,int row)
+void Tensor::reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int inc,\
+			 int row)
 {
   if (A->dim!=2) msgerr("reduced_sum","error A dim!=2\n");
   if (B->dim!=1) msgerr("reduced_sum","error B dim!=1\n");
@@ -1966,25 +1991,24 @@ void Tensor::reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int 
     if (row)
       #pragma omp parallel for
       for(int i=0;i<A->a;i++)
-	for(int j=0;j<A->b;j++)
-	  if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
-	  else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
+        for(int j=0;j<A->b;j++)
+          if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
+          else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
     else
       #pragma omp parallel for
       for(int i=0;i<A->a;i++)
-	for(int j=0;j<A->b;j++)
-	  if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
-	  else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
+        for(int j=0;j<A->b;j++)
+          if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
+          else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
   }
   #ifdef fGPU
   else
     {
-      
+
     }
 #endif
-  
-}
 
+}
 void Tensor::reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int row)
 {
   if (A->dim!=2) msgerr("reduced_div","error A dim!=2\n");
@@ -1995,25 +2019,26 @@ void Tensor::reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int row)
     if (row)
       #pragma omp parallel for
       for(int i=0;i<A->a;i++)
-	for(int j=0;j<A->b;j++)
-	  if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(j);
-	  else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(j);
+        for(int j=0;j<A->b;j++)
+          if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(j);
+          else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(j);
     else
       #pragma omp parallel for
       for(int i=0;i<A->a;i++)
-	for(int j=0;j<A->b;j++)
-	  if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(i);
-	  else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(i);
+        for(int j=0;j<A->b;j++)
+          if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(i);
+          else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(i);
 
   }
 #ifdef fGPU
   else
     {
-      
+
     }
 #endif
-  
+
 }
+
 void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row)
 {
   if (A->dim!=2) msgerr("reduced_mult","error A dim!=2\n");
@@ -2024,141 +2049,26 @@ void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row)
     if (row)
       #pragma omp parallel for
       for(int i=0;i<A->a;i++)
-	for(int j=0;j<A->b;j++)
-	  if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(j);
-	  else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(j);
+        for(int j=0;j<A->b;j++)
+          if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(j);
+          else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(j);
     else
       #pragma omp parallel for
       for(int i=0;i<A->a;i++)
-	for(int j=0;j<A->b;j++)
-	  if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(i);
-	  else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(i);
+        for(int j=0;j<A->b;j++)
+          if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(i);
+          else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(i);
 
   }
 #ifdef fGPU
   else
     {
-      
+
     }
 #endif
-  
-}
-
-
-// FOR BN
-
-void Tensor::forwardBN_training(int batch,Tensor *E,Tensor *bn_mean,Tensor *bn_var,Tensor *bn_E,Tensor *bn_g,Tensor *bn_b,Tensor *BNE,Tensor *bn_gmean,Tensor *bn_gvar,int bnc,int noiser,LType noisesd) 
-{
-  
-  //CPU
-#pragma omp parallel for
-  for(int i=0;i<E->b;i++) {
-    int b;
-    float m,var,eps=0.00001;
-    int cn=(i*bnc%LUT);
-    m=0;
-    for(b=0;b<batch;b++)
-      m+=E->ptr2(b,i);
-    m/=batch;
-    bn_mean->ptr1(i)=m;
-
-    var=0;
-    for(b=0;b<batch;b++)
-      var+=(m-E->ptr2(b,i))*(m-E->ptr2(b,i));
-    var/=(batch-1);
-    bn_var->ptr1(i)=var;
-
-    for(b=0;b<batch;b++) {
-      bn_E->ptr2(b,i)=(E->ptr2(b,i)-bn_mean->ptr1(i))/sqrt(bn_var->ptr1(i)+eps); //this is \hat{x}
-      if (noiser>0.0) {
-	if (noiser>=un[(cn++)%LUT])
-	  bn_E->ptr2(b,i)+=noisesd*gn[(cn++)%LUT];
-      }
-      BNE->ptr2(b,i)=(bn_g->ptr1(i)*bn_E->ptr2(b,i))+bn_b->ptr1(i);
-    }
-  }
-  bn_gmean->ptr1+=bn_mean->ptr1;
-  bn_gvar->ptr1+=bn_var->ptr1;
-}
-
-void Tensor::forwardBN_inference(int batch,Tensor *E,Tensor *bn_gmean,Tensor *bn_gvar,Tensor *bn_E,Tensor *bn_g,Tensor *bn_b,Tensor *BNE,int bnc) 
-{
-  //CPU
-  for(int i=0;i<E->b;i++) {
-    int b;
-    float var,eps=0.00001;
-
-    for(b=0;b<batch;b++){
-      bn_E->ptr2(b,i)=(E->ptr2(b,i)-bn_gmean->ptr1(i)/bnc)/sqrt(bn_gvar->ptr1(i)/bnc+eps);
-      BNE->ptr2(b,i)=(bn_g->ptr1(i)*bn_E->ptr2(b,i))+bn_b->ptr1(i);
-    }
-  }
-}
-
-void Tensor::backwardBN(int batch,
-			Tensor *E,
-			Tensor *bn_E,
-			Tensor *bn_g,
-			Tensor *bn_mean,
-			Tensor *bn_var,
-			Tensor *Delta,
-			Tensor *gbn_g,
-			Tensor *gbn_b,
-			Tensor *gbn_E,
-			Tensor *gbn_mean,
-			Tensor *gbn_var
-			)
-{
-  int i;
-#pragma omp parallel for
-  for(int i=0;i<bn_E->b;i++) {
-    int b;
-    double m,var,eps=0.00001;
-    double sqvar,var32;
-
-    m=batch;
-
-    //1 Gamma
-    gbn_g->ptr1(i)=0.0;
-    for(b=0;b<batch;b++)
-      gbn_g->ptr1(i)+=Delta->ptr2(b,i)*bn_E->ptr2(b,i);
-
-    //2 Beta
-    gbn_b->ptr1(i)=0.0;
-    for(b=0;b<batch;b++)
-      gbn_b->ptr1(i)+=Delta->ptr2(b,i);
-
-
-    //3 bnE
-    for(b=0;b<batch;b++)
-      gbn_E->ptr2(b,i)=Delta->ptr2(b,i)*bn_g->ptr1(i);
-    
-    
-    //4 Var
-    sqvar=sqrt(bn_var->ptr1(i)+eps);
-    var32=(bn_var->ptr1(i)+eps)*sqvar;
-    
-    gbn_var->ptr1(i)=0;
-    for(b=0;b<batch;b++)
-      gbn_var->ptr1(i)+=-0.5*gbn_E->ptr2(b,i)*(E->ptr2(b,i)-bn_mean->ptr1(i))/var32;
-
-
-    //5 Mean
-    gbn_mean->ptr1(i)=0;
-    for(b=0;b<batch;b++) {
-      gbn_mean->ptr1(i)+=-gbn_E->ptr2(b,i)/sqvar;
-      //gbn_mean(i)+=-2*gbn_var(i)*(E(b,i)-bn_mean(i))/m;
-    }
-
-    //6 x
-    for(b=0;b<batch;b++) {
-      Delta->ptr2(b,i)=gbn_E->ptr2(b,i)/sqvar;
-      Delta->ptr2(b,i)+=gbn_var->ptr1(i)*2*(E->ptr2(b,i)-bn_mean->ptr1(i))/m;
-      Delta->ptr2(b,i)+=gbn_mean->ptr1(i)/m;
-    }
-  }
 
 }
+
 
 
 

@@ -14,18 +14,11 @@
 
 #include "Eigen/Dense"
 
-#define PRINT 0
+
 /// Eigen
 using namespace Eigen;
 using namespace std;
 
-
-/////////
-//Helper funciton
-#ifdef fGPU
-#include "./gpu/execution.h"
-#endif
-////////
 
 ////////////////////////////////////
 ///// FULLY CONNECTED LAYER CLASS
@@ -165,10 +158,7 @@ void FLayer::addchild(Layer *li)
       
       // initialice here!
       double s=sqrt(2.0/l->din);
-      //W->subTensor(lout)->set_rand_gauss(0,s);
-      for (int i=0;i< W->subTensor(lout)->a;i++)
-        for (int j=0;j< W->subTensor(lout)->b;j++)
-            W->subTensor(lout)->set(i,j,gauss(0,s));//set_rand_gauss(0,s);
+      W->subTensor(lout)->set_rand_gauss(0,s);
       b->subTensor(lout)->set(0.1);
 
       gW->subTensor(lout)->resize(din,l->din);
@@ -260,7 +250,8 @@ void FLayer::resetstats()
 
   bn_gmean->set(0.0);
   bn_gvar->set(0.0);
-
+  
+  fprintf(stderr,"%s reset stats\n",name);
 }
 
 
@@ -269,29 +260,6 @@ void FLayer::resetstats()
 //////////////////////
 void FLayer::fBN()
 {
-  if (trmode) {
-    bnc++;
-
-    Tensor::forwardBN_training(batch,
-                               E,
-                               bn_mean,
-                               bn_var,
-                               bn_E,
-                               bn_g,
-                               bn_b,
-                               BNE,
-                               bn_gmean,
-                               bn_gvar,
-                               bnc,
-                               noiser,
-                               noisesd);
-    
-  }
-  else { // testmode                                                                                           
-    Tensor::forwardBN_inference(batch,E,bn_mean,bn_var,bn_E,bn_g,bn_b,BNE,bnc);
-  }
-
-  /*
   int i,j;
   float eps=0.0001;
   
@@ -299,22 +267,28 @@ void FLayer::fBN()
     Tensor::reduceTomean(E,bn_mean,1);  
     Tensor::reduceTovariance(E,bn_var,1);
 
+
     Tensor::inc(bn_mean,bn_gmean);
     Tensor::inc(bn_var,bn_gvar);
     bnc++;
-    
-    bn_var->add(eps); 
-    bn_var->sqr();  
+
+    Tensor *sd=bn_var->Clone();
+
+    sd->add(eps); 
+    sd->sqr();  
     
     Tensor::reduced_sum(1,E,-1,bn_mean,bn_E,0,1);
-    Tensor::reduced_div(bn_E,bn_var,bn_E,0,1);
+    Tensor::reduced_div(bn_E,sd,bn_E,0,1);
 
-    if ((trmode)&&(noiser>0.0)) {
+
+    if (noiser>0.0) {
       bn_E->add_noise_gauss(noiser,0.0,noisesd);
     }
 
     Tensor::reduced_mult(bn_E,bn_g,BNE,0,1);
     Tensor::reduced_sum(1,BNE,1,bn_b,BNE,0,1);
+
+    delete sd;
   }
   else { // testmode
     Tensor::reduced_sum(1,E,-1.0/bnc,bn_gmean,bn_E,0,1);
@@ -328,14 +302,16 @@ void FLayer::fBN()
     Tensor::reduced_mult(bn_E,bn_g,BNE,0,1);
     Tensor::reduced_sum(1,BNE,1,bn_b,BNE,0,1);
   }
-*/
+
 }
-extern bool useCPU;
+
+
 void FLayer::forward()
 {
   int k,i,j,z,r,c;
   FLayer *l;
   CLayer *cin;
+
   if (reshape) {
     
     if (Lin[0]->type==OLAYER) {
@@ -362,7 +338,6 @@ void FLayer::forward()
       fBN();
     }  
     else {
-      // Gaussian Noise
       if ((trmode)&&(noiser>0.0)) {
 	E->add_noise_gauss(noiser,0.0,noisesd);
       }
@@ -394,72 +369,6 @@ void FLayer::forward()
     if (VERBOSE) fprintf(stderr,"N(%s,%d) = %f\n",name,act,N->sum());
   }
 
-//////////////PRINT OUTPU FROM SOFTMAX
-        if (PRINT)
-        {
-        if (act==ACT_SOF)
-        {
-        if(useCPU)
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_N.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<N->a;j++)
-        {
-          for (int q=0;q<N->b;q++)
-              fprintf(f," %f ",N->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-        f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_T.txt","w");
-        if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<T->a;j++)
-        {
-          for (int q=0;q<T->b;q++)
-              fprintf(f," %f ",T->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-        }
-        else
-        {
-          
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_N.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<N->a;j++)
-        {
-          for (int q=0;q<N->b;q++)
-              fprintf(f," %f ",N->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-        f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_T.txt","w");
-        if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<T->a;j++)
-        {
-          for (int q=0;q<T->b;q++)
-              fprintf(f," %f ",T->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-
-        }
-        printf("Get char en forward\n");
-        getchar();
-        }
-        }
- /////////////////////////////////////
-
   //////////////////////////////
   // FORWARD TO CHILD LAYERS
   //////////////////////////////
@@ -475,33 +384,6 @@ void FLayer::forward()
 	
 	//bias
 	if (!bn) l->E->inc_2Drowwise(b->subTensor(i));
- /*printf("EL BIAS\n");
-  if (useCPU)
-  {
-   printf("Entra\n");
-   for (int j=0;j<(b->subTensor(i)->a);j++)
-	printf(" %f ",b->subTensor(i)->ptr1(j));
-   printf("\n");
-  }
-  else
-   printDebug(b->subTensor(0)->gptr,"" ,b->subTensor(i)->gsp.row,b->subTensor(i)->gsp.col);
- 
-  printf("FIN\n"); 
-  getchar();
-  printf("EL PESO\n");
-  if (useCPU)
-  {
-   printf("Entra\n");
-   for (int j=0;j<1;j++)
-        for (int q=0;q<(W->subTensor(i)->b);q++)
-	printf(" %f ",W->subTensor(i)->ptr2(j,q));
-   printf("\n");
-  }
-  else
-   printDebug(W->subTensor(i)->gptr,"" ,1,W->subTensor(i)->gsp.col);
-   getchar();
-*/
-
       }
     }
   }
@@ -595,65 +477,49 @@ void FLayer::printkernels(FILE *fe)
 //////////////////////////////////////////
 void FLayer::bBN()
 {
-  Tensor::backwardBN(batch,
-		     E,
-		     bn_E,
-		     bn_g,
-		     bn_mean,
-		     bn_var,
-		     Delta,
-		     gbn_g,
-		     gbn_b,
-		     gbn_E,
-		     gbn_mean,
-                        gbn_var
-		     ); 
-  /*
- 
-  Tensor *A=new Tensor(Delta->a,Delta->b);
-  Tensor *Tvar32=new Tensor(bn_var->a);
-  Tensor *Tsqvar=new Tensor(bn_var->a);
-  float eps=0.0001;
+    Tensor *A=new Tensor(Delta->a,Delta->b);
+    Tensor *Tvar32=bn_var->Clone();
+    Tensor *Tsqvar=bn_var->Clone();
+    float eps=0.0001;
   
-  //1 Gamma
-  Tensor::el_mult(Delta,0,bn_E,0,A,0);
-  Tensor::reduceTosum(A,gbn_g,1);
+    //1 Gamma
+    Tensor::el_mult(Delta,0,bn_E,0,A,0);
+    Tensor::reduceTosum(A,gbn_g,1);
 
-  //2 Beta  
-  Tensor::reduceTosum(Delta,gbn_b,1);
+    //2 Beta  
+    Tensor::reduceTosum(Delta,gbn_b,1);
   
-  //3 bnE
-  Tensor::reduced_mult(Delta,bn_g,gbn_E,0,1);
+    //3 bnE
+    Tensor::reduced_mult(Delta,bn_g,gbn_E,0,1);
   
-  //4 Var 
-  Tsqvar->copy(bn_var);
-  Tsqvar->add(eps);
-  Tsqvar->sqr();
-  Tvar32->copy(bn_var);
-  Tvar32->add(eps);
+    //4 Var 
+    Tsqvar->add(eps);
+    Tsqvar->sqr();
 
-  Tensor::el_mult(Tvar32,0,Tsqvar,0,Tvar32,0);
-  Tensor::reduced_sum(-0.5,E,0.5,bn_mean,A,0,1);
-  Tensor::reduced_div(A,Tvar32,A,0,1);
-  Tensor::el_mult(A,0,gbn_E,0,A,0);
-  Tensor::reduceTosum(A,gbn_var,1);
+    Tvar32->add(eps);
 
-  //5 Mean
-  Tensor::reduced_div(gbn_E,Tsqvar,A,0,1);
-  A->mul(-1);
-  Tensor::reduceTosum(A,gbn_mean,1);
+    Tensor::el_mult(Tvar32,0,Tsqvar,0,Tvar32,0);
+    Tensor::reduced_sum(-0.5,E,0.5,bn_mean,A,0,1);
+    Tensor::reduced_div(A,Tvar32,A,0,1);
+    Tensor::el_mult(A,0,gbn_E,0,A,0);
+    Tensor::reduceTosum(A,gbn_var,1);
 
-  //6 Delta
-  Tensor::reduced_div(gbn_E,Tsqvar,Delta,0,1);
-  Tensor::reduced_sum(2.0/batch,E,-2.0/batch,bn_mean,A,0,1);
-  Tensor::reduced_mult(A,gbn_var,A,0,1);
-  Tensor::reduced_sum(1,A,1.0/batch,gbn_mean,Delta,1,1);
+    //5 Mean
+    Tensor::reduced_div(gbn_E,Tsqvar,A,0,1);
+    A->mul(-1);
+    Tensor::reduceTosum(A,gbn_mean,1);
+
+    //6 Delta
+    Tensor::reduced_div(gbn_E,Tsqvar,Delta,0,1);
+    Tensor::reduced_sum(2.0/batch,E,-2.0/batch,bn_mean,A,0,1);
+    Tensor::reduced_mult(A,gbn_var,A,0,1);
+    Tensor::reduced_sum(1,A,1.0/batch,gbn_mean,Delta,1,1);
 
     
-  delete A;
-  delete Tvar32;
-  delete Tsqvar;
-  */
+    delete A;
+    delete Tvar32;
+    delete Tsqvar;
+
 }
 
 
@@ -689,105 +555,10 @@ void FLayer::backward()
 	Tensor::dactivation(BNE,N,dE,act);
       else 
 	Tensor::dactivation(E,N,dE,act);
-        if(PRINT)
-        {
-        if(useCPU)
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_Delta_preact.txt","w");
-           if (f==NULL)
-		exit(-1);
 
-	for (int j=0;j<Delta->a;j++)
-        {
-          for (int q=0;q<Delta->b;q++)
-              fprintf(f," %f ",Delta->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-        }
-        else
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_Delta_preact.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<Delta->a;j++)
-        {
-         printf("%d\n",j);
-          for (int q=0;q<Delta->b;q++)
-              fprintf(f," %f ",Delta->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-        }
-        if(useCPU)
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_dE.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<dE->a;j++)
-        {
-          for (int q=0;q<dE->b;q++)
-              fprintf(f," %f ",dE->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-        }
-        else
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_dE.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<dE->a;j++)
-        {
-         printf("%d\n",j);
-          for (int q=0;q<dE->b;q++)
-              fprintf(f," %f ",dE->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-        }
-        }
     Tensor::el_mult(Delta,0,dE,0,Delta,0);
-        if (PRINT)
-        {
-        if(useCPU)
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_Delta.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<Delta->a;j++)
-        {
-          for (int q=0;q<Delta->b;q++)
-              fprintf(f," %f ",Delta->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-        }
-        else
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_Delta.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<Delta->a;j++)
-        {
-         printf("%d\n",j);
-          for (int q=0;q<Delta->b;q++)
-              fprintf(f," %f ",Delta->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-        }
-        }
-
     }
+
 
     if (bn) bBN();
 
@@ -803,195 +574,18 @@ void FLayer::backward()
 
 	  // Compute grads
 	  if (VERBOSE) fprintf(stderr,"%f %f -->\n",l->N->sum(),Delta->sum());
-//////////////////PRINTING
-        if (PRINT)
-        {
-        if(useCPU)
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_gW.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<l->gW->subTensor(ind)->a;j++)
-        {
-          for (int q=0;q<l->gW->subTensor(ind)->b;q++)
-              fprintf(f," %f ",l->gW->subTensor(ind)->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-        }
-        else
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_gW.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<l->gW->subTensor(ind)->a;j++)
-        {
-          for (int q=0;q<l->gW->subTensor(ind)->b;q++)
-              fprintf(f," %f ",l->gW->subTensor(ind)->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-        }
-        
-
-//////////////////////
-
-///////////////////////////
-
-        if(useCPU)
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_N_backward.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<l->N->a;j++)
-        {
-          for (int q=0;q<l->N->b;q++)
-              fprintf(f," %f ",l->N->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-        }
-        else
-        {
-        FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_N_backward.txt","w");
-        if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<l->N->a;j++)
-        {
-          for (int q=0;q<l->N->b;q++)
-              fprintf(f," %f ",l->N->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-        }
-        }
-///////////////////////////
-
 
 	  Tensor::mult(l->N,1,Delta,0,l->gW->subTensor(ind),0);
 
-//////////////////////
-        if (PRINT)
-        {
-        if(useCPU)
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_gw.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<l->gW->subTensor(ind)->a;j++)
-        {
-          for (int q=0;q<l->gW->subTensor(ind)->b;q++)
-              fprintf(f," %f ",l->gW->subTensor(ind)->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-        }
-        else
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_gw.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<l->gW->subTensor(ind)->a;j++)
-        {
-          for (int q=0;q<l->gW->subTensor(ind)->b;q++)
-              fprintf(f," %f ",l->gW->subTensor(ind)->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-        }
-        }
-
-///////////////////
 	  if (!l->bn) Tensor::sumcol(l->gb->subTensor(ind),Delta);
-
-/////////////////////////
-        if (PRINT)
-        {
-        if(useCPU)
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_gb.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int q=0;q<l->gb->subTensor(ind)->a;q++)
-              fprintf(f," %f ",l->gb->subTensor(ind)->ptr1(q));
-
-         fprintf(f,"\n");
-        fclose(f);
-        }
-        else
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_gb.txt","w");
-
-           if (f==NULL)
-		exit(-1);
-
-	for (int q=0;q<l->gb->subTensor(ind)->a;q++)
-              fprintf(f," %f ",l->gb->subTensor(ind)->get(q));
-
-         fprintf(f,"\n");
-        fclose(f);
-
-        }
-        }
-
-
-////////////////////////////
-
-
 
 	  // back-propagate Delta
 	  Tensor::mult(Delta,0,l->W->subTensor(ind),1,l->Delta,1);
- //////////////////////
-        if (PRINT)
-        {
-        if(useCPU)
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_delta_prop.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<l->Delta->a;j++)
-        {
-          for (int q=0;q<l->Delta->b;q++)
-              fprintf(f," %f ",l->Delta->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-        }
-        else
-        {
-           FILE *f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_delta_prop.txt","w");
-           if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<l->Delta->a;j++)
-        {
-         printf("%d\n",j);
-          for (int q=0;q<l->Delta->b;q++)
-              fprintf(f," %f ",l->Delta->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-        }
-        }
-///////////////////
-  
+   
 	}
       }
     }
   }
-//printf("get char en backward\n");
-//getchar();
 }
 
 
@@ -1002,79 +596,17 @@ void FLayer::applygrads()
 
 
   for(k=0;k<lout;k++) {
-/*
-   printf("EL MOMENTUM DEL PESO\n");
-  if (useCPU)
-  {
-   printf("Entra\n");
-   for (int j=0;j<1;j++)
-      for (int q=0;q<(pgW->subTensor(k)->b);q++)
-	printf(" %f ",pgW->subTensor(k)->ptr2(j,q));
-   printf("\n");
-  }
-  else
-   printDebug(pgW->subTensor(k)->gptr,"" ,1,pgW->subTensor(k)->gsp.col);
- 
-  printf("FIN\n"); 
-  getchar();
-
-   printf("EL GRADIENTE DEL PESO\n");
-  if (useCPU)
-  {
-   printf("Entra\n");
-   for (int j=0;j<1;j++)
-      for (int q=0;q<(gW->subTensor(k)->b);q++)
-	printf(" %f ",gW->subTensor(k)->ptr2(j,q));
-   printf("\n");
-  }
-  else
-   printDebug(gW->subTensor(k)->gptr,"" ,1,gW->subTensor(k)->gsp.col);
- 
-  printf("FIN\n"); 
-  getchar();
-*/
-
     Tensor::sum((mu/batch),gW->subTensor(k),0,mmu,pgW->subTensor(k),0,pgW->subTensor(k),0);
     Tensor::inc(pgW->subTensor(k),W->subTensor(k));
 
     if (VERBOSE) fprintf(stderr,"W (%s) norm = %f\n",name,W->subTensor(k)->sum());
-/*
-   printf("EL MOMENTUM DEL PESO\n");
-  if (useCPU)
-  {
-   printf("Entra\n");
-   for (int j=0;j<1;j++)
-      for (int q=0;q<(pgW->subTensor(k)->b);q++)
-	printf(" %f ",pgW->subTensor(k)->ptr2(j,q));
-   printf("\n");
-  }
-  else
-   printDebug(pgW->subTensor(k)->gptr,"" ,1,pgW->subTensor(k)->gsp.col);
- 
-  printf("FIN\n"); 
-  getchar();
-*/
 
 
     // BIAS
     Tensor::sum((mu/batch),gb->subTensor(k),0,mmu,pgb->subTensor(k),0,pgb->subTensor(k),0);
     Tensor::inc(pgb->subTensor(k),b->subTensor(k));
-/*
-   printf("EL MOMENTUM DEL PESO\n");
-  if (useCPU)
-  {
-   printf("Entra\n");
-   for (int j=0;j<1;j++)
-      for (int q=0;q<(pgW->subTensor(k)->b);q++)
-	printf(" %f ",pgW->subTensor(k)->ptr2(j,q));
-   printf("\n");
-  }
-  else
-   printDebug(pgW->subTensor(k)->gptr,"" ,1,pgW->subTensor(k)->gsp.col);
- 
-  printf("FIN\n"); 
-  getchar();
-*/
+
+
     // REGULARIZATION    
     if (l2!=0.0)
       Tensor::sc_mult(W->subTensor(k),(1-l2),W->subTensor(k),0);
@@ -1377,15 +909,19 @@ void OFLayer::backward()
   int i,j,k,p;
   double sum;
   
-
+  
   if (L!=NULL) {
     T->copy(((FLayer *)L)->N);
   }
   else {
-    if (opt<2) // cross_entropy or sum_squared_errors                                                               
-      T->copylabels(D);
-    else if (opt==2) // autoencoder                                                                                 
-      T->copyfromData(D);
+    if (opt==2)
+      for(i=0;i<batch;i++)
+	for(j=0;j<din;j++)
+	  T->set(i,j,D->M(D->getpos(i),j));
+    else
+      for(i=0;i<batch;i++)
+	for(j=0;j<din;j++)
+	  T->set(i,j,D->M(D->getpos(i),j+D->dim));
   }
 
   if (opt==0) {// Softmax, CrossEnt
@@ -1420,69 +956,6 @@ void OFLayer::backward()
   }
 
   if (VERBOSE) fprintf(stderr,"OFLayer %s Delta norm %f\n",name,Delta->sum());
-FILE *f;
-  if (PRINT)
-  {
-   if (useCPU)
- {
- 
-   f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_T.txt","w");
-        if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<T->a;j++)
-        {
-          for (int q=0;q<T->b;q++)
-              fprintf(f," %f ",T->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-   f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_cpu_Delta_output.txt","w");
-        if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<T->a;j++)
-        {
-          for (int q=0;q<T->b;q++)
-              fprintf(f," %f ",Delta->ptr2(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
- }
- else
- {
-   f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_T.txt","w");
-        if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<T->a;j++)
-        {
-          for (int q=0;q<T->b;q++)
-              fprintf(f," %f ",T->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-
-
-   f = fopen("/home/jmaronasm/Layers_update_final/Layers/file_gpu_Delta_output.txt","w");
-        if (f==NULL)
-		exit(-1);
-
-	for (int j=0;j<T->a;j++)
-        {
-          for (int q=0;q<T->b;q++)
-              fprintf(f," %f ",Delta->get(j,q));
-         fprintf(f,"\n");
-        }
-        fclose(f);
-
-  }
-  }
- //printf("Getchar backward oflayer\n");
- //getchar();
   FLayer::backward();
 
 }

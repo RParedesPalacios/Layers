@@ -59,7 +59,8 @@ class Tensor {
   Tensor(int a,int b);
   Tensor(int a,int b,int c);
   Tensor(int a,int b,int c,int d);
-  
+
+  Tensor *Clone();  
   void Transpose();
 
   void replace_unset();
@@ -79,6 +80,7 @@ class Tensor {
   void copylabels(Data *D);
   void copyStatistics(Data *D,int tipe);
 
+  
   void set(LType val);  
   void set(int a,LType val);
   void inc(int a,LType val);
@@ -114,7 +116,8 @@ class Tensor {
   void add_noise_gauss(LType noiser,LType m,LType noisesd);
   
   // I/O
-  void print();
+  
+  void print(const char *cad);
   void save(FILE *fs);
   void load(FILE *fs);
 
@@ -152,41 +155,12 @@ class Tensor {
   static void reduceTomean(Tensor *A, Tensor *B,int rowcol);
   static void reduceTosum(Tensor *A, Tensor *B,int rowcol);
   static void reduceTovariance(Tensor *A, Tensor *B,int rowcol);
-  static void reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int inc,int row);
+  static void reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int inc\
+			  ,int row);
   static void reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int row);
   static void reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row);
 
 
-
-  static void forwardBN_training(int batch,
-				 Tensor *E,
-				 Tensor *bn_mean,
-				 Tensor *bn_var,
-				 Tensor *bn_E,
-				 Tensor *bn_g,
-				 Tensor *bn_b,
-				 Tensor *BNE,
-				 Tensor *bn_gmean,
-				 Tensor *bn_gvar,
-				 int bnc,
-				 int noiser,
-				 LType noisesd);
-
-  static void forwardBN_inference(int batch,Tensor *E,Tensor *bn_mean,Tensor *bn_var,Tensor *bn_E,Tensor *bn_g,Tensor *bn_b,Tensor *BNE,int bnc); 
-
-  static void backwardBN(int batch,
-			Tensor *E,
-			Tensor *bn_E,
-			Tensor *bn_g,
-			Tensor *bn_mean,
-			Tensor *bn_var,
-			Tensor *Delta,
-			Tensor *gbn_g,
-			Tensor *gbn_b,
-			Tensor *gbn_E,
-			Tensor *gbn_mean,
-			Tensor *gbn_var
-			 );
 
 
 };
