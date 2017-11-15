@@ -687,11 +687,11 @@ network N1 {
 &nbsp;
 ## Scripts
 
-Script is a Layer block where the user run commands. There are commands associtated to networks, data and variables and expressions
+Script is a Layer block where the user run commands. There are commands associtated to networks, data, variables and expressions
 
 ### Variables and Expressions
 
-Layers admit to declare variables and evaluate mathematical expressions:
+Layers allows to use variables and evaluate mathematical expressions:
 
 ~~~c
 script {
@@ -724,8 +724,12 @@ name | action
 **center** | normalize mean=0
 
 
-This functions are apply to a **range** of the data. To define a range you can use the **[..]** operator. Some examples:
+This functions are apply to a **range** of the data. To define a range you can use the **[..]** operator. The range operator must have two parameters: rows and cols. **[row,col]**. And user can define intervals of rows and cols: **[row1:row2,col1:col2]**. Especial cols are "S" and "T" for fetures(dim) and targets(out) respectivelly. 
 
+**IMPORTANT** In a Data with 100 dims and 10 outs, the first 100 cols are dims and the next 10 cols (101-110) are targets. Terefore "S" will refer to cols 1:100 and "T" will refer to cols 101:110. 
+
+
+Some examples:
 
 ~~~c
 script {
@@ -735,7 +739,7 @@ script {
  // Special ranges for columns S(dims) and T(targets)
 
  D1[:,S].div(255.0)  // Divide the all the dims
- D2[:,S].div(255.0)  // "
+ D2[:,S].div(255.0)  // " " " " " 
 
  D1[:,T].div(2.0)    // Divide the all the targets
  D1[:,T].mul(2.0)    // Multiply all the targets
@@ -745,8 +749,8 @@ script {
  D1[:,:].mul(1.0)    // Multiply ALL the data (dims and targets) !!
  D1.mul(1.0)         // The same: Multiply ALL the data (dims and targets) !!
 
- D1[:,1:1].set(0.0)  // Set the first dim to 0.0 for all samples
- D1[:,1].set(0.0)    //  ""  ""
+ D1[:,1:1].set(0.0)  // Set the first col to 0.0 for all samples
+ D1[:,1].set(0.0)    //  " " " "
 
  // Varibles and expressions accepted:
  i=0
@@ -772,11 +776,11 @@ script {
 Beyond the modifications of the values you can copy and create new data from another:
 
 ~~~c
- // Data manipulation
+ // Data manipulation. D3 and D4 have not been defined previously.
  D3.copy(D1)            // Create a new Data copy form D1
  D4.copy(D1[1:100,:])   // Create a new Data copy form some rows of D1
 
- // Copying blocks between datasets
+ // Copying blocks between datasets. D1 and D2 both exit previously.
  D1[1:10,31:100].copy(D2[21:30,101:170])
 ~~~
 
@@ -803,21 +807,21 @@ scripts {
 
 ### Network parameters
 
-	parameter | meaning
-	----------| -----------
-	**mu** |  learning rate. Scaled by batch size [0.0001/batch_size]
-	**mmu**| momentum rate [0.9]
-	**l2** | l2 regularization (weight decay) [0.0]
-	**l1** | l1 regularization	[0.0]	
-	**maxn**| maxnorm regularization [0.0]
-	**noiser**| noise ratio after activation function [0]
-	**noisesd**| standard deviation of noise ($N(0.0,\sigma)$) [0]
-	**drop**| dropout (0<drop<=1) [0.0]
-	**bn** | batch normalization ({0,1}) [0]
-	**act**| activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU) [1]
-	**flip**| to flip horizontally input images ({1,0}) [0]
-	**shift**| to shift randomly input images [0]
-	**lambda**| to scale the cost function
+|parameter | meaning|
+|----------| -----------|
+|**mu** |  learning rate. Scaled by batch size [0.0001/batch_size]|
+**mmu**| momentum rate [0.9]
+**l2** | l2 regularization (weight decay) [0.0]
+**l1** | l1 regularization	[0.0]	
+**maxn**| maxnorm regularization [0.0]
+**noiser**| noise ratio after activation function [0]
+**noisesd**| standard deviation of noise ($N(0.0,\sigma)$) [0]
+**drop**| dropout (0<drop<=1) [0.0]
+**bn** | batch normalization ({0,1}) [0]
+**act**| activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU) [1]
+**flip**| to flip horizontally input images ({1,0}) [0]
+**shift**| to shift randomly input images [0]
+**lambda**| to scale the cost function
 
 
 * Parameters can be modified for one particular layer or data:
