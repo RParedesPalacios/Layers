@@ -122,7 +122,7 @@ data {
 
 >The generative data can be random:{gaussian, uniform} or fixed:{zeros, ones, onehot}. Some >examples:
 
->~~~c
+~~~c
 Data {
 // Generative Data. Data with just one batch of samples and 200 dims
   DZ  [zeros, numnodes=200]          // ... all zeros
@@ -131,19 +131,19 @@ Data {
   DU  [uniform, numnodes=200]        // ... uniform distribution [0:1]
   DH  [oneshot, numnodes=200, pos=15] // ... all zeros but one 1 at position 15
 }
->~~~
+~~~
 >
 
 >### Empty Data 
 
 >Also new data with some size can be defined in order to set values inside later:
 
->~~~c
->Data {
+~~~c
+Data {
   // Create a new Data with 100 rows, 1024 dims and 0 targets
   DN [nrows=100,ncolsample=1024,ncoltarget=0]
 }
->~~~
+~~~
 
 
 
