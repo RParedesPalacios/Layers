@@ -719,11 +719,12 @@ name | action
 **zscore** | normalize mean=0 and sd=1
 **maxmin** | normalize min=0 and max=1
 **center** | normalize mean=0
+**getstats** | copy stats from other data
 
 
-This functions are apply to a **range** of the data. To define a range you can use the **[..]** operator. The range operator must have two parameters: rows and cols. **[row,col]**. And user can define intervals of rows and cols: **[row1:row2,col1:col2]**. Especial cols are "S" and "T" for fetures(dim) and targets(out) respectivelly. 
+This functions can be apply to all the data or a **range** of the data. To define a range you can use the **[..]** operator. The range operator must have two parameters: rows and cols, **[row,col]**. And user can define intervals of rows and cols: **[row1:row2,col1:col2]**. Especial cols are "S" and "T" for fetures(dim) and targets(out) respectivelly. 
 
-**IMPORTANT** In a Data with 100 dims and 10 outs, the first 100 cols are dims and the next 10 cols (101-110) are targets. Terefore "S" will refer to cols 1:100 and "T" will refer to cols 101:110. 
+**IMPORTANT** In a Data with 100 dims and 10 outs, the first 100 cols are dims and the next 10 cols are targets. Terefore "S" will refer to cols 1:100 and "T" will refer to cols 101:110. 
 
 
 Some examples:
@@ -735,7 +736,7 @@ script {
  // Ranges [rows,cols] - [row1:row2,col1:col2].
  // Special ranges for columns S(dims) and T(targets)
 
- D1[:,S].div(255.0)  // Divide the all the dims
+ D1[:,S].div(255.0)  // Divide the all the dims but not targets
  D2[:,S].div(255.0)  // " " " " " 
 
  D1[:,T].div(2.0)    // Divide the all the targets
@@ -753,7 +754,7 @@ script {
  i=0
  D1[:,i+1].set(0.0)
  
- // Data transformation
+ // Data transformation, usually only to dims not to targets
  D1[:,S].zscore()   // Zscore: substract mean and divide by standar deviation
  D2.getstats(D1)    // Copy statistics from D1
  D2[:,S].zscore()   // Zscore of D2 using D1 statistics (copied just before)
@@ -774,8 +775,8 @@ Beyond the modifications of the values you can copy and create new data from ano
 
 ~~~c
  // Data manipulation. D3 and D4 have not been defined previously.
- D3.copy(D1)            // Create a new Data copy form D1
- D4.copy(D1[1:100,:])   // Create a new Data copy form some rows of D1
+ D3.copy(D1)            // Create a new Data copy from D1
+ D4.copy(D1[1:100,:])   // Create a new Data copy from some rows of D1
 
  // Copying blocks between datasets. D1 and D2 both exit previously.
  D1[1:10,31:100].copy(D2[21:30,101:170])
@@ -798,8 +799,87 @@ scripts {
 ~~~
 
 
-
 ### Network functions 
+
+|Function | Meaning|
+|----------| -----------|
+|**train** |  train a number of epochs|
+**forward** | perform a forward through all the network
+**printerrors** | print the errors
+**reseterrors** | reset the errors
+**backward** | perform a backward through all the network
+**update** | perform a weights update with gradients
+**resetstats** | reset the batch norm stats
+**evaluate** | to evaluate the network with other dataset (test)
+
+* An example over MNIST with one FC layer with 1024 units:
+
+
+~~~c
+const{
+ threads=8     // #threads to use
+ batch=100     // batch size
+ device=cpu    // device {cpu,gpu}
+ log="all.log" // log file
+ seed=2329     // seed for random
+}
+
+data {
+  // Load a binary file with MNIST
+  D1 [filename="training.bin", binary]
+  D2 [filename="test.bin", binary]
+}
+
+network N1 {
+ data tr D1
+ data ts D2
+ FI in 
+ F f1 [numnodes=1204]
+ FO outc [classification]
+
+ in->f1
+ f1->outc
+}
+~~~
+
+The easy way:
+
+~~~c
+script {
+	D1[:,S].div(255.0) 
+ 	D2[:,S].div(255.0) 
+
+	N1.train(10)  // train 10 epochs
+}
+~~~
+
+The atomic way:
+
+~~~c
+script {
+
+	D1[:,S].div(255.0)  
+ 	D2[:,S].div(255.0)  
+
+	batches=60000/100      	
+ 	epoch=10
+
+	for e=1:epoch {
+ 		D1.shuffle()
+ 		N1.reseterrors()
+ 		for i=1:batches {
+     		D1.next()
+    		N1.forward()
+     		N1.backward()
+      		N1.update()
+     	}
+ 		N1.printerrors()
+ 		N1.evaluate(D2)
+ 	}
+	
+}
+~~~
+
 
 
 ### Network parameters
