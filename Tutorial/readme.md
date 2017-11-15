@@ -119,7 +119,7 @@ data {
 >### Generative Data
 
 >In the Data block we can define generative data to be used in Layers as random noise input for >instace. Generative data has a batch size. Number of rows is the size of the batch and the number >of dims can be parametrized when it is created. 
-
+>
 >The generative data can be random:{gaussian, uniform} or fixed:{zeros, ones, onehot}. Some >examples:
 
 ~~~c
@@ -133,11 +133,11 @@ Data {
 }
 ~~~
 >
-
+>
 >### Empty Data 
-
+>
 >Also new data with some size can be defined in order to set values inside later:
-
+>
 ~~~c
 Data {
   // Create a new Data with 100 rows, 1024 dims and 0 targets
@@ -237,7 +237,7 @@ network N1 {
 > **ADVANCED**   
 > But also an input layer can be connected to a layer from another network:
 
->~~~c
+~~~c
  network N1 {  
   // Fully connected input 
   FI in [D1]
@@ -251,6 +251,8 @@ network N2 {
   ...
 }
 ~~~ 
+>
+>
 &nbsp;
 
 
@@ -443,9 +445,9 @@ network N1 {
 
 > **ADVANCED**   
 >###  Networks - Layers - O
-
+>
 >* **Operator** layers requires one parameter, the operator:
-
+>
 >  Operator | Meaning
 >-----------|----------
 >*add* | Add the layers connected to the Operator 
@@ -458,7 +460,7 @@ network N1 {
 >*relu* | Relu activation of the layer connected (1)
 >*log* | Log of the layer connected (1)
 
->~~~c
+~~~c
 network N1 { 
   ...
   // Operator Layer
@@ -466,7 +468,8 @@ network N1 {
   ...
 }
 ~~~
-
+>
+>
 &nbsp;
 
 
