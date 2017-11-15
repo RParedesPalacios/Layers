@@ -117,7 +117,6 @@ data {
 
 > **ADVANCED**  
 >### Generative Data
-
 >In the Data block we can define generative data to be used in Layers as random noise input for >instace. Generative data has a batch size. Number of rows is the size of the batch and the number >of dims can be parametrized when it is created. 
 >
 >The generative data can be random:{gaussian, uniform} or fixed:{zeros, ones, onehot}. Some >examples:
@@ -468,8 +467,6 @@ network N1 {
   ...
 }
 ~~~
->
->
 &nbsp;
 
 
