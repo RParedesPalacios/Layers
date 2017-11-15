@@ -1003,7 +1003,43 @@ script {
 
 ### FOR Loops
 
+The syntax is the following
+
+~~~c
+for variable ini:step:end {
+	//instructions
+}
+~~~
+
+step is optional, for instace:
+
+~~~c
+for i=1:2:3 {
+  for j=1:5 {
+   echo i
+   echo j
+   echo -n
+   }
+ }
+~~~
+
+will produce:
+
+~~~c
+1 1 
+1 2 
+1 3 
+1 4 
+1 5 
+3 1 
+3 2 
+3 3 
+3 4 
+3 5 
+~~~
+
 ### IF - ELSE
+
 
 
 ### Atomic Operators
