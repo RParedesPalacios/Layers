@@ -849,6 +849,8 @@ script {
 	D1[:,S].div(255.0) 
  	D2[:,S].div(255.0) 
 
+	N1.mu=0.01
+	
 	N1.train(10)  // train 10 epochs
 }
 ~~~
@@ -861,6 +863,8 @@ script {
 	D1[:,S].div(255.0)  
  	D2[:,S].div(255.0)  
 
+	N1.mu=0.01
+	
 	batches=60000/100      	
  	epoch=10
 
