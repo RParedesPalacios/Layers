@@ -189,9 +189,9 @@ network N1 {
 
 * There are different layers that can be created:
 
-	  Layer | Type
-	--------|----------------------------
-	 **FI** | Input Fully Connected layer
+	|  Layer | Type|
+	|--------|----------------------------|
+	|**FI** | Input Fully Connected layer|
 	 **CI** | Input Convolutional layer
 	 **F**  | Fully Connected layer
 	 **FO** | Output layer
