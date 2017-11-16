@@ -869,17 +869,17 @@ script {
  	epoch=10
 
 	for e=1:epoch {
- 		D1.shuffle()
- 		N1.reseterrors()
- 		for i=1:batches {
+ 	   D1.shuffle()
+ 	   N1.reseterrors()
+ 	   for i=1:batches {
      		D1.next()
     		N1.forward()
      		N1.backward()
       		N1.update()
+     	   }
+ 	   N1.printerrors()
+    	   N1.evaluate(D2)
      	}
- 		N1.printerrors()
- 		N1.evaluate(D2)
- 	}
 	
 }
 ~~~
