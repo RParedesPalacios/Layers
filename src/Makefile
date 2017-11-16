@@ -16,11 +16,11 @@ asin.o:	asin.c
 alex.o: alex.c asin.c
 	gcc -c alex.c  $(C_OPT)
 
-asin.c: asin.y
-	bison -oasin.c -d asin.y
+#asin.c: asin.y
+#	bison -oasin.c -d asin.y
 
-alex.c: alex.l 
-	flex -oalex.c alex.l
+#alex.c: alex.l 
+#	flex -oalex.c alex.l
 #---------------------------------- layers
 CXX = g++
 
