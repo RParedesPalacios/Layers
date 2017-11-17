@@ -1,3 +1,8 @@
+# LAYERS TUTORIAL
+
+**NOTE:** Along this tutorial will appear some **ADVANCED** features that are not necessary for the normal use of Layers but are important to show the toolkit flexibility and potential.
+
+
 
 ## Basic
 
@@ -9,24 +14,40 @@
 
 
 
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+
 ## Constants
 
-* There are four different constants to define (default values):
-	* threads: number of threads for parallelization (4)	
-	* batch size: size of the batch for the network (100)	
+* There are different constants to setup and control different features of Layers:
+	* threads: number of threads for parallelization for CPU backend (4)
+	* batch size: size of the batch for the network (100)
 	* log: log file where some messages are saved (netparser.log)
 	* seed: random seed (1234)
+	* device: {cpu,gpu} to select the backend
+	
 
 ~~~c
 const{
-  threads=4
-  batch=10
-  log="mnist.log"
-  seed=1234
+ threads=8     // #threads to use
+ batch=100     // batch size
+ device=cpu    // device {cpu,gpu}
+ log="all.log" // log file
+ seed=2329     // seed for random
 }
 ~~~
 
+
+
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
 ## Data
+
+### Data from File
 
 * Data can be read in ascii or binary. Data format is the following:
 
@@ -91,13 +112,49 @@ data {
 ~~~
 
 * _D1_, _D2_ and _Dval_ are the name of the data variables
-* Full path to file can be used
+
+&nbsp;
+
+> **ADVANCED**  
+>### Generative Data
+>In the Data block we can define generative data to be used in Layers as random noise input for >instace. Generative data has a batch size. Number of rows is the size of the batch and the number >of dims can be parametrized when it is created. 
+>
+>The generative data can be random:{gaussian, uniform} or fixed:{zeros, ones, onehot}. Some >examples:
+
+~~~c
+Data {
+// Generative Data. Data with just one batch of samples and 200 dims
+  DZ  [zeros, numnodes=200]          // ... all zeros
+  DO  [ones, numnodes=200]           // ... all ones
+  DG  [gauss, numnodes=200]          // ... gaussian distribution N(0,1)
+  DU  [uniform, numnodes=200]        // ... uniform distribution [0:1]
+  DH  [oneshot, numnodes=200, pos=15] // ... all zeros but one 1 at position 15
+}
+~~~
+>
+>
+>### Empty Data 
+>
+>Also new data with some size can be defined in order to set values inside later:
+>
+~~~c
+Data {
+  // Create a new Data with 100 rows, 1024 dims and 0 targets
+  DN [nrows=100,ncolsample=1024,ncoltarget=0]
+}
+~~~
 
 
 
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
 ## Networks
 
-* Networks are the main part of a Layer program
 * Networks are composed by three main parts:
 	* Data
 	* Layers
@@ -114,35 +171,38 @@ network N1 {
 
 ## Networks - Data
 
-* The Networks have to defined at least a training data set
-* Test and validation data sets are optional:
-
 ~~~c
 network N1 {  
   //data
-  data tr D1  //mandatory
+  data tr D1  //optional
   data ts D2 //optional
   data va Dval //optional
   ...
 }
 ~~~
 
-* When test or validation data are provided the error function of the net will be also evaluated for that data sets
+* When tr data is provided, that dataset will be used as training data. 
+* When ts or va data are provided the error function of the net will be also evaluated for that data sets
 
 ## Networks - Layers
 
 * There are different layers that can be created:
-	* **FI**:  Input Fully Connected layer
-	* **CI**:  Input Convolutional layer
-	* **F**:  Fully Connected layer
-	* **FO**:  Output layer
-	* **C**:  Convolutional layer
-	* **MP**:  MaxPooling layer
-	* **CAT**:  Cat layer
+
+	|  Layer | Type|
+	|--------|----------------------------|
+	|**FI** | Input Fully Connected layer|
+	 **CI** | Input Convolutional layer
+	 **F**  | Fully Connected layer
+	 **FO** | Output layer
+	 **C**  | Convolutional layer
+	 **MP** | MaxPooling layer
+	 **CAT**| Convolutional Cat layer
+	 **ADD**| Convolutional Add Layer
+	 ***O***| Operator Layer
 
 ### Networks - Layers - FI
 
-* FI has not parameters just serve as a connection with the data
+* FI serve as a connection with the data. When no data is defined in the network then it is mandatory to pass the data as a parameter to FI.
 
 ~~~c
 //NETWORK
@@ -155,8 +215,46 @@ network N1 {
   ...
 }
 ~~~
+
+OR
+
+~~~c
+//NETWORK
+network N1 {  
+  // Fully Connected Input 
+  FI in [D1]
+  ...
+}
+~~~
+
 * _in_ is the name of the layer
 * The number of units is the dimensionality of the data
+
+
+&nbsp;
+
+> **ADVANCED**   
+> But also an input layer can be connected to a layer from another network:
+
+~~~c
+ network N1 {  
+  // Fully connected input 
+  FI in [D1]
+  // Fully connected hidden layer
+  F f1 [numnodes=1024]
+  ...
+}
+network N2 {  
+  // Fully Connected Input 
+  FI in [N1.f1]
+  ...
+}
+~~~ 
+>
+>
+&nbsp;
+
+
 
 ### Networks - Layers - CI
 
@@ -177,6 +275,18 @@ network N1 {
   ...
 }
 ~~~
+
+OR
+
+~~~c
+//NETWORK
+network N1 { 
+  // Convolutional Input for MNIST
+  CI in [D1,nz=1, nr=28, nc=28]
+  ...
+}
+~~~
+
 * _in_ is the name of the layer
 
 
@@ -220,12 +330,15 @@ network N1 {
 
 ### Networks - Layers - FO
 
-* FO has a mandatory parameter _{classification,regression}_ that define the cost error: cross-entropy or mse respectively
-*  For regression, optionally, we can define an _autoencoder_, and also _autoencoder_ as a shortcut
+* FO is an output target where loss are computed.
+* When no data is defined in the network then it is mandatory to pass the data as a parameter to FO.
+* The dimensionality of this FO Layer is the number of targets in that dataset.
+* FO has a mandatory parameter _{classification,regression,autoencoder}_ that define the cost error.
 
 ~~~c
 network N1 {  
-  ...
+  data tr D1 // Data defined in the Network
+  
   // Targets are the output in data (one-hot) 
   FO  out1 [classification]  // Cross-entropy
 
@@ -233,11 +346,21 @@ network N1 {
   FO  out2 [regression]  // mse over output
 
   // Targets are the same input in data
-  FO  out3 [regression,autoencoder]	// mse over input
-  //  FO  out3 [autoencoder]	// as a shortcut
+  FO  out3 [autoencoder]	// mse over input
  ...
 }
 ~~~
+
+OR specifying the data:
+
+~~~c
+network N1 {  
+  ... // Data not defined in the network
+  // Targets are the output in data (one-hot) 
+  FO  out1 [D1,classification]  // Cross-entropy
+}
+~~~
+
 
 ### Networks - Layers - C
 
@@ -298,11 +421,55 @@ network N1 {
 ~~~c
 network N1 { 
   ...
-  // CAT Layer
-  CAT cat
+  // Convolutional CAT Layer
+  CAT c
   ...
 }
 ~~~
+
+###  Networks - Layers - ADD
+
+* ADD layers does not require any parameter
+
+~~~c
+network N1 { 
+  ...
+  // Convolutional ADD  Layer
+  ADD a
+  ...
+}
+~~~
+
+&nbsp;
+
+> **ADVANCED**   
+>###  Networks - Layers - O
+>
+>* **Operator** layers requires one parameter, the operator:
+>
+>  Operator | Meaning
+>-----------|----------
+>*add* | Add the layers connected to the Operator 
+>*sub* | Substraction of the layers (2) 
+>*imult* | Element multiplication (2)
+>*omult* | Outter product of the layers (2)
+>*div*   | Element division of the layer connected (1)
+>*tanh*  | Tanh activation of the layer connected (1)
+>*sigmoid* | Sigmoid activation of the layer connected (1)
+>*relu* | Relu activation of the layer connected (1)
+>*log* | Log of the layer connected (1)
+
+~~~c
+network N1 { 
+  ...
+  // Operator Layer
+  O o1 [add]
+  ...
+}
+~~~
+&nbsp;
+
+
 
 ## Networks - Connections
 
@@ -511,102 +678,233 @@ network N1 {
 ![](./figs/CAT.jpg)
 
 
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
 ## Scripts
 
-* Script is a block of actions. There are two different types of actions:
-	* functions
-	* parameters modifications
+Script is a Layer block where the user run commands. There are commands associtated to networks, data, variables and expressions
+
+### Variables and Expressions
+
+Layers allows to use variables and evaluate mathematical expressions:
+
+~~~c
+script {
+ i=3.5
+ j=log(i)
+ echo "j="
+ echo j
+ echo -n
+}
+~~~
+
+will produce the following output:
+
+~~~
+j= 1.870829 
+~~~
+
+### Data access and manpulation
+
+An example of things we can do to data:
+
+name | action
+-----|-----
+**add**  | add value
+**sub**  | substract value
+**mul**  | multiply value
+**div**  | divide value
+**zscore** | normalize mean=0 and sd=1
+**maxmin** | normalize min=0 and max=1
+**center** | normalize mean=0
+**getstats** | copy stats from other data
 
 
-## Scripts Functions
+This functions can be apply to all the data or a **range** of the data. To define a range you can use the **[..]** operator. The range operator must have two parameters: rows and cols, **[row,col]**. And user can define intervals of rows and cols: **[row1:row2,col1:col2]**. Especial cols are "S" and "T" for fetures(dim) and targets(out) respectivelly. 
 
-* There are several functions that can be applied to the defined objects:
-
-	* For Data:
-		* zscore(): To normalize Data	
-		* yuv(): to convert RGB Maps to YUV maps
-		* center(): To center Data (mean=0)
-		* div(x): To divide all the data by factor x
-		* mul(x): To multiply all the data by factor x
-		* sum(x): To sum all the data quantity x
-		* sub(x): To subtract all the data quantity x
-		* maxmin(): To perform a max-min normalization 
-		* store("filename"): to save the data to file (binary) format)
-	* For Networks:
-		* train(epochs): to train networks
-		* save(fname): to save the network parameters to file
-		* load(fname): to load the network parameters from file
-
-			Note that __save__ and __load__ do not take into account the network structure, only the parameters of the layers (learning rate, dropout,...) and weights (and bias). So in order to load a network the network structure must match the network structure used when it was saved.
-		* testout("fname"): writes the output of all the test data in the file. Forward over all data set.
-	
-	* For Layers:
-
-		* printkernels("fname"): save the weights of a particular layer in the file. 
-			
-			For convolutional networks printkernels loop over each filter, then over each map (depth) and then over each pixel (rows and cols). For fully connected layers printkernels loop over each unit and then over each connection to next layer units.
-	
-	
-			In any case, saving a network with the __save__ command provides the weights (and bias) of __all__ the layers.
-		
-
-> More functions will be soon implemented
+**IMPORTANT** In a Data with 100 dims and 10 outs, the first 100 cols are dims and the next 10 cols are targets. Terefore "S" will refer to cols 1:100 and "T" will refer to cols 101:110. 
 
 
-	
+Some examples:
 
 ~~~c
 script {
 
-  D1.yuv()
-  D2.yuv()
-  
-  D1.center()
-  D2.center(D1)
-  
-  D1.div(255.0)
-  D2.div(255.0)
-  
-  D1.zscore()
-  D2.zscore(D1) //normalize D2 with D1 statistics
+ // Data modifications
+ // Ranges [rows,cols] - [row1:row2,col1:col2].
+ // Special ranges for columns S(dims) and T(targets)
 
-  N1.train(100)
-  
-  N1.save("N1.saved")
-  
-  N1.load("N1.saved")	
-  
-  N1.f1.printkernels("N1f1.txt")
-  
-  N1.train(100)
-  
-  N1.testout("test_output.txt")
+ D1[:,S].div(255.0)  // Divide the all the dims but not targets
+ D2[:,S].div(255.0)  // " " " " " 
 
+ D1[:,T].div(2.0)    // Divide the all the targets
+ D1[:,T].mul(2.0)    // Multiply all the targets
+ D1[:,T].add(1.0)    // Add 1.0 to all the targets
+ D1[:,T].sub(1.0)    // Substract 1.0 to all the targets
+
+ D1[:,:].mul(1.0)    // Multiply ALL the data (dims and targets) !!
+ D1.mul(1.0)         // The same: Multiply ALL the data (dims and targets) !!
+
+ D1[:,1:1].set(0.0)  // Set the first col to 0.0 for all samples
+ D1[:,1].set(0.0)    //  " " " "
+
+ // Varibles and expressions accepted:
+ i=0
+ D1[:,i+1].set(0.0)
+ 
+ // Data transformation, usually only to dims not to targets
+ D1[:,S].zscore()   // Zscore: substract mean and divide by standar deviation
+ D2.getstats(D1)    // Copy statistics from D1
+ D2[:,S].zscore()   // Zscore of D2 using D1 statistics (copied just before)
+
+ D1[:,S].center()   // Center: substract mean
+ D2.getstats(D1)    // Copy statistics from D1
+ D2[:,S].center()   // Center with D1 statistics
+
+ D1[:,S].maxmin()   // Normalize [0,1]. min=0 max=1
+ D2.getstats(D1)    // Copy statistics from D1
+ D2[:,S].maxmin()   // Normalize with D1 statistics
+
+
+
+~~~
+
+Beyond the modifications of the values you can copy and create new data from another:
+
+~~~c
+ // Data manipulation. D3 and D4 have not been defined previously.
+ D3.copy(D1)            // Create a new Data copy from D1
+ D4.copy(D1[1:100,:])   // Create a new Data copy from some rows of D1
+
+ // Copying blocks between datasets. D1 and D2 both exit previously.
+ D1[1:10,31:100].copy(D2[21:30,101:170])
+~~~
+
+
+### Data other functions and parameters
+
+* next(): is a data funciton to provide the next batch.
+* shuffle(): is a data funciton to shuffle the samples (rows)
+* balance: is a data parameter to balance the classes in unbalanced classification sets
+
+~~~c
+scripts {
+	D1.balance=0
+
+	D1.next()
+	D1.shuffle()
 }
 ~~~
 
-## Scripts Parameters
 
-* There are several parameters that can be modified. Parameter[default value]:
+### Network functions 
 
-	* mu: learning rate. Scaled by batch size [0.0001/batch_size]
-	* mmu: momentum rate [0.9]
-	* l2: l2 regularization (weight decay) [0.0]
-	* l1: l1 regularization	[0.0]	
-	* maxn: maxnorm regularization [0.0]
-	* noiser: noise ratio after activation function [0]
-	* noisesd: standard deviation of noise ($N(0.0,\sigma)$) [0]
-	* noiseb: ratio of binary noise (only for input layer) [0.0]
-	* drop: dropout (0<drop<=1) [0.0]
-	* bn: batch normalization ({0,1}) [0]
-	* act: activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU) [1]
-	* flip: to flip input images ({1,0}) [0]
-	* shift: to shift randomly input images [0]
-	* balance: for balancing data classes [0]
-	* cropmode: is a **network** parameter {0,1}. When a convolutional input performs random crops, with this parameter we indicate that all the crops must be used in the evaluation. It leads to a slower evaluation but with a better performance. If cropmode is not active (0, default) then only the central crop is evaluated
-	* lambda: is a **layer** parameter [1.0]. It is a factor which scales the cost function. This means it only affects an output layer. It could be used to ponderate the importance of several costs in semi-supervised task or to scale the cost function such that early updates in the network (which probabily suffer from big sumations) do not saturate. This secondary use is more intented to be taken in consideration for **GPU** computation. 
+|Function | Meaning|
+|----------| -----------|
+|**train** |  train a number of epochs|
+**forward** | perform a forward through all the network
+**printerrors** | print the errors
+**reseterrors** | reset the errors
+**backward** | perform a backward through all the network
+**update** | perform a weights update with gradients
+**resetstats** | reset the batch norm stats
+**evaluate** | to evaluate the network with other dataset (test)
+
+* An example over MNIST with one FC layer with 1024 units:
+
+
+~~~c
+const{
+ threads=8     // #threads to use
+ batch=100     // batch size
+ device=cpu    // device {cpu,gpu}
+ log="all.log" // log file
+ seed=2329     // seed for random
+}
+
+data {
+  // Load a binary file with MNIST
+  D1 [filename="training.bin", binary]
+  D2 [filename="test.bin", binary]
+}
+
+network N1 {
+ data tr D1
+ data ts D2
+ FI in 
+ F f1 [numnodes=1204]
+ FO outc [classification]
+
+ in->f1
+ f1->outc
+}
+~~~
+
+The easy way:
+
+~~~c
+script {
+	D1[:,S].div(255.0) 
+ 	D2[:,S].div(255.0) 
+
+	N1.mu=0.01
 	
+	N1.train(10)  // train 10 epochs
+}
+~~~
+
+The atomic way:
+
+~~~c
+script {
+
+	D1[:,S].div(255.0)  
+ 	D2[:,S].div(255.0)  
+
+	N1.mu=0.01
 	
+	batches=60000/100      	
+ 	epoch=10
+
+	for e=1:epoch {
+ 	   D1.shuffle()
+ 	   N1.reseterrors()
+ 	   for i=1:batches {
+     		D1.next()
+    		N1.forward()
+     		N1.backward()
+      		N1.update()
+     	   }
+ 	   N1.printerrors()
+    	   N1.evaluate(D2)
+     	}
+	
+}
+~~~
+
+
+
+### Network parameters
+
+|parameter | meaning|
+|----------| -----------|
+|**mu** |  learning rate. Scaled by batch size [0.0001/batch_size]|
+**mmu**| momentum rate [0.9]
+**l2** | l2 regularization (weight decay) [0.0]
+**l1** | l1 regularization	[0.0]	
+**maxn**| maxnorm regularization [0.0]
+**noiser**| noise ratio after activation function [0]
+**noisesd**| standard deviation of noise ($N(0.0,\sigma)$) [0]
+**drop**| dropout (0<drop<=1) [0.0]
+**bn** | batch normalization ({0,1}) [0]
+**act**| activation (0 Linear, 1 Relu, 2 Sigmoid, 3 ELU) [1]
+**flip**| to flip horizontally input images ({1,0}) [0]
+**shift**| to shift randomly input images [0]
+**lambda**| to scale the cost function
+
+
 * Parameters can be modified for one particular layer or data:
 
 ~~~c
@@ -615,91 +913,38 @@ script{
 N1.c2.drop=0.5
 N1.in.flip=1
 N1.in.shift=2
-N1.in.noiseb=0.2 
-N1.cropmode=1
-
-D1.balance=1
+N1.in.noiser=0.2 
 ...
 }
 ~~~
 
-* Or, parameters can be modified for all the layers of the same network:
+* Or, parameters can be modified for **all** the layers of the same network:
 
 ~~~c
 script{
 ...
 N1.mu=0.001
 N1.l2=0.0005
-// noise in all the layers of the network:
 N1.noiser=0.5
 N1.noisesd=0.3 
 ...
 }
 ~~~
 
-**Some considerations on modification for all the layers:**
+**Some considerations when parameter is apply the network**
 
 * *drop* parameter does not affect to output layer
 * *bn* parameter does not affect to input and reshape layer
-* *adv* parameter does not affect to output layer
-* *flip* and shift parameters only affect to input layer
+* *flip* only affect to input layer
 * *act* parameter does not affect to input, reshape and output layers
 
 
-**Some examples of scripts and parameters**
 
 
-#### Example 1
-~~~c
-script {
-
-  D1.yuv()
-  D2.yuv()
-
-  D1.zscore()
-  D2.zscore(D1)
-
-  N1.in.flip=1
-  N1.in.noiser=0.5
-  N1.in.noisesd=1.0
-
-  N1.f1.drop=0.5
-
-  N1.l2=0.0005
-
-  N1.bn=1
-
-  // Learning rate annealing every 15 epochs
-  N1.mu=0.01
-  N1.train(15)
-
-  N1.mu=0.005
-  N1.train(15)
-
-  N1.mu=0.0025
-  N1.train(15)
-}
-~~~
-
-#### Example 2
-
-~~~c
-script {
-
-  D1.zscore()
-  D2.zscore(D1)
-
-  N1.noiser=0.0
-  N1.noisesd=1.0
-  N1.in.noiser=0.5
-  N1.mu=0.001
-  N1.maxn=3.0
-
-  N1.train(100)
-
-}
-~~~
-
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
 # The whole picture
 
 #### Example 1
@@ -750,15 +995,14 @@ network N1 {
 //RUN SCRIPT 
 script {
   
-  D1.zscore()
-  D2.zscore(D1)
+  D1[:,S].div(255)
+  D2[:,S].div(255)
 
 
-  //N1.noisesd=1.0
-  //N1.noiser=0.5
+  N1.noisesd=0.3
+  N1.noiser=1.0
   N1.mu=0.01
-  //N1.maxn=3.0
-
+  
   N1.train(10)
 
 }
@@ -817,187 +1061,78 @@ network N1 {
 // RUN
 script {
   
-  D1.zscore()
-  D2.zscore(D1)
+   
+  D1[:,S].div(255)
+  D2[:,S].div(255)
+
 
   N1.mu=0.1
-
-  N1.in.noiser=0.5
-  N1.in.noisesd=1.0
-  //N1.bn=1
+  N1.in.noiser=1.0
+  N1.in.noisesd=0.3
+  N1.bn=1
   
   N1.train(1000)
 }
 
 ~~~
 
+
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+
 ## ADVANCED ISSUES
+
+
+### FOR Loops
+
+The syntax is the following
+
+~~~c
+for variable ini:step:end {
+	//instructions
+}
+~~~
+
+step is optional, for instace:
+
+~~~c
+for i=1:2:3 {
+  for j=1:5 {
+   echo i
+   echo j
+   echo -n
+   }
+ }
+~~~
+
+will produce:
+
+~~~c
+1 1 
+1 2 
+1 3 
+1 4 
+1 5 
+3 1 
+3 2 
+3 3 
+3 4 
+3 5 
+~~~
+
+### IF - ELSE
+
+
+
+### Atomic Operators
+
+
 
 ### Networks sharing layers
 
-Layers can be shared among networks. For instance one network can train with an unsupervised data set while other net can share the internal representation from this net and fine-tune training with a supervised dataset later. See for instance this example for MNIST:
-
-~~~c
-data {
-  D1 [filename="training.bin", binary]
-  D2 [filename="test.bin", binary]
-}
-
-// Unsupervised
-network N1 {
-  data tr D1
-
-  // FC de entrada
-  FI in
-
-  F  f1 [numnodes=1000]
-  F  f2 [numnodes=500]
-  F  f1m [numnodes=1000]
-
-  // FC salida
-  FO  out [regression,autoencoder]
-
-  // Conexiones
-  in->f1
-  f1->f2
-  f2->f1m
-  f1m->out
-
-}
-
-//Supervised
-network N2 {
-  data tr D1
-  data ts D2
-
-  // FC salida
-  FO  outd [classification]
-
-  // Conexiones
-  N1.in->N1.f1
-  N1.f1->N1.f2
-  N1.f2->outd
-
-}
-
-script {
-  D1.div(255.0)
-  D2.div(255.0)
-
-  N1.noiser=1.0
-  N1.noisesd=0.3
-
-  // Decoder is clean
-  N1.f1m.noiser=0.0
-  N1.out.noiser=0.0
-
-  // Training N1
-  N1.mu=0.1
-  N1.bn=1
-  N1.train(100)
-
-  // Training N2
-  N2.bn=1
-  N2.mu=0.1
-  N2.train(100)
-}
-
-~~~
-
-These are the network obtained:
-
-
-N1![N1](./figs/sharingN1.jp2)
-N2![N2](./figs/sharingN2.jp2)
-
-### Training several networks
-
-Note that in the previous example, N1 and N2 could be trained with different data sets. For instance the supervised network (N2) can be trained with a small data set while the unsupervised (N1) can be trained with all the available data (with and without labels). In this scenario it could be more interesting to train both networks simultaneously, a few batches each network. To this end we can use a command where we specify how many repetitions, iterations and batches per network and a list of networks:
-
-~~~c
- train(30,10,5,N1,N2)
-~~~
-
-In this case layers will run 30 repetitions of 10 iterations for each repetition and in each iteration will process 5 batches. The mechanism is the following, after 5 batches with network N1, layers run 5 batches with network N2, this entails one iteration. After 10 iterations layers will perform an evaluation with test data (if any), this entails one repetition. After 30 repetitions layers will end this command.
-
-
-the whole picture:
-
-~~~c
-data {
-  D0 [filename="tinytrain.bin", binary]
-  D1 [filename="training.bin", binary]
-  D2 [filename="test.bin", binary]
-}
-
-// Unsupervised
-network N1 {
-  data tr D1
-
-  // FC de entrada
-  FI in
-
-  F  f1 [numnodes=1000]
-  F  f2 [numnodes=500]
-  F  f1m [numnodes=1000]
-
-  // FC salida
-  FO  out [regression,autoencoder]
-
-  // Conexiones
-  in->f1
-  f1->f2
-  f2->f1m
-  f1m->out
-
-}
-
-//Supervised
-network N2 {
-  data tr D0
-  data ts D2
-
-  // FC salida
-  FO  outd [classification]
-
-  // Conexiones
-  N1.in->N1.f1
-  N1.f1->N1.f2
-  N1.f2->outd
-
-}
-
-script {
-  D0.div(255.0)
-  D1.div(255.0)
-  D2.div(255.0)
-
-  N1.noiser=1.0
-  N1.noisesd=0.3
-
-  // Decoder is clean
-  N1.f1m.noiser=0.0
-  N1.out.noiser=0.0
-
-  N1.mu=0.1
-  N1.bn=1
-
-  // reduce the unsupervised cost part
-  N1.out.lambda=0.1
-
-  N2.bn=1
-  N2.mu=0.1
-
-  train(30,10,5,N1,N2)
-}
-
-~~~
-
-**Note** that there is a new dataset [tinytraining.bin](https://github.com/RParedesPalacios/Layers/blob/master/examples/MNIST/Other/tinytraining.bin) that has only 500 supervised samples. Network N2 use only this samples for the supervised part while network N1 uses the complete data set, 60000 samples. See the networks:
-
-N1![N1](./figs/sharingN1.jp2)
-N2![N2](./figs/simulN2.jp2)
-
+Layers can be shared among networks.  
 
 
 
