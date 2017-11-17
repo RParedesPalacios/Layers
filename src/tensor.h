@@ -62,6 +62,7 @@ class Tensor {
 
   Tensor *Clone();  
   void Transpose();
+  void UnTranspose();
 
   void replace_unset();
   void resize(int a);
@@ -150,6 +151,8 @@ class Tensor {
   static void Convol(Tensor *A,Tensor *K,int tK,Tensor *B,int tB,int stride, int pad);
   static void ConvolT(Tensor *A,Tensor *K,Tensor *B,int stride, int pad);
   
+  static void cpu_convol(Tensor *A,Tensor *K,Tensor *B,int stride,int pad);
+  static void cpu_convolT(Tensor *A,Tensor *K,Tensor *B,int stride,int pad);
 
   // REDUCTIONS
   static void reduceTomean(Tensor *A, Tensor *B,int rowcol);

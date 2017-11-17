@@ -267,6 +267,7 @@ void CLayer::forward()
     // CONVOL
     Tensor::Convol(cin->N,K,0,E,0,stride,zpad);
 
+    
     if (!bn)
       for(i=0;i<E->a;i++)
 	for(j=0;j<E->b;j++)

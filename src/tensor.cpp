@@ -8,6 +8,7 @@
 #include "tensor.h"
 #include "data.h"
 #include "utils.h"
+#include "types.h"
 #include "Eigen/Dense"
 
 #ifdef fGPU
@@ -15,6 +16,7 @@
 // Data structures variables and functions for GPU computation setup
 #endif
 
+#define USE_FAST_CPU 1
 
 using namespace Eigen;
 using namespace std;
@@ -182,6 +184,24 @@ void Tensor::Transpose()
   }
   else {
     fprintf(stderr,"Transpose oly for 4D Tensors\n");
+    exit(1);
+  }
+}
+
+void Tensor::UnTranspose()
+{
+  if (dim==4) {
+    if (T==NULL) 
+      {
+	return;
+      }
+    
+    for(int i=0;i<a;i++)
+      for(int j=0;j<b;j++)
+	ptr[i]->ptr[j]->ptr2=T->ptr[j]->ptr[i]->ptr2;
+  }
+  else {
+    fprintf(stderr,"UnTranspose oly for 4D Tensors\n");
     exit(1);
   }
 }
@@ -1790,124 +1810,6 @@ void Tensor::maskZeros(Tensor *mask,Tensor *A)
 }
 
 
-//////////// HASTA AQUI GPU ////////////////////////
-
-
-
-
-///////////////////////////////////////////////
-//// Convolution of 2D Tensors:
-//// 
-//// A is a 2D tensor, normally an image
-//// K is a 2D tensor, normally a filter
-//// B is a 2D tensor, normally an image
-///////////////////////////////////////////////
-void Tensor::Convol2D(Tensor *A,Tensor *K,Tensor *B,int inc,int stride,int pad)
-{
-  for(int i=0;i<B->a;i++) {
-      int ar=(i*stride)-pad;
-      for(int j=0;j<B->b;j++) {
-	int ac=(j*stride)-pad;
-	LType sum=0;
-	for(int r=0;r<K->a;r++)
-	  for(int c=0;c<K->b;c++)
-	    if ((ar+r>=0)&&(ar+r<A->a)&&(ac+c>=0)&&(ac+c<A->b))
-	      sum+=K->ptr2(r,c)*A->ptr2(ar+r,ac+c);
-
-	if (inc) 
-	  B->ptr2(i,j)+=sum;
-	else
-	  B->ptr2(i,j)=sum;
-      }
-    }
-
-}
-
-
-///////////////////////////////////////////////
-//// Convolution of 2D Transpose Tensors:
-//// 
-//// A is a 2D tensor, normally an image
-//// K is a 2D tensor, normally a filter
-//// B is a 2D tensor, normally and image
-///////////////////////////////////////////////
-void Tensor::Convol2DT(Tensor *A,Tensor *K,Tensor *B,int inc,int stride,int pad)
-{
-  if (inc) {
-    for(int i=0;i<K->a;i++)
-      for(int j=0;j<K->b;j++) {
-	LType sc=K->ptr2(i,j);
-	for(int r=0;r<A->a;r++)
-	  for(int c=0;c<A->b;c++)
-	    B->ptr2(r+i,c+j)+=sc*A->ptr2(r,c);
-      }
-  }
-  else {
-    for(int i=0;i<K->a;i++)
-      for(int j=0;j<K->b;j++) {
-	LType sc=K->ptr2(i,j);
-	for(int r=0;r<A->a;r++)
-	  for(int c=0;c<A->b;c++)
-	    B->ptr2(r+i,c+j)=sc*A->ptr2(r,c);
-      }
-  }
-}
-
-///////////////////////////////////////////////
-//// Convolution of 3D Tensors:
-//// 
-//// A is a 3D tensor, normally depth x image
-//// K is a 3D tensor, normally depth x filter
-//// B is a 2D tensor, normally and image
-///////////////////////////////////////////////
-void Tensor::Convol3D(Tensor *A,Tensor *K,Tensor *B,int stride,int pad)
-{
-  for(int i=0;i<A->a; i++)
-    Tensor::Convol2D(A->subTensor(i),K->subTensor(i),B,1,stride,pad);
-}
-
-
-///////////////////////////////////////////////
-//// Convolution of 4D Tensors:
-//// 
-//// A is a 4D tensor, normally:
-////    batch x depth x images (rows x cols)
-//// K is a 4D tensor, normally:
-////    numfilters x depth x filterimage (rows x cols)
-//// B is a 4D tensor, normally:
-////     batch x depth_out x images (rows x cols) 
-////     where depth_out=K numfilters
-///////////////////////////////////////////////
-void Tensor::Convol(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad)
-{
-
-  B->set(0.0);
-  if (!tK) {
-    if (!tr) {
-  #pragma omp parallel for
-      for(int i=0;i<B->a;i++)
-	for(int j=0;j<B->b;j++)
-	  Tensor::Convol3D(A->subTensor(i),K->subTensor(j),B->subTensor(i,j),stride,pad);
-    }
-    else {
-      A->Transpose(); 
-      K->Transpose(); 
-  #pragma omp parallel for
-      for(int i=0;i<B->a;i++) 
-	for(int j=0;j<B->b;j++) 
-	  Tensor::Convol3D(A->T->subTensor(j),K->T->subTensor(i),B->subTensor(i,j),stride,pad);
-    }
-  }
-  else {
-#pragma omp parallel for
-    for(int i=0;i<A->a;i++)//batch
-      for(int j=0;j<A->b;j++)//nk
-	for(int k=0;k<B->b;k++)//depth
-	  Tensor::Convol2DT(A->subTensor(i,j),K->subTensor(j,k),B->subTensor(i,k),1,stride,pad);
-  }
-}
-
-
 
 // REDUCED FUNCTIONS 2D <--> 1D                                                      
 void Tensor::reduceTosum(Tensor *A, Tensor *B,int row)
@@ -2070,6 +1972,178 @@ void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row)
 }
 
 
+///////////////////////////////////////////////
+//// Convolution of 4D Tensors:
+//// 
+//// A is a 4D tensor, normally:
+////    batch x depth x images (rows x cols)
+//// K is a 4D tensor, normally:
+////    numfilters x depth x filterimage (rows x cols)
+//// B is a 4D tensor, normally:
+////     batch x depth_out x images (rows x cols) 
+////     where depth_out=K numfilters
+///////////////////////////////////////////////
+void Tensor::Convol(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad)
+{
 
+
+  if (!tK) {
+    if (!tr) 
+      Tensor::cpu_convol(A,K,B,stride,pad);
+    else {
+      A->Transpose();
+      K->Transpose();
+      B->Transpose();
+      Tensor::cpu_convol(A->T,K->T,B->T,stride,pad);
+      B->UnTranspose();
+      delete A->T;
+      A->T=NULL;
+      delete B->T;
+      B->T=NULL;
+      delete K->T;
+      K->T=NULL;
+    }
+  }
+  else {
+    Tensor::cpu_convolT(A,K,B,stride,pad);
+  }
+}
+
+///// FAST CPU CONVOL with LOWERING and OpenMP
+///// Still faster with adhoc multi-threading however this code is cleaner
+void Tensor::cpu_convol(Tensor *A,Tensor *K,Tensor *B,int stride,int pad)
+{
+  int i,j,k,z,b,r,im,in,i2,j2,ib;
+
+  // LOWERING Matrices
+  LMatrix I(K->b*K->c*K->d,B->a*B->c*B->d);
+  LMatrix Ker(K->a,K->b*K->c*K->d);
+  LMatrix O(K->a,B->a*B->c*B->d);
+  /////////////////////
+
+  int size=B->c*B->d;
+  int kr2=K->c/2;
+  int kc2=K->d/2;
+  int si,sj;
+  int inr=A->c;
+  int inc=A->d;
+  int c;
+
+  if (!pad) {kr2=0;kc2=0;}
+
+  // Reshape Kernels
+#pragma omp parallel for
+  for(int k=0;k<K->a;k++) {
+    b=0;
+    for(z=0;z<K->b;z++)
+      for(i=0;i<K->c;i++)
+	for(j=0;j<K->d;j++,b++)
+	  Ker(k,b)=K->ptr[k]->ptr[z]->ptr2(i,j);
+  }
+  
+  // Reshape Input
+#pragma omp parallel for
+  for(int b=0;b<B->a;b++) {
+    ib=b*size;
+    in=0;
+    for(i=0;i<B->c;i++)
+      for(j=0;j<B->d;j++,in++) {
+	im=0;
+	for(z=0;z<K->b;z++) {
+	  si=(i*stride)-kr2;
+	  sj=(j*stride)-kc2;
+	  for(i2=0;i2<K->c;i2++,si++)
+	    for(j2=0,sj=(j*stride)-kc2;j2<K->d;j2++,im++,sj++)
+	      if ((si<0)||(sj<0)||(si>=inr)||(sj>=inc))
+		I(im,in+ib)=0.0;
+	      else
+		I(im,in+ib)=A->ptr[b]->ptr[z]->ptr2(si,sj);
+	  
+	}
+      }
+  }
+
+  // Lowering convolution with matrix multiplication
+  O=Ker*I;
+
+  // Reshape Output
+#pragma omp parallel for
+  for(int b=0;b<B->a;b++) {
+  ib=b*size;
+  for(k=0;k<K->a;k++) 
+    for(i=0,z=0;i<B->c;i++)
+      for(j=0;j<B->d;j++,z++) 
+	B->ptr[b]->ptr[k]->ptr2(i,j)=O(k,z+ib);
+}
+}
+
+
+
+
+void Tensor::cpu_convolT(Tensor *A,Tensor *K,Tensor *B,int stride,int pad)
+{
+  int i,j,k,z,b,r,c,s,im,in,i2,j2,ib;
+  
+  // LOWERING
+  LMatrix Del(A->a,K->a);
+  LMatrix *Kr;
+  Kr=new LMatrix[K->b];
+  for(i=0;i<K->b;i++)
+    Kr[i].resize(K->a,K->c*K->d);
+
+  LMatrix Res(A->a,K->c*K->d);
+  //////////
+
+  int si,sj;
+  int kr2=K->c/2;
+  int kc2=K->d/2;
+  
+  int inr=B->c;
+  int inc=B->d;
+
+  if (!pad) {kr2=0;kc2=0;}
+  
+#pragma omp parallel for
+  for(z=0;z<K->b;z++) {
+    for(k=0;k<K->a;k++)
+      for(i2=0,r=0,c=0;i2<K->c*K->d;i2++,c++) {
+	if (c==K->d) {c=0;r++;}
+	Kr[z](k,i2)=K->ptr[k]->ptr[z]->ptr2(r,c);
+      }
+  }
+
+  
+  for(i=0;i<A->c;i++) {
+  for(j=0;j<A->d;j++) {
+  
+    #pragma omp parallel for
+  for(b=0;b<A->a;b++)
+    for(k=0;k<K->a;k++)
+      Del(b,k)=A->ptr[b]->ptr[k]->ptr2(i,j);
+
+      for(z=0;z<K->b;z++) {
+	Res=Del*Kr[z];
+
+#pragma omp parallel for
+	for(b=0;b<A->a;b++) {
+	  for(i2=0,r=0,c=0;i2<K->c*K->d;i2++,c++) {
+	    if (c==K->d) {c=0;r++;}
+	    si=(i*stride+r)-kr2;
+	    sj=(j*stride+c)-kc2;
+	    if ((si<0)||(sj<0)||(si>=inr)||(sj>=inc)) { }
+	    else B->ptr[b]->ptr[z]->ptr2(si,sj)+=Res(b,i2);
+	  }
+	}
+
+      }//z
+	
+    }//j
+  }//i
+
+
+  for(i=0;i<K->b;i++)
+    Kr[i].resize(0,0);
+
+}
 
 

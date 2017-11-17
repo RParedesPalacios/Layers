@@ -781,32 +781,38 @@ OFLayer::OFLayer(Data *Dt,FLayer *Lt,int b,int o,char *name):FLayer(b,name)
   L=Lt;
   opt=o;
 
+  // target is another layer
   if (L!=NULL) {
+    fprintf(stderr,"setting target to %s\n",L->name);
     din=Lt->din;
     L=Lt;
   }
-  else if (opt==2) { //autoencoder
-    if (Dt->gen) {
-      if (Dt->dim==0) {
-	Dt->dim=Dt->out;
-	Dt->out=0;
+  // target is a dataset
+  else {
+    fprintf(stderr,"setting target to %s\n",D->name);
+    if (opt==2) { //autoencoder
+      if (Dt->gen) {
+	if (Dt->dim==0) {
+	  Dt->dim=Dt->out;
+	  Dt->out=0;
+	}
       }
+      din=Dt->dim;
+      D=Dt;
     }
-    din=Dt->dim;
-    D=Dt;
-  }
-  else { //normal
-    if (Dt->gen) {
-      if (Dt->out==0) {
-	Dt->out=Dt->dim;
-	Dt->dim=0;
+    else { //normal
+      if (Dt->gen) {
+	if (Dt->out==0) {
+	  Dt->out=Dt->dim;
+	  Dt->dim=0;
+	}
       }
+      din=Dt->out;
+      D=Dt;
     }
-    din=Dt->out;
-    D=Dt;
   }
-  out=1;
 
+  out=1;
   mem();
 
   T=new Tensor(batch,din);

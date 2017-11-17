@@ -55,8 +55,16 @@ char logname[MAX_CHAR];
 int seed;
 
 
-//////////////////////////////////////
 
+void err(const char* c1,const char* c2)
+{
+  fprintf(stderr,"=================================================\n");
+  fprintf(stderr,"Error: %s in %s\n",c1,c2);
+  fprintf(stderr,"=================================================\n");
+  exit(1);
+}
+
+//////////////////////////////////////
 class IBlock {
 
   char **block;
@@ -276,8 +284,8 @@ public:
    
       data->set(s,d,getvar(var));
     }
-    else if (!strcmp(op,"func")) {
-      sscanf(line,"var func %s %s %s\n",cad,cad1,func);    
+    else if (!strcmp(op,"function")) {
+      sscanf(line,"var function %s %s %s\n",cad,func,cad1);    
       ind=findvar(cad);
       ind1=findvar(cad1);
       if (!strcmp(func,"exp")) {
@@ -286,7 +294,7 @@ public:
       if (!strcmp(func,"log")) {
 	VTable[ind]=log(VTable[ind1]);
       }
-      if (!strcmp(func,"sqrt")) {
+      if (!strcmp(func,"sqr")) {
 	VTable[ind]=sqrt(VTable[ind1]);
       }
     }
@@ -373,12 +381,16 @@ public:
     if (VERBOSE) fprintf(stderr,"#### %s\n",line);
     ////////////// FI //////////////
     if (!strcmp(ltype,"FI")) {
-      //layer id FI (NULL, dat)
+      //layer id FI Net Layer Dat
       sscanf(line,"layer %s FI %s %s %s\n",name,net1,layer1,data);
       sprintf(lname,"%s:%s",innet,name);
 
       if (!strcmp(net1,"NULL")) {// set source data
 	if (!strcmp(data,"NULL")) { 
+	  if (NTable[Nc]->Dtrain==NULL) {
+	    fprintf(stderr,"Error creating Input Layer (%s:%s) without source\n",innet,name);
+	    exit(1);
+	  }
 	  LTable[Lc]=new IFLayer(NTable[Nc]->Dtrain,NULL,batch,lname);
 	  NTable[Nc]->addLayer(LTable[Lc]);
 	}
@@ -505,7 +517,8 @@ public:
       else if (!strcmp(cad,"tanh")) op=OP_TANH;
       else if (!strcmp(cad,"log")) op=OP_LOG;
       else if (!strcmp(cad,"relu")) op=OP_RELU;
-      
+      else err("incorrect operand","O Layer");
+
       sprintf(lname,"%s:%s",innet,name);
       LTable[Lc]=new OLayer(batch,op,lname);
       NTable[Nc]->addLayer(LTable[Lc]);
@@ -546,19 +559,20 @@ public:
 	  LTable[Lc]=new OFLayer(fod, NULL, batch,5,lname);
 	else if (!strcmp(cad,"minlog"))
 	  LTable[Lc]=new OFLayer(fod, NULL, batch,6,lname);
+	else err("incorrect loss","FO Layer");
       }
       //target layer
       else { 
 	act=0;
 	sprintf(lname,"%s:%s",innet,name);
-	sprintf(cad,"%s:%s",net1,layer1);
-	if (VERBOSE) fprintf(stderr,"Target %s.%s\n",net1,layer1);
+	sprintf(cad2,"%s:%s",net1,layer1);
+	if (VERBOSE) fprintf(stderr,"Target %s:%s\n",net1,layer1);
 	for(i=0;i<Lc;i++) {
-	  if (!strcmp(cad,LTable[i]->name)) break;
+	  if (!strcmp(cad2,LTable[i]->name)) break;
 	}
 	if (!strcmp(cad,"classification"))
 	  LTable[Lc]=new OFLayer(NULL,(FLayer*)LTable[i], batch,0,lname);
-	else if (!strcmp(cad,"regression"))
+	else if (!strcmp(cad,"regression")) 
 	  LTable[Lc]=new OFLayer(NULL,(FLayer*)LTable[i], batch,1,lname);
 	else if (!strcmp(cad,"autoencoder"))
 	  LTable[Lc]=new OFLayer(NULL,(FLayer*)LTable[i], batch,2,lname);
@@ -570,6 +584,7 @@ public:
 	  LTable[Lc]=new OFLayer(NULL,(FLayer*)LTable[i], batch,5,lname);
 	else if (!strcmp(cad,"minlog"))
 	  LTable[Lc]=new OFLayer(NULL,(FLayer*)LTable[i], batch,6,lname);
+	else err("incorrect loss","FO Layer");
 
       }
 
@@ -970,6 +985,7 @@ public:
 	  }
 	  else {//create
 	    DTable[Dc]=d2->create(dname1,sini1,sfin1,cini1,cfin1,ctype1);
+	    DTable[Dc]->detect();
 	    Dc++;
 	  }
 	}//source data
@@ -999,6 +1015,7 @@ public:
 	  }
 	  else {//create
 	    DTable[Dc]=d2->create(dname1,sini2,sfin2,cini2,cfin2,ctype2);
+	    DTable[Dc]->detect();
 	    Dc++;
 	  }
 	}
@@ -1049,6 +1066,7 @@ public:
       for(float r=fini;r<=ffin;r+=fstep) {
 	setvar(vf,r);
 	niblock->run();
+	r=getvar(vf);
       }
       point=fin;
     }

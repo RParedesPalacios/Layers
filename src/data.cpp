@@ -343,12 +343,12 @@ void Data::copyto(Data *D,int Dsini,int Dsfin,int Ddini,int Ddfin,int Dtype,int 
 
   if (sfin<sini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
   if (dfin<dini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
-  /*
+  
     if (type==0) fprintf(stderr,"copy %s[%d:%d,%d:%d]->%s[%d:%d,%d:%d] only real\n",name,sini,sfin,dini,dfin,D->name,Dsini,Dsfin,Ddini,Ddfin);
     else if (type==1) fprintf(stderr,"copy %s[%d:%d,%d:%d]->%s[%d:%d,%d:%d] only bin\n",name,sini,sfin,dini,dfin,D->name,Dsini,Dsfin,Ddini,Ddfin);
     else if (type==2) fprintf(stderr,"copy %s[%d:%d,%d:%d]->%s[%d:%d,%d:%d] only int\n",name,sini,sfin,dini,dfin,D->name,Dsini,Dsfin,Ddini,Ddfin);
     else fprintf(stderr,"copy %s[%d:%d,%d:%d]->%s[%d:%d,%d:%d]\n",name,sini,sfin,dini,dfin,D->name,Dsini,Dsfin,Ddini,Ddfin);
-  */
+  
   dini--;sini--;
   dfin--;sfin--;
   
