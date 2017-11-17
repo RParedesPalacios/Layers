@@ -250,7 +250,7 @@ void FLayer::resetstats()
 
   bn_gmean->set(0.0);
   bn_gvar->set(0.0);
-  
+
   fprintf(stderr,"%s reset stats\n",name);
 }
 

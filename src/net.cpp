@@ -986,6 +986,7 @@ void Net::evaluate(Data *Dt)
   printerrors(Dt->num);
 
 
+  trainmode();
   for(i=0;i<layers;i++)
     if (lvec[i]->lin==0) 
       ((IFLayer *)lvec[i])->setsource(Dtrain);

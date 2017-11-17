@@ -1182,6 +1182,12 @@ public:
     }
   }
 
+  ///------@
+  void runShell(char *line) 
+  {
+    line=line+6;
+    system(line);
+  }
 
   void run() {
     char line[MAX_CHAR];
@@ -1204,6 +1210,8 @@ public:
       else if (!strcmp(cad,"exit")) exit(1);
       else if (!strcmp(cad,"command")) runcommand(line);
       else if (!strcmp(cad,"amendment")) runamendment(line);
+      ///---- @
+      else if (!strcmp(cad,"shell")) runShell(line);      
     }
   }
 };
