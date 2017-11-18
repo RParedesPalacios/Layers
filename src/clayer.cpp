@@ -528,13 +528,13 @@ void CLayer::save(FILE *fe)
 
   save_param(fe);
 
-  K->save(fe);
-  if (!bn) bias->save(fe);
+  K->save(fe,1);
+  if (!bn) bias->save(fe,1);
   else {
-    bn_g->save(fe);
-    bn_b->save(fe);
-    bn_gmean->save(fe);
-    bn_gvar->save(fe);
+    bn_g->save(fe,1);
+    bn_b->save(fe,1);
+    bn_gmean->save(fe,1);
+    bn_gvar->save(fe,1);
     fprintf(fe,"%d\n",bnc);
   }
 

@@ -594,6 +594,7 @@ void Net::save(FILE *fe)
   for(i=0;i<layers;i++) {
     fts[i]->save(fe);
   }
+
   fclose(fe);
 }
 

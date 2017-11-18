@@ -88,7 +88,7 @@ void Layer::setdrop(double m){ fprintf(stderr,"Layer %s setting drop %f\n",name,
 void Layer::setl2(double m){  fprintf(stderr,"Layer %s setting l2 %f\n",name,m);l2=m;}
 void Layer::setl1(double m){fprintf(stderr,"Layer %s setting l1 %f\n",name,m);l1=m;}
 void Layer::setmaxn(double m){ fprintf(stderr,"Layer %s setting maxn %f\n",name,m);maxn=m;}
-void Layer::setlambda(double l){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting lambda %f\n",name,l);lambda=l;opt=floor(l);}
+void Layer::setlambda(double l){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting lambda %f\n",name,l);lambda=l;}
 void Layer::trainmode(){trmode=1;}
 void Layer::testmode(){trmode=0;}
 void Layer::setact(int i){fprintf(stderr,"Layer %s setact to %d\n",name,i);act=i;}
@@ -103,6 +103,7 @@ void Layer::setoptim(int t){ fprintf(stderr,"Set optimization method layer %s to
 void Layer::save_param(FILE *fe)
 {
   int i;
+
 
   fprintf(fe,"%s\n",name);
   fprintf(fe,"%d\n",din);
@@ -126,6 +127,9 @@ void Layer::save_param(FILE *fe)
   // FOR FUTURE PARAMS
   for(i=0;i<10;i++)
     fprintf(fe,"-1\n");
+  
+  fflush(fe);
+
 
 }
 void Layer::load_param(FILE *fe)

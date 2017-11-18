@@ -119,7 +119,7 @@ class Tensor {
   // I/O
   
   void print(const char *cad);
-  void save(FILE *fs);
+  void save(FILE *fs,int nl);
   void load(FILE *fs);
 
 

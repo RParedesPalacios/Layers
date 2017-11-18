@@ -393,26 +393,24 @@ void FLayer::forward()
 void FLayer::save(FILE *fe)
 {
   int k,i,j;
+  
+  fprintf(stderr,"Saving layer %s...\n",name);
 
   save_param(fe);
-
-  for(k=0;k<lout;k++) {
-    for(i=0;i<din;i++)
-      for(j=0;j<Lout[k]->din;j++)
-	fprintf(fe,"%f ",W->get(k,i,j));
     
-    for(j=0;j<Lout[k]->din;j++)
-      fprintf(fe,"%f ",b->get(k,j));
-    
-    fprintf(fe,"\n");
-  }
   
-  if (bn) {
-    for(j=0;j<din;j++)
-      fprintf(fe,"%f %f %f %f ",bn_g->get(j),bn_b->get(j),bn_gmean->get(j),bn_gvar->get(j));
-    
-    fprintf(fe,"%d\n",bnc);
-  }
+    for(k=0;k<lout;k++) {
+      W->subTensor(k)->save(fe,1);
+      b->subTensor(k)->save(fe,1);
+    }
+  
+    if (bn) {
+      bn_g->save(fe,1);
+      bn_b->save(fe,1);
+      bn_gmean->save(fe,1);
+      bn_gvar->save(fe,1);
+      fprintf(fe,"%d\n",bnc);
+    }
   
 }
 
@@ -422,38 +420,22 @@ void FLayer::load(FILE *fe)
   double fv;
   int fsd;
 
-  fprintf(stderr,"Loading layer %s...",name);
+  fprintf(stderr,"Loading layer %s...\n",name);
 
   load_param(fe);
 
   for(k=0;k<lout;k++) {
-    for(i=0;i<din;i++)
-      for(j=0;j<Lout[k]->din;j++) {
-	fsd=fscanf(fe,"%lf ",&fv);
-	W->set(k,i,j,fv);
-      }
-    
-      for(j=0;j<Lout[k]->din;j++) {
-	fsd=fscanf(fe,"%lf ",&fv);
-	b->set(k,j,fv);
-      }
-    fsd=fscanf(fe,"\n");
+    W->subTensor(k)->load(fe);
+    b->subTensor(k)->load(fe);
   }
 
   if (bn) {
-    for(j=0;j<din;j++) {
-      fsd=fscanf(fe,"%lf ",&fv);
-      bn_g->set(j,fv);
-      fsd=fscanf(fe,"%lf ",&fv);
-      bn_b->set(j,fv);
-      fsd=fscanf(fe,"%lf ",&fv);
-      bn_gmean->set(j,fv);
-      fsd=fscanf(fe,"%lf ",&fv);
-      bn_gvar->set(j,fv);
-    }
+    bn_g->load(fe);
+    bn_b->load(fe);
+    bn_gmean->load(fe);
+    bn_gvar->load(fe);
     fsd=fscanf(fe,"%d\n",&bnc);
   }
-  fprintf(stderr,"ok\n");
 }
 
 

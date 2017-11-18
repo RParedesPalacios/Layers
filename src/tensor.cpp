@@ -977,7 +977,7 @@ LType Tensor::get(int a,int b,int c,int d)
 }
 
 //Juan: Not implemented
-void Tensor::save(FILE *fs)
+void Tensor::save(FILE *fs,int nl=0)
 {
   if (dim==1) 
     for(int i=0;i<a;i++) 
@@ -989,7 +989,8 @@ void Tensor::save(FILE *fs)
   else
     for(int i=0;i<a;i++) 
       ptr[i]->save(fs);
-  
+
+  if (nl) fprintf(fs,"\n");
 }
 //Juan: Not implemented
 void Tensor::load(FILE *fs)
@@ -1004,13 +1005,12 @@ void Tensor::load(FILE *fs)
   else if (dim==2) 
     for(int i=0;i<a;i++) 
       for(int j=0;j<b;j++) {
-	fprintf(fs,"%f ",&fv);
+	fscanf(fs,"%f ",&fv);
 	ptr2(i,j)=fv;
       }
   else
     for(int i=0;i<a;i++) 
       ptr[i]->save(fs);
-
 }
 
 //Juan: Not implemented
