@@ -1851,6 +1851,36 @@ void Tensor::maskZeros(Tensor *mask,Tensor *A)
 
 
 
+////////// REGULARIZATIONS  ////////
+void Tensor::RegL2(Tensor *A,LType l2) 
+{
+  Tensor::sc_mult(A,(1-l2),A,0);
+}
+void Tensor::RegL1(Tensor *A,LType l1) 
+{
+  Tensor *N=A->toLin();
+
+ #pragma omp parallel for
+ for(int i=0;i<N->a;i++) 
+    if (N->ptr1(i)>0) N->ptr1(i)-=l1;
+    else N->ptr1(i)+=l1;
+  
+  A->fromLin(N);
+}
+void Tensor::RegMaxN(Tensor *A,LType maxn) 
+{
+  if (A->dim==2) {
+    for(int i=0;i<A->b;i++){
+      LType n=A->ptr2.col(i).norm();
+      if (n>maxn) {
+	A->ptr2.col(i)=(maxn/n)*A->ptr2.col(i);
+      }
+    }
+  }
+}
+
+
+
 
 
 // REDUCED FUNCTIONS 2D <--> 1D                                                      

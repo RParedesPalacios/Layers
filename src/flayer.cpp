@@ -591,27 +591,12 @@ void FLayer::applygrads()
 
     // REGULARIZATION    
     if (l2!=0.0)
-      Tensor::sc_mult(W->subTensor(k),(1-l2),W->subTensor(k),0);
-    //if (l1!=0.0)
-      
-    //if (maxn>0.0)
-
-
-    /*
+      Tensor::RegL2(W->subTensor(k),l2);
+    if (l1!=0.0)
+      Tensor::RegL1(W->subTensor(k),l1);
     if (maxn>0.0)
-      for(i=0;i<W[k].cols();i++) {
-	if (W[k].col(i)->norm()>maxn) {
-	  W[k].col(i)=(maxn/W[k].col(i)->norm())*W[k].col(i);
-	}
-      }
+      Tensor::RegMaxN(W->subTensor(k),maxn);
 
-    if (l1!=0.0) {
-      for(i=0;i<W[k].rows();i++)
-	for(j=0;j<W[k].cols();j++)
-	  if (W[k](i,j)<0.0) W[k](i,j)+=l1;
-	  else W[k](i,j)-=l1;
-    }
-    */
 
     gW->subTensor(k)->set(0.0);
     gb->subTensor(k)->set(0.0);

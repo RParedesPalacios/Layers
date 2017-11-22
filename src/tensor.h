@@ -145,6 +145,11 @@ class Tensor {
   static Tensor * sc_sum(Tensor *A, LType sc, Tensor *B, int inc);
   static Tensor * out_mult(Tensor *A, Tensor *B, Tensor *C, int inc);
   static void sumcol(Tensor *A,Tensor *B);
+  
+  // REGLARIZATIONS
+  static void RegL2(Tensor *A,LType l2);
+  static void RegL1(Tensor *A,LType l1);
+  static void RegMaxN(Tensor *A,LType maxn);
 
   // REDUCTIONS
   static Tensor *reduce(Tensor *A,int rdim);
