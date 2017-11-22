@@ -31,7 +31,7 @@ LAYERS = layers
 
 ##########################################################################Eige
 OBJ =	asin.o alex.o nettable.o utils.o data.o layer.o flayer.o \
-	clayer.o player.o catlayer.o net.o tensor.o addlayer.o olayer.o
+	clayer.o player.o catlayer.o net.o cpu_convol.o tensor.o addlayer.o olayer.o
 GPU_OBJ =
 
 
@@ -93,6 +93,9 @@ utils:	utils.cpp utils.h
 
 tensor: tensor.cpp tensor.h utils.h
 	$(CXX) $(CXXFLAGS) -c tensor.cpp
+
+cpu_convol: cpu_convol.cpp cpu_convol.h
+	$(CXX) $(CXXFLAGS) -c cpu_convol.cpp
 
 data:	data.cpp data.h utils.h
 	$(CXX) $(CXXFLAGS) -c data.cpp

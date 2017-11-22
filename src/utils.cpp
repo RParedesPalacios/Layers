@@ -27,7 +27,6 @@ double un[LUT];
 
 double uniform() {
   return ((rand()%10000)/10000.0);
-
 }
 
 double suniform() {

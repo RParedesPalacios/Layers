@@ -19,6 +19,7 @@ extern "C" int netparser (char *nfich) ;
 #define MAX_VAR 10000
 
 
+
 ////////////////////////////////////
 // GLOBAL
 extern int useCPU;
@@ -227,6 +228,27 @@ public:
   void setvar(char *var,float f) {
     int ind=findvar(var);
     VTable[ind]=f;
+  }
+
+
+  void getnamevar(char *cad) 
+  {
+    char *pch;
+
+    return;
+    // now is deactivated
+
+    pch=strtok(cad,"_");
+    pch = strtok (NULL,"_");
+    if (pch != NULL) {
+      pch = strtok (cad,"_");
+      char *p=pch+1;
+      int v=getvar(p);
+      sprintf(cad,"%s%d",pch,v);
+    }
+    else {
+      return;
+    }
   }
 
   void runVar(char *line) {
@@ -872,8 +894,11 @@ public:
       char dname1[MAX_CHAR],dname2[MAX_CHAR];
       Data *d1,*d2;
 
+      
       // Commands wiht one data without ranges
       sscanf(line,"command data %s %s ",com,dname1);
+      getnamevar(dname1);
+
       for(i=0;i<Dc;i++) {
 	if (!strcmp(DTable[i]->name,dname1)) break;
       }
@@ -886,6 +911,8 @@ public:
       }
       else if (!strcmp(com,"store")) {//command data store D1 filename
 	sscanf(line,"command data store %s %s",dname1,fname);
+	getnamevar(dname1);
+
 	//d1->SaveBin(fname);
 	d1->Save(fname);
       }
@@ -894,6 +921,9 @@ public:
       }
       else if (!strcmp(com,"getstats")) { //command data getstats D1 D2
 	sscanf(line,"command data getstats %s %s",dname1,dname2);
+	getnamevar(dname1);
+	getnamevar(dname2);
+
 	for(i=0;i<Dc;i++)
 	  if (!strcmp(DTable[i]->name,dname2)) break;
 	d2=DTable[i];
@@ -904,6 +934,10 @@ public:
 
 	//command data div D2 #0 #0 #0 #0 NONE #1
 	sscanf(line,"command data %s %s %s %s %s %s %s %s",com,dname1,csini1,csfin1,ccini1,ccfin1,cctype1,carg);
+		
+	getnamevar(dname1);
+	
+
 	sini1=getvar(csini1);
 	sfin1=getvar(csfin1);
 	cini1=getvar(ccini1);
@@ -953,6 +987,7 @@ public:
 	char source[MAX_CHAR];
 	// command data copy DEST #1 #2 #3 #4 NONE SOURCE_TYPE SOURCE #5 #6 #7 #8 NONE
 	sscanf(line,"command data copy  %s    %s %s %s %s %s  %s",dname1, csini1,csfin1,ccini1,ccfin1,cctype1,source);
+	getnamevar(dname1);
 
 	sini1=getvar(csini1);
 	sfin1=getvar(csfin1);
@@ -970,6 +1005,9 @@ public:
 
 	if (!strcmp(source,"data")) {// source data
 	  sscanf(line,"command data copy  %s    %s %s %s %s %s  data   %s",dname1, csini1,csfin1,ccini1,ccfin1,cctype1,dname2);
+
+	  getnamevar(dname1);
+	  getnamevar(dname2);
 
 	  // D2 orig
 	  for(i=0;i<Dc;i++)
@@ -991,6 +1029,10 @@ public:
 	}//source data
 	else if (!strcmp(source,"rank")) {// source data rank
 	  sscanf(line,"command data copy  %s    %s %s %s %s %s  rank  %s %s %s %s %s %s",dname1, csini1,csfin1,ccini1,ccfin1,cctype1,dname2,csini2,csfin2,ccini2,ccfin2,cctype2);
+	  
+	  getnamevar(dname1);
+	  getnamevar(dname2);
+
 	  // D2 orig
 	  for(i=0;i<Dc;i++)
 	    if (!strcmp(DTable[i]->name,dname2)) break;
@@ -1021,6 +1063,8 @@ public:
 	}
 	else { // source Layer
 	  sscanf(line,"command data copy  %s    %s %s %s %s %s  layer  %s %s N",dname1, csini1,csfin1,ccini1,ccfin1,cctype1,net1,layer1);
+	  getnamevar(dname1);
+
 	  sprintf(lname,"%s:%s",net1,layer1);
 	  Layer *l;
 	  for(i=0;i<Lc;i++)

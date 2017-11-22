@@ -592,7 +592,10 @@ void FLayer::applygrads()
     // REGULARIZATION    
     if (l2!=0.0)
       Tensor::sc_mult(W->subTensor(k),(1-l2),W->subTensor(k),0);
-    //W[k]-=l2*W[k];
+    //if (l1!=0.0)
+      
+    //if (maxn>0.0)
+
 
     /*
     if (maxn>0.0)

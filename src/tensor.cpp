@@ -6,6 +6,7 @@
 #include <cstdlib>
 
 #include "tensor.h"
+#include "cpu_convol.h"
 #include "data.h"
 #include "utils.h"
 #include "types.h"
@@ -16,7 +17,6 @@
 // Data structures variables and functions for GPU computation setup
 #endif
 
-#define USE_FAST_CPU 1
 
 using namespace Eigen;
 using namespace std;
@@ -430,9 +430,14 @@ int Tensor::equal(Tensor *T)
     Tensor *n1=toLin();
     Tensor *n2=T->toLin();
 
-    for(int i=0;i<size;i++) 
-      if (n1->ptr1(i)!=n2->ptr1(i)) return 0;
-  
+    for(int i=0;i<size;i++) {
+      int v1=10000*n1->ptr1(i);
+      int v2=10000*n2->ptr1(i);
+      if (v1!=v2) {
+	fprintf(stderr,"%d!=%d\n",v1,v2);
+	//return 0;
+      }
+    }
     delete n1;
     delete n2;
   }
@@ -536,6 +541,31 @@ void Tensor::copylabels(Data *D)
       delete batch_aux;
     }
 #endif
+}
+
+void Tensor::copyfromEigen(LMatrix M)
+{
+  if (useCPU) {
+    if (dim==2) {
+      ptr2=M;
+    }
+    else if (dim==4) {
+      #pragma omp parallel for
+      for(int i=0;i<a;i++) {
+        int p=0;
+        for(int j=0;j<b;j++)
+          for(int k=0;k<c;k++)
+            for(int l=0;l<d;l++,p++)
+              ptr[i]->ptr[j]->ptr2(k,l)=M(i,p);
+      }
+    }
+  }
+  #ifdef fGPU
+  else
+    {
+      
+    }
+  #endif
 }
 void Tensor::copyfromData(Data *D)
 {
@@ -1721,6 +1751,16 @@ void Tensor::activation(Tensor *E,Tensor *N,int act)
   #endif
 }
 
+void Tensor::info()
+{
+  printf("dim=%d\n",dim);
+  
+  if (dim>0) printf("%d",a);
+  if (dim>1) printf("x%d",b);
+  if (dim>2) printf("x%d",c);
+  if (dim>3) printf("x%d",d);
+  printf("\n");
+}
 
 void Tensor::print(const char *cad="")
 {
@@ -1811,165 +1851,312 @@ void Tensor::maskZeros(Tensor *mask,Tensor *A)
 
 
 
+
+
 // REDUCED FUNCTIONS 2D <--> 1D                                                      
+
+// 4D -> 2D
+Tensor * Tensor::reduce(Tensor *A,int rdim) 
+{
+  if (A->dim!=4) msgerr("reduceTosum","error A dim!=4\n");
+  
+  Tensor *N;
+
+  if (rdim==0) {
+    N=new Tensor(A->a,A->b*A->c*A->d);
+#pragma omp parallel for
+    for(int i=0;i<A->a;i++) {
+      int p=0;
+      for(int j=0;j<A->b;j++)
+	for(int k=0;k<A->c;k++)
+	  for(int l=0;l<A->d;l++,p++)
+	    N->ptr2(i,p)=A->ptr[i]->ptr[j]->ptr2(k,l);
+    }
+  }
+  else if (rdim==1) {
+    N=new Tensor(A->b,A->a*A->c*A->d);
+#pragma omp parallel for
+    for(int i=0;i<A->b;i++) {
+      int p=0;
+      for(int j=0;j<A->a;j++)
+	for(int k=0;k<A->c;k++)
+	  for(int l=0;l<A->d;l++,p++)
+	    N->ptr2(i,p)=A->ptr[j]->ptr[i]->ptr2(k,l);
+    }
+  }
+  return N;  
+}
+
 void Tensor::reduceTosum(Tensor *A, Tensor *B,int row)
 {
-  if (A->dim!=2) msgerr("reduceTosum","error A dim!=2\n");
-  if (B->dim!=1) msgerr("reduceTosum","error B dim!=1\n");
-
-  if (useCPU) {
-    if (row) {
-      #pragma omp parallel for
-      for(int i=0;i<A->b;i++) {
-        B->ptr1(i)=0;
-        for(int j=0;j<A->a;j++)
-          B->ptr1(i)+=A->ptr2(j,i);
-      }
-    }
-    else {
-      #pragma omp parallel for
-      for(int i=0;i<A->a;i++) {
-        B->ptr1(i)=0;
-        for(int j=0;j<A->b;j++)
-          B->ptr1(i)+=A->ptr2(i,j);
-      }
-    }
+  if (A->dim==4) {
+    Tensor *Ar=Tensor::reduce(A,row);
+    reduceTosum(Ar,B,0);
+    delete Ar;
   }
-#ifdef fGPU
-  else
-    {
+  else if (A->dim==2) {
 
+    if (B->dim!=1) msgerr("reduceTosum","error B dim!=1\n");
+
+    if (useCPU) {
+      if (row) {
+#pragma omp parallel for
+	for(int i=0;i<A->b;i++) {
+	  B->ptr1(i)=0;
+	  for(int j=0;j<A->a;j++)
+	    B->ptr1(i)+=A->ptr2(j,i);
+	}
+      }
+      else {
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++) {
+	  B->ptr1(i)=0;
+	  for(int j=0;j<A->b;j++)
+	    B->ptr1(i)+=A->ptr2(i,j);
+	}
+      }
     }
+#ifdef fGPU
+    else
+      {
+
+      }
 #endif
+  }
 }
+
 void Tensor::reduceTomean(Tensor *A, Tensor *B,int row)
 {
-  if (A->dim!=2) msgerr("reduceTomean","error A dim!=2\n");
-  if (B->dim!=1) msgerr("reduceTomean","error B dim!=1\n");
 
-  if (row) {
-    Tensor::reduceTosum(A,B,row);
-    B->div(A->a);
+  if (A->dim==4) {
+    Tensor *Ar=Tensor::reduce(A,row);
+    reduceTomean(Ar,B,0);
+    delete Ar;
   }
-  else {
-    Tensor::reduceTosum(A,B,row);
-    B->div(A->b);
+  else if (A->dim==2) {
+
+    if (B->dim!=1) msgerr("reduceTomean","error B dim!=1\n");
+
+    if (row) {
+      Tensor::reduceTosum(A,B,row);
+      B->div(A->a);
+    }
+    else {
+      Tensor::reduceTosum(A,B,row);
+      B->div(A->b);
+    }
   }
 }
 
 void Tensor::reduceTovariance(Tensor *A, Tensor *B,int row)
 {
-  if (A->dim!=2) msgerr("reduceTovariance","error A dim!=2\n");
-  if (B->dim!=1) msgerr("reduceTovariance","error B dim!=1\n");
+  if (A->dim==4) {
+    Tensor *Ar=Tensor::reduce(A,row);
+    reduceTovariance(Ar,B,0);
+    delete Ar;
+  }
+  else if (A->dim==2) {
+  
+    if (A->dim!=2) msgerr("reduceTovariance","error A dim!=2\n");
+    if (B->dim!=1) msgerr("reduceTovariance","error B dim!=1\n");
 
-  Tensor *M;
+    Tensor *M;
 
-  if (row)
-    M=new Tensor(A->b);
-  else
-    M=new Tensor(A->a);
+    if (row)
+      M=new Tensor(A->b);
+    else
+      M=new Tensor(A->a);
 
-  Tensor *AM=new Tensor(A->a,A->b);
+    Tensor *AM=new Tensor(A->a,A->b);
 
-  Tensor::reduceTomean(A,M,row);
+    Tensor::reduceTomean(A,M,row);
 
-  Tensor::reduced_sum(1,A,-1,M,AM,0,row);
-  Tensor::el_mult(AM,0,AM,0,AM,0);
+    Tensor::reduced_sum(1,A,-1,M,AM,0,row);
+    Tensor::el_mult(AM,0,AM,0,AM,0);
 
-  Tensor::reduceTomean(AM,B,row);
+    Tensor::reduceTomean(AM,B,row);
 
-  delete M;
-  delete AM;
+    delete M;
+    delete AM;
+  }
 }
 
-void Tensor::reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int inc,\
-			 int row)
+void Tensor::reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int inc,int rdim)
 {
-  if (A->dim!=2) msgerr("reduced_sum","error A dim!=2\n");
-  if (B->dim!=1) msgerr("reduced_sum","error B dim!=1\n");
-  if (C->dim!=2) msgerr("reduced_sum","error C dim!=2\n");
+  if (A->dim==2) {
+    if (B->dim!=1) msgerr("reduced_sum","error B dim!=1\n");
+    if (C->dim!=2) msgerr("reduced_sum","error C dim!=2\n");
 
-  if (useCPU) {
-    if (row)
-      #pragma omp parallel for
-      for(int i=0;i<A->a;i++)
-        for(int j=0;j<A->b;j++)
-          if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
-          else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
-    else
-      #pragma omp parallel for
-      for(int i=0;i<A->a;i++)
-        for(int j=0;j<A->b;j++)
-          if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
-          else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
-  }
-  #ifdef fGPU
-  else
-    {
+    if (useCPU) {
+      if (rdim==0)
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
+	    else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
+      else 
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
+	    else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
+    }
+#ifdef fGPU
+      else
+	{
 
     }
 #endif
-
-}
-void Tensor::reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int row)
-{
-  if (A->dim!=2) msgerr("reduced_div","error A dim!=2\n");
-  if (B->dim!=1) msgerr("reduced_div","error B dim!=1\n");
-  if (C->dim!=2) msgerr("reduced_div","error C dim!=2\n");
-
-  if (useCPU) {
-    if (row)
-      #pragma omp parallel for
-      for(int i=0;i<A->a;i++)
-        for(int j=0;j<A->b;j++)
-          if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(j);
-          else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(j);
-    else
-      #pragma omp parallel for
-      for(int i=0;i<A->a;i++)
-        for(int j=0;j<A->b;j++)
-          if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(i);
-          else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(i);
+    }
+  else if (A->dim==4) {
+    if (B->dim!=1) msgerr("reduced_sum","error B dim!=1\n");
+    if (C->dim!=4) msgerr("reduced_sum","error C dim!=4\n");
+    if (useCPU) {
+    if (rdim==0)
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
+		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=(scA*A->ptr[i]->ptr[j]->ptr2(k,l))+(scB*B->ptr1(i));
+		else  C->ptr[i]->ptr[j]->ptr2(k,l)=(scA*A->ptr[i]->ptr[j]->ptr2(k,l))+(scB*B->ptr1(i));
+    else if (rdim==1)
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
+		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=(scA*A->ptr[i]->ptr[j]->ptr2(k,l))+(scB*B->ptr1(j));
+		else  C->ptr[i]->ptr[j]->ptr2(k,l)=(scA*A->ptr[i]->ptr[j]->ptr2(k,l))+(scB*B->ptr1(j));
 
   }
 #ifdef fGPU
-  else
-    {
-
-    }
-#endif
-
-}
-
-void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row)
-{
-  if (A->dim!=2) msgerr("reduced_mult","error A dim!=2\n");
-  if (B->dim!=1) msgerr("reduced_mult","error B dim!=1\n");
-  if (C->dim!=2) msgerr("reduced_mult","error C dim!=2\n");
-
-  if (useCPU) {
-    if (row)
-      #pragma omp parallel for
-      for(int i=0;i<A->a;i++)
-        for(int j=0;j<A->b;j++)
-          if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(j);
-          else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(j);
-    else
-      #pragma omp parallel for
-      for(int i=0;i<A->a;i++)
-        for(int j=0;j<A->b;j++)
-          if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(i);
-          else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(i);
+    else {
 
   }
+#endif
+
+      
+  }
+}
+void Tensor::reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
+{
+  if (A->dim==2) {
+    if (B->dim!=1) msgerr("reduced_sum","error B dim!=1\n");
+    if (C->dim!=2) msgerr("reduced_sum","error C dim!=2\n");
+
+    if (useCPU) {
+      if (rdim==0)
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(i);
+	    else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(i);
+      else 
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(j);
+	    else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(j);
+    }
 #ifdef fGPU
-  else
-    {
+    else
+      {
+
+      }
+#endif
+  }
+  else if (A->dim==4) {
+    if (B->dim!=1) msgerr("reduced_sum","error B dim!=1\n");
+    if (C->dim!=4) msgerr("reduced_sum","error C dim!=4\n");
+    if (useCPU) {
+      if (rdim==0)
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
+		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=A->ptr[i]->ptr[j]->ptr2(k,l)/B->ptr1(i);
+		else  C->ptr[i]->ptr[j]->ptr2(k,l)=A->ptr[i]->ptr[j]->ptr2(k,l)/B->ptr1(i);
+      else if (rdim==1)
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
+		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=A->ptr[i]->ptr[j]->ptr2(k,l)/B->ptr1(j);
+		else  C->ptr[i]->ptr[j]->ptr2(k,l)=A->ptr[i]->ptr[j]->ptr2(k,l)/B->ptr1(j);
+
+    }
+#ifdef fGPU
+    else {
 
     }
 #endif
+      
+  }
+}
+
+void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
+{
+  if (A->dim==2) {
+    if (B->dim!=1) msgerr("reduced_sum","error B dim!=1\n");
+    if (C->dim!=2) msgerr("reduced_sum","error C dim!=2\n");
+
+    if (useCPU) {
+      if (rdim==0)
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(i);
+	    else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(i);
+      else 
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(j);
+	    else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(j);
+    }
+#ifdef fGPU
+    else
+      {
+
+      }
+#endif
+  }
+  else if (A->dim==4) {
+    if (B->dim!=1) msgerr("reduced_sum","error B dim!=1\n");
+    if (C->dim!=4) msgerr("reduced_sum","error C dim!=4\n");
+    if (useCPU) {
+      
+      if (rdim==0)
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
+		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=A->ptr[i]->ptr[j]->ptr2(k,l)*B->ptr1(i);
+		else  C->ptr[i]->ptr[j]->ptr2(k,l)=A->ptr[i]->ptr[j]->ptr2(k,l)*B->ptr1(i);
+      else if (rdim==1)
+#pragma omp parallel for
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
+		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=A->ptr[i]->ptr[j]->ptr2(k,l)*B->ptr1(j);
+		else  C->ptr[i]->ptr[j]->ptr2(k,l)=A->ptr[i]->ptr[j]->ptr2(k,l)*B->ptr1(j);
+
+    }
+#ifdef fGPU
+    else {
+
+    }
+#endif
+      
+  }
 
 }
+
 
 
 ///////////////////////////////////////////////
@@ -1983,167 +2170,37 @@ void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row)
 ////     batch x depth_out x images (rows x cols) 
 ////     where depth_out=K numfilters
 ///////////////////////////////////////////////
-void Tensor::Convol(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad)
+void Tensor::ConvolForward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad)
 {
-
-
-  if (!tK) {
-    if (!tr) 
-      Tensor::cpu_convol(A,K,B,stride,pad);
-    else {
-      A->Transpose();
-      K->Transpose();
-      B->Transpose();
-      Tensor::cpu_convol(A->T,K->T,B->T,stride,pad);
-      B->UnTranspose();
-      delete A->T;
-      A->T=NULL;
-      delete B->T;
-      B->T=NULL;
-      delete K->T;
-      K->T=NULL;
-    }
+  if(useCPU) 
+    ConvolF(A,K,B,stride,pad,8,A->a);
+  #ifdef fGPU
+  else
+  {
   }
-  else {
-    Tensor::cpu_convolT(A,K,B,stride,pad);
-  }
+ #endif
 }
-
-///// FAST CPU CONVOL with LOWERING and OpenMP
-///// Still faster with adhoc multi-threading however this code is cleaner
-void Tensor::cpu_convol(Tensor *A,Tensor *K,Tensor *B,int stride,int pad)
+void Tensor::ConvolGrad(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad)
 {
-  int i,j,k,z,b,r,im,in,i2,j2,ib;
-
-  // LOWERING Matrices
-  LMatrix I(K->b*K->c*K->d,B->a*B->c*B->d);
-  LMatrix Ker(K->a,K->b*K->c*K->d);
-  LMatrix O(K->a,B->a*B->c*B->d);
-  /////////////////////
-
-  int size=B->c*B->d;
-  int kr2=K->c/2;
-  int kc2=K->d/2;
-  int si,sj;
-  int inr=A->c;
-  int inc=A->d;
-  int c;
-
-  if (!pad) {kr2=0;kc2=0;}
-
-  // Reshape Kernels
-#pragma omp parallel for
-  for(int k=0;k<K->a;k++) {
-    b=0;
-    for(z=0;z<K->b;z++)
-      for(i=0;i<K->c;i++)
-	for(j=0;j<K->d;j++,b++)
-	  Ker(k,b)=K->ptr[k]->ptr[z]->ptr2(i,j);
+  if(useCPU) 
+    ConvolBGrad(A,K,B,stride,pad,8,A->a);
+  #ifdef fGPU
+  else
+  {
   }
-  
-  // Reshape Input
-#pragma omp parallel for
-  for(int b=0;b<B->a;b++) {
-    ib=b*size;
-    in=0;
-    for(i=0;i<B->c;i++)
-      for(j=0;j<B->d;j++,in++) {
-	im=0;
-	for(z=0;z<K->b;z++) {
-	  si=(i*stride)-kr2;
-	  sj=(j*stride)-kc2;
-	  for(i2=0;i2<K->c;i2++,si++)
-	    for(j2=0,sj=(j*stride)-kc2;j2<K->d;j2++,im++,sj++)
-	      if ((si<0)||(sj<0)||(si>=inr)||(sj>=inc))
-		I(im,in+ib)=0.0;
-	      else
-		I(im,in+ib)=A->ptr[b]->ptr[z]->ptr2(si,sj);
-	  
-	}
-      }
-  }
-
-  // Lowering convolution with matrix multiplication
-  O=Ker*I;
-
-  // Reshape Output
-#pragma omp parallel for
-  for(int b=0;b<B->a;b++) {
-  ib=b*size;
-  for(k=0;k<K->a;k++) 
-    for(i=0,z=0;i<B->c;i++)
-      for(j=0;j<B->d;j++,z++) 
-	B->ptr[b]->ptr[k]->ptr2(i,j)=O(k,z+ib);
+ #endif
 }
-}
-
-
-
-
-void Tensor::cpu_convolT(Tensor *A,Tensor *K,Tensor *B,int stride,int pad)
+void Tensor::ConvolBackward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad)
 {
-  int i,j,k,z,b,r,c,s,im,in,i2,j2,ib;
-  
-  // LOWERING
-  LMatrix Del(A->a,K->a);
-  LMatrix *Kr;
-  Kr=new LMatrix[K->b];
-  for(i=0;i<K->b;i++)
-    Kr[i].resize(K->a,K->c*K->d);
-
-  LMatrix Res(A->a,K->c*K->d);
-  //////////
-
-  int si,sj;
-  int kr2=K->c/2;
-  int kc2=K->d/2;
-  
-  int inr=B->c;
-  int inc=B->d;
-
-  if (!pad) {kr2=0;kc2=0;}
-  
-#pragma omp parallel for
-  for(z=0;z<K->b;z++) {
-    for(k=0;k<K->a;k++)
-      for(i2=0,r=0,c=0;i2<K->c*K->d;i2++,c++) {
-	if (c==K->d) {c=0;r++;}
-	Kr[z](k,i2)=K->ptr[k]->ptr[z]->ptr2(r,c);
-      }
+  if(useCPU) 
+    ConvolBDelta(A,K,B,stride,pad,8,A->a);
+  #ifdef fGPU
+  else
+  {
   }
-
-  
-  for(i=0;i<A->c;i++) {
-  for(j=0;j<A->d;j++) {
-  
-    #pragma omp parallel for
-  for(b=0;b<A->a;b++)
-    for(k=0;k<K->a;k++)
-      Del(b,k)=A->ptr[b]->ptr[k]->ptr2(i,j);
-
-      for(z=0;z<K->b;z++) {
-	Res=Del*Kr[z];
-
-#pragma omp parallel for
-	for(b=0;b<A->a;b++) {
-	  for(i2=0,r=0,c=0;i2<K->c*K->d;i2++,c++) {
-	    if (c==K->d) {c=0;r++;}
-	    si=(i*stride+r)-kr2;
-	    sj=(j*stride+c)-kc2;
-	    if ((si<0)||(sj<0)||(si>=inr)||(sj>=inc)) { }
-	    else B->ptr[b]->ptr[z]->ptr2(si,sj)+=Res(b,i2);
-	  }
-	}
-
-      }//z
-	
-    }//j
-  }//i
-
-
-  for(i=0;i<K->b;i++)
-    Kr[i].resize(0,0);
+ #endif
 
 }
+
 
 

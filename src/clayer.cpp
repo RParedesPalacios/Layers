@@ -191,68 +191,48 @@ void CLayer::addparent(Layer *l)
 void CLayer::fBN()
 {
   int i;
-  /*
+  float eps=0.000001;
+
   if (trmode) {
+    Tensor::reduceTomean(E,bn_mean,1);  
+    Tensor::reduceTovariance(E,bn_var,1);
+
+    Tensor::inc(bn_mean,bn_gmean);
+    Tensor::inc(bn_var,bn_gvar);
     bnc++;
-#pragma omp parallel for 
-    for(int i=0;i<nk;i++) {
-      int j,k,r,c,b,cn;
-      double m,var,eps=0.0001;
-      m=0;
-      for(b=0;b<batch;b++)
-	for(r=0;r<outr;r++)
-	  for(c=0;c<outc;c++)
-	    m+=E[b][i](r,c);
-      m/=(batch*outr*outc);
-      bn_mean(i)=m;
 
-      var=0;
-      for(b=0;b<batch;b++)
-	for(r=0;r<outr;r++)
-	  for(c=0;c<outc;c++)
-	    var+=(m-E[b][i](r,c))*(m-E[b][i](r,c));
-      var/=((batch*outr*outc)-1);
-      bn_var(i)=var;
+    Tensor *sd=bn_var->Clone();
 
-      for(b=0;b<batch;b++)
-	for(r=0;r<outr;r++)
-	  for(c=0;c<outc;c++)
-	    bn_E[b][i](r,c)=(E[b][i](r,c)-bn_mean(i))/sqrt(bn_var(i)+eps);
+    sd->add(eps); 
+    sd->sqr();  
 
-      
-      if (noiser) {
-	cn=rand()%LUT;
-	for(b=0;b<batch;b++)
-	  for(r=0;r<outr;r++)
-	    for(c=0;c<outc;c++)
-	      if (noiser>=un[(cn++)%LUT]) 
-		bn_E[b][i](r,c)+=noisesd*gn[(cn++)%LUT];
-      }
+    Tensor::reduced_sum(1,E,-1,bn_mean,bn_E,0,1);
+    Tensor::reduced_div(bn_E,sd,bn_E,0,1);
 
-      for(b=0;b<batch;b++)
-	for(r=0;r<outr;r++)
-	  for(c=0;c<outc;c++)
-	    BNE[b][i](r,c)=(bn_g(i)*bn_E[b][i](r,c))+bn_b(i);
 
+    if (noiser>0.0) {
+      bn_E->add_noise_gauss(noiser,0.0,noisesd);
     }
-    bn_gmean+=bn_mean;
-    bn_gvar+=bn_var;
+
+    Tensor::reduced_mult(bn_E,bn_g,BNE,0,1);
+    Tensor::reduced_sum(1,BNE,1,bn_b,BNE,0,1);
+
+    delete sd;
   }
-  else {
-#pragma omp parallel for
-    for(int i=0;i<nk;i++) {
-      int j,k,r,c,b;
-      double m,var,eps=0.0001;
-      for(b=0;b<batch;b++)
-	for(r=0;r<outr;r++)
-	  for(c=0;c<outc;c++) {
-	    bn_E[b][i](r,c)=(E[b][i](r,c)-(bn_gmean(i))/bnc)/sqrt((bn_gvar(i)/bnc)+eps);
-	    BNE[b][i](r,c)=(bn_g(i)*bn_E[b][i](r,c))+bn_b(i);
-	  }
-    }
-  
-    }*/
+  else { // testmode
+    Tensor::reduced_sum(1,E,-1.0/bnc,bn_gmean,bn_E,0,1);
+    bn_var->copy(bn_gvar);
+    bn_var->div(bnc);
+    bn_var->add(eps); 
+    bn_var->sqr();  
+
+    Tensor::reduced_div(bn_E,bn_var,bn_E,0,1);
+    
+    Tensor::reduced_mult(bn_E,bn_g,BNE,0,1);
+    Tensor::reduced_sum(1,BNE,1,bn_b,BNE,0,1);
+  }
 }
+
 
 
 void CLayer::forward()
@@ -265,20 +245,17 @@ void CLayer::forward()
     cin=(CLayer *)Lin[0];
 
     // CONVOL
-    Tensor::Convol(cin->N,K,0,E,0,stride,zpad);
+    Tensor::ConvolForward(cin->N,K,0,E,0,stride,zpad);
 
     
     if (!bn)
-      for(i=0;i<E->a;i++)
-	for(j=0;j<E->b;j++)
-	  Tensor::sc_sum(E->subTensor(i,j),bias->ptr1(j),E->subTensor(i,j),0);
-    
+      Tensor::reduced_sum(1,E,1,bias,E,0,1);
 
     /////////////////////////////
     // PREACTIVATION
     /////////////////////////////
     if (bn) {
-      //fBN();
+      fBN();
     }  
     else {
       // Gaussian Noise
@@ -323,68 +300,51 @@ void CLayer::forward()
 ///////////////////
 void CLayer::bBN()
 {
-  /*
-  int i;
-#pragma omp parallel for
-  for(int i=0;i<nk;i++) {
-    int j,k,r,c,b;
-    double m,var,eps=0.0001;
+  
+  Tensor *A=new Tensor(Delta->a,Delta->b,Delta->c,Delta->d);
+  Tensor *Tvar32=bn_var->Clone();
+  Tensor *Tsqvar=bn_var->Clone();
+  float eps=0.0001;
+  
 
-    m=batch*outr*outc;
-    //1 Gamma
-    gbn_g(i)=0.0;
-    for(b=0;b<batch;b++)
-      for(r=0;r<outr;r++)
-	for(c=0;c<outc;c++)
-	  gbn_g(i)+=Delta[b][i](r,c)*bn_E[b][i](r,c);
+  //1 Gamma
+  Tensor::el_mult(Delta,0,bn_E,0,A,0);
+  Tensor::reduceTosum(A,gbn_g,1);
+  
+  //2 Beta  
+  Tensor::reduceTosum(Delta,gbn_b,1);
+  
+  //3 bnE
+  Tensor::reduced_mult(Delta,bn_g,gbn_E,0,1);
+  
+  //4 Var 
+  Tsqvar->add(eps);
+  Tsqvar->sqr();
+  
+  Tvar32->add(eps);
+    
+  Tensor::el_mult(Tvar32,0,Tsqvar,0,Tvar32,0);
+  Tensor::reduced_sum(-0.5,E,0.5,bn_mean,A,0,1);
+  Tensor::reduced_div(A,Tvar32,A,0,1);
+  Tensor::el_mult(A,0,gbn_E,0,A,0);
+  Tensor::reduceTosum(A,gbn_var,1);
 
-    //2 Beta
-    gbn_b(i)=0.0;
-    for(b=0;b<batch;b++)
-      for(r=0;r<outr;r++)
-	for(c=0;c<outc;c++)
-	  gbn_b(i)+=Delta[b][i](r,c);
+  //5 Mean
+  Tensor::reduced_div(gbn_E,Tsqvar,A,0,1);
+  A->mul(-1);
+  Tensor::reduceTosum(A,gbn_mean,1);
 
+  //6 Delta
+  int m=batch*outr*outc;
+  Tensor::reduced_div(gbn_E,Tsqvar,Delta,0,1);
+  Tensor::reduced_sum(2.0/m,E,-2.0/m,bn_mean,A,0,1);
+  Tensor::reduced_mult(A,gbn_var,A,0,1);
+  Tensor::reduced_sum(1,A,1.0/m,gbn_mean,Delta,1,1);
 
-    //3 bnE
-
-    for(b=0;b<batch;b++)
-      for(r=0;r<outr;r++)
-	for(c=0;c<outc;c++)
-	  gbn_E[b][i](r,c)=Delta[b][i](r,c)*bn_g(i);
-
-
-    //4 Var
-
-    gbn_var(i)=0;
-    for(b=0;b<batch;b++)
-      for(r=0;r<outr;r++)
-	for(c=0;c<outc;c++)
-	  gbn_var(i)+=-0.5*gbn_E[b][i](r,c)*(E[b][i](r,c)-bn_mean(i))/((bn_var(i)+eps)*sqrt(bn_var(i)+eps));
-
-
-    //5 Mean
-
-    gbn_mean(i)=0;
-    for(b=0;b<batch;b++)
-      for(r=0;r<outr;r++)
-	for(c=0;c<outc;c++) {
-	  gbn_mean(i)+=-gbn_E[b][i](r,c)/sqrt(bn_var(i)+eps);
-	  gbn_mean(i)+=-2*gbn_var(i)*(E[b][i](r,c)-bn_mean(i))/m;
-
-	}
-
-    //6 x
-
-    for(b=0;b<batch;b++)
-      for(r=0;r<outr;r++)
-	for(c=0;c<outc;c++) {
-	  Delta[b][i](r,c)=gbn_E[b][i](r,c)/(sqrt(bn_var(i)+eps));
-	  Delta[b][i](r,c)+=gbn_var(i)*2*(E[b][i](r,c)-bn_mean(i))/m;
-	  Delta[b][i](r,c)+=gbn_mean(i)/m;
-	}
-  }
-  */
+    
+  delete A;
+  delete Tvar32;
+  delete Tsqvar;
 
 }
 
@@ -409,7 +369,6 @@ void CLayer::backward()
     Tensor::dactivation(BNE,N,dE,act);
   else 
     Tensor::dactivation(E,N,dE,act);
-
   
   Tensor::el_mult(Delta,0,dE,0,Delta,0);
   
@@ -424,7 +383,7 @@ void CLayer::backward()
   ///// COMPUTE GRADIENT
   if (VERBOSE) fprintf(stderr,"--> cinN=%f Delta=%f gK=%f\n",cin->N->norm(),Delta->norm(),gK->norm());
 
-  Tensor::Convol(cin->N,Delta,0,gK,1,stride,zpad);
+  Tensor::ConvolGrad(cin->N,gK,0,Delta,1,stride,zpad);
 
   if (!bn)    
     for(int i=0;i<Delta->a;i++) 
@@ -435,7 +394,7 @@ void CLayer::backward()
 
   ///// PROPAGATE DELTA
   if (cin->lin>0) {
-    Tensor::Convol(Delta,K,1,cin->Delta,0,stride,zpad);
+    Tensor::ConvolBackward(Delta,K,1,cin->Delta,0,stride,zpad);
   }
 }
 
@@ -460,9 +419,9 @@ void CLayer::applygrads()
   int i;
   
   // WEIGHTS
-  //Tensor::sum(mu/batch,gK,0,mmu,pgK,0,pgK,0);
-  Tensor::sum(mu/batch,gK,0,1,K,0,K,0);
-  //Tensor::inc(pgK,K);
+  Tensor::sum(mu/batch,gK,0,mmu,pgK,0,pgK,0);
+  //Tensor::sum(mu/batch,gK,0,1,K,0,K,0);
+  Tensor::inc(pgK,K);
 
   // BIAS
   if (!bn) Tensor::sc_mult(gbias,mu/batch,bias,1);
@@ -495,11 +454,12 @@ void CLayer::reset()
 }
 void CLayer::resetstats()
 {
-
-  bnc=0;
-
-  bn_gmean->set(0.0);
-  bn_gvar->set(0.0);
+  if (type==CLAYER) {
+    bnc=0;
+    bn_gmean->set(0.0);
+    bn_gvar->set(0.0);
+    fprintf(stderr,"%s reset stats\n",name);
+  }
 
 }
 
@@ -815,7 +775,10 @@ void ICLayer::getbatch()
 
   if (D!=NULL) {
     if ((imr!=outr)||(imc!=outc)) {
+      LMatrix IM;
+      IM.resize(batch,nk*outr*outc);
       for(b=0;b<batch;b++) {
+
 	if (trmode) {
 	  cr=cc=0;
 	  if (imr!=outr) {
@@ -829,18 +792,20 @@ void ICLayer::getbatch()
 	  cr=(imr-outr)/2;
 	  cc=(imc-outc)/2;
 	}
-      }
-
-#pragma omp parallel for
-      for(k=0;k<nk;k++) {
-	pk=k*(imc*imr);
-	for(i=0;i<outr;i++) {
-	  p=pk+((cr+i)*imc)+cc;
-	  for(j=0;j<outc;j++,p++) {
-	    N->set(b,k,i,j,D->M(D->getpos(b),p));
+      
+            
+	int p2=0;
+	for(k=0;k<nk;k++) {
+	  pk=k*(imc*imr);
+	  for(i=0;i<outr;i++) {
+	    p=pk+((cr+i)*imc)+cc;
+	    for(j=0;j<outc;j++,p++,p2++) {
+	      IM(b,p2)=D->M(D->getpos(b),p);
+	    }
 	  }
 	}
-      }
+      }//batch
+      N->copyfromEigen(IM);
     }
     else {
       N->copyfromData(D);

@@ -78,6 +78,7 @@ class Tensor {
     
   void copy(Tensor *T);
   void copyfromData(Data *D);
+  void copyfromEigen(LMatrix M);
   void copylabels(Data *D);
   void copyStatistics(Data *D,int tipe);
 
@@ -117,7 +118,7 @@ class Tensor {
   void add_noise_gauss(LType noiser,LType m,LType noisesd);
   
   // I/O
-  
+  void info();
   void print(const char *cad);
   void save(FILE *fs,int nl);
   void load(FILE *fs);
@@ -145,16 +146,8 @@ class Tensor {
   static Tensor * out_mult(Tensor *A, Tensor *B, Tensor *C, int inc);
   static void sumcol(Tensor *A,Tensor *B);
 
-  static void Convol2D(Tensor *A,Tensor *K,Tensor *B,int inc,int stride,int pad);
-  static void Convol2DT(Tensor *A,Tensor *K,Tensor *B,int inc,int stride,int pad);
-  static void Convol3D(Tensor *A,Tensor *K,Tensor *B,int stride,int pad);
-  static void Convol(Tensor *A,Tensor *K,int tK,Tensor *B,int tB,int stride, int pad);
-  static void ConvolT(Tensor *A,Tensor *K,Tensor *B,int stride, int pad);
-  
-  static void cpu_convol(Tensor *A,Tensor *K,Tensor *B,int stride,int pad);
-  static void cpu_convolT(Tensor *A,Tensor *K,Tensor *B,int stride,int pad);
-
   // REDUCTIONS
+  static Tensor *reduce(Tensor *A,int rdim);
   static void reduceTomean(Tensor *A, Tensor *B,int rowcol);
   static void reduceTosum(Tensor *A, Tensor *B,int rowcol);
   static void reduceTovariance(Tensor *A, Tensor *B,int rowcol);
@@ -162,9 +155,11 @@ class Tensor {
 			  ,int row);
   static void reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int row);
   static void reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row);
-
-
-
+  
+  // Convol
+  static void ConvolForward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad);
+  static void ConvolGrad(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad);
+  static void ConvolBackward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad);
 
 };
 

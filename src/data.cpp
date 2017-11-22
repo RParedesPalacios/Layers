@@ -1170,8 +1170,8 @@ void GData::next()
       for(j=0;j<size;j++)
 	M(i,j)=suniform();
   }
-  if (type==5) { /// one_shot
-    fprintf(stderr,"generating one-shot %d\n",param);
+  if (type==5) { /// onehot
+    fprintf(stderr,"generating one-hot %d\n",param);
     for(i=0;i<num;i++) {
       for(j=0;j<size;j++)
 	M(i,j)=0.0;

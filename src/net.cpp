@@ -827,21 +827,14 @@ void Net::train(int epochs)
 
   for(epoch=1;epoch<=epochs;epoch++) {
 
-    for(i=0;i<layers;i++)
-      if (lvec[i]->lin==0) 
-	((IFLayer *)lvec[i])->setsource(Dtrain);
-    
-    for(i=0;i<layers;i++)
-      if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
-	((OFLayer *)lvec[i])->settarget(Dtrain);
-
-
     lut_init();
 
     reseterrors();
     fprintf(stderr,"Epoch %d:\n",epoch);
 
-    preparebatch(Dtrain,1);
+    for(i=0;i<layers;i++)
+      if ((lvec[i]->lin==0)&&(lvec[i]->D!=NULL))
+	preparebatch(lvec[i]->D,1);
     
     ftime=0;
     btime=0;
@@ -949,21 +942,35 @@ void Net::doreseterrors()
 
 
 ///////////////////////////////////////////
-///////////////////////////////////////////
 void Net::evaluate(Data *Dt)
 {
   int i,n;
-
+  Data *inp[100];
+  Data *out[100];
   //////////////////////////////
-  testmode();
+  // Backup
+  for(i=0;i<layers;i++)
+    if ((lvec[i]->lin==0)&&(lvec[i]->D!=NULL))
+      inp[i]=lvec[i]->D;
+
+  for(i=0;i<layers;i++)
+    if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
+      out[i]=lvec[i]->D;
+  ////
+  
   for(i=0;i<layers;i++)
     if (lvec[i]->lin==0) 
-      ((IFLayer *)lvec[i])->setsource(Dt);
+      if (lvec[i]->type==FLAYER) 
+	((IFLayer *)lvec[i])->setsource(Dt);
+      else
+	((ICLayer *)lvec[i])->setsource(Dt);
   
   for(i=0;i<layers;i++)
     if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
       ((OFLayer *)lvec[i])->settarget(Dt);
 
+
+  testmode();
 
   preparebatch(Dt,0);
   n=calcbatch(Dt);
@@ -988,15 +995,21 @@ void Net::evaluate(Data *Dt)
 
 
   trainmode();
+
+  //restore
   for(i=0;i<layers;i++)
-    if (lvec[i]->lin==0) 
-      ((IFLayer *)lvec[i])->setsource(Dtrain);
-  
+    if (lvec[i]->lin==0)
+      if (lvec[i]->type==FLAYER)
+        ((IFLayer *)lvec[i])->setsource(inp[i]);
+      else
+        ((ICLayer *)lvec[i])->setsource(inp[i]);
+
   for(i=0;i<layers;i++)
     if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
-      ((OFLayer *)lvec[i])->settarget(Dtrain);
+      ((OFLayer *)lvec[i])->settarget(out[i]);
 
 }
+
 
 void Net::testOut(FILE *fs)
 {
@@ -1005,8 +1018,12 @@ void Net::testOut(FILE *fs)
   if (Dtest==NULL) return;
 
   for(i=0;i<layers;i++)
-    if (lvec[i]->lin==0) 
-      ((IFLayer *)lvec[i])->setsource(Dtest);
+    if (lvec[i]->lin==0)
+      if (lvec[i]->type==FLAYER)
+        ((IFLayer *)lvec[i])->setsource(Dtest);
+      else
+        ((ICLayer *)lvec[i])->setsource(Dtest);
+
   
   for(i=0;i<layers;i++)
     if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
@@ -1039,9 +1056,13 @@ void Net::testOut(FILE *fs)
 
   trainmode();
   for(i=0;i<layers;i++)
-    if (lvec[i]->lin==0) 
-      ((IFLayer *)lvec[i])->setsource(Dtrain);
-  
+    if (lvec[i]->lin==0)
+      if (lvec[i]->type==FLAYER)
+        ((IFLayer *)lvec[i])->setsource(Dtrain);
+      else
+        ((ICLayer *)lvec[i])->setsource(Dtrain);
+
+
   for(i=0;i<layers;i++)
     if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
       ((OFLayer *)lvec[i])->settarget(Dtrain);
