@@ -693,16 +693,6 @@ void IFLayer::getbatch()
   else 
     E->copy(((FLayer*)L)->N);
   
-
-  //Noise for binary input
-  if (trmode) {
-    if (noiseb>0.0)
-      for(int i=0;i<batch;i++)
-	for(int j=0;j<din;j++)
-	  if (uniform()<noiseb)
-	    if (E->get(i,j)) E->set(i,j,0.0);
-	    else E->set(i,j,1.0);
-  }
 }
 
 void IFLayer::addparent(Layer *l) {
@@ -891,13 +881,9 @@ void OFLayer::backward()
   }
   else {
     if (opt==2)
-      for(i=0;i<batch;i++)
-	for(j=0;j<din;j++)
-	  T->set(i,j,D->M(D->getpos(i),j));
+      T->copyfromData(D);
     else
-      for(i=0;i<batch;i++)
-	for(j=0;j<din;j++)
-	  T->set(i,j,D->M(D->getpos(i),j+D->dim));
+      T->copylabels(D);
   }
 
   if (opt==0) {// Softmax, CrossEnt
