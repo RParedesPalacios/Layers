@@ -385,10 +385,8 @@ void CLayer::backward()
 
   Tensor::ConvolGrad(cin->N,gK,0,Delta,1,stride,zpad);
 
-  if (!bn)    
-    for(int i=0;i<Delta->a;i++) 
-      for(int j=0;j<Delta->b;j++)
-	gbias->ptr1(j)+=Delta->subTensor(i,j)->sum();
+  if (!bn) 
+    Tensor::reduceTosum(Delta,gbias,1);
 
   if (VERBOSE) fprintf(stderr,"grads (%s) %f\n",name,gK->norm());
 
@@ -420,8 +418,13 @@ void CLayer::applygrads()
   
   // WEIGHTS
   Tensor::sum(mu/batch,gK,0,mmu,pgK,0,pgK,0);
-  //Tensor::sum(mu/batch,gK,0,1,K,0,K,0);
   Tensor::inc(pgK,K);
+
+  // REGULARIZATION    
+  if (l2!=0.0)
+    Tensor::RegL2(K,l2);
+  if (l1!=0.0)
+    Tensor::RegL1(K,l1);
 
   // BIAS
   if (!bn) Tensor::sc_mult(gbias,mu/batch,bias,1);
