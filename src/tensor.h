@@ -162,9 +162,9 @@ class Tensor {
   static void reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int row);
   
   // Convol
-  static void ConvolForward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad);
-  static void ConvolGrad(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad);
-  static void ConvolBackward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad);
+  static void ConvolForward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad,int threads);
+  static void ConvolGrad(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad,int threads);
+  static void ConvolBackward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad,int threads);
 
 };
 

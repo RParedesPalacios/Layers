@@ -245,7 +245,7 @@ void CLayer::forward()
     cin=(CLayer *)Lin[0];
 
     // CONVOL
-    Tensor::ConvolForward(cin->N,K,0,E,0,stride,zpad);
+    Tensor::ConvolForward(cin->N,K,0,E,0,stride,zpad,threads);
 
     
     if (!bn)
@@ -383,7 +383,7 @@ void CLayer::backward()
   ///// COMPUTE GRADIENT
   if (VERBOSE) fprintf(stderr,"--> cinN=%f Delta=%f gK=%f\n",cin->N->norm(),Delta->norm(),gK->norm());
 
-  Tensor::ConvolGrad(cin->N,gK,0,Delta,1,stride,zpad);
+  Tensor::ConvolGrad(cin->N,gK,0,Delta,1,stride,zpad,threads);
 
   if (!bn) 
     Tensor::reduceTosum(Delta,gbias,1);
@@ -391,10 +391,10 @@ void CLayer::backward()
   if (VERBOSE) fprintf(stderr,"grads (%s) %f\n",name,gK->norm());
 
   ///// PROPAGATE DELTA
-  if (cin->lin>0) {
-    Tensor::ConvolBackward(Delta,K,1,cin->Delta,0,stride,zpad);
-  }
+  if (cin->lin>0) 
+    Tensor::ConvolBackward(Delta,K,1,cin->Delta,0,stride,zpad,threads);
 }
+
 
 
 void CLayer::initialize()

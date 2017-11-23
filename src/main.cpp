@@ -1263,6 +1263,8 @@ public:
 
 int main(int argc, char **argv) {
   //Juan-> Fix as you want
+  Eigen::initParallel();
+
   if (argc<2) {
     if (VERBOSE) fprintf(stderr,"use: layers netfile\n");
     exit(1);

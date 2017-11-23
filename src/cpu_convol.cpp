@@ -141,6 +141,8 @@ void ConvolF(Tensor *N, Tensor *K, Tensor *E,int stride, int pad,int threads,int
   int i,b;
 
   int nt=threads;
+
+  setNbThreads(1);
   for( i=0; i < nt; ++i ){
     td[i].id=i;
     td[i].nt=threads;
@@ -169,7 +171,7 @@ void ConvolF(Tensor *N, Tensor *K, Tensor *E,int stride, int pad,int threads,int
     }
   }
 
-  setNbThreads(1);
+
   for( i=0; i < nt; ++i ){
     rc = pthread_join(thr[i], &status);
     if (rc){
@@ -249,6 +251,7 @@ void *ConvolBGradt(void *threadarg)
     int p,q;
 
     // Prepare I
+
     q=0;
     for(z=zini;z<zfin;z++) {
       for(i=0;i<m->kr;i++)
@@ -265,7 +268,7 @@ void *ConvolBGradt(void *threadarg)
 	  }
 	}
     }
-
+    
     //Prepare Delta
     for(k=kini;k<kfin;k++) {
       p=0;
@@ -278,6 +281,7 @@ void *ConvolBGradt(void *threadarg)
     Res->ptr2=I->ptr2*D->ptr2;
 
     // Reshape to gradient
+    
     for(k=kini;k<kfin;k++) {
       p=0;
       for(z=zini;z<zfin;z++) {
@@ -432,12 +436,13 @@ void ConvolBGrad(Tensor *N, Tensor *gK, Tensor *D,int stride, int pad,int thread
 
   void *status;
   int rc;
-  int nt=threads;
+  int nt=2;
   int i,j,r,c;
   double sum;
 
 
-  setNbThreads(1);
+  setNbThreads(threads/2);
+  
 
   for( i=0; i < nt; ++i ){
 
