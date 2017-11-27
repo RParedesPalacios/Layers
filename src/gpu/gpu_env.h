@@ -34,14 +34,18 @@ void scVec(float* vec_o,float* vec_i, tensor_gpu_specs* sA, float sc ,int op,int
 //elwise operator
 void mat_elwise_mat(float* A, float* B, float* C,tensor_gpu_specs* sA,tensor_gpu_specs* sB,tensor_gpu_specs* sC,int op, int acc, int tA, int tB,float sca=1.0, float scb=1.0);
 int tensor_equal(float* A, float* B, tensor_gpu_specs* sA);
-void mat_elwise_vec(float* mat_o,float* mat, float* vec, tensor_gpu_specs* sA,int op,int acc);
+void mat_elwise_vec(float* mat_o,float* mat, float* vec, tensor_gpu_specs* sA,int op,int acc,float sca=1, float scb=1, int rdim=0);
 void vec_elwise_vec(float* A, float* B, float* C,tensor_gpu_specs* sA,int op, int acc,float sca=1.0, float scb=1.0);
 
-//self operator
+//inplace operator (same as elwise but operation to perform take one only argumen: pow,sqrt...)
+void mat_inplace_mat(float* o, float* i,tensor_gpu_specs* si,int op, int acc);
+
+//reduction operator
 float* col_sum(float* A, tensor_gpu_specs* sA);
 int row_max(float* A, tensor_gpu_specs* sA,int ind );
 void sum_abs(float* p,tensor_gpu_specs* gsp,float* acc);
 void reduce_operator(float* p,tensor_gpu_specs* gsp,float* acc);
+float* row_sum(float* A, tensor_gpu_specs* sA);
 
 //random number
 

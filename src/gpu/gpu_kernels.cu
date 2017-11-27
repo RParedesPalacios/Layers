@@ -250,7 +250,7 @@ __global__ void kern_tensor_equal(float* A, float* B, long int ops)
 }
 
 //MATRIX VECTOR OPERATOR
-__global__ void mat_ewcol_vec(float* mat_o, float* mat, float* vec, long int ops, long int cols, int op,int acc)
+__global__ void mat_ewcol_vec(float* mat_o, float* mat, float* vec, long int ops, long int cols, int op,int acc,float sca, float scb)
 {
 
   int thread_id_x = threadIdx.x+blockIdx.x*blockDim.x;
@@ -258,21 +258,51 @@ __global__ void mat_ewcol_vec(float* mat_o, float* mat, float* vec, long int ops
  {
   if (thread_id_x < ops)
    if (op==0)
-     mat[thread_id_x]+=vec[thread_id_x%cols];
+    mat_o[thread_id_x]=mat_o[thread_id_x]+ sca*mat[thread_id_x]+scb*vec[thread_id_x%cols];
+   else if (op==1)
+    mat_o[thread_id_x]= mat_o[thread_id_x]+mat[thread_id_x]*vec[thread_id_x%cols];
    else
-     mat[thread_id_x]*=vec[thread_id_x%cols];
+    mat_o[thread_id_x]= mat_o[thread_id_x]+mat[thread_id_x]/vec[thread_id_x%cols];
+ }
+
+ else
+ {
+  if (thread_id_x < ops)
+   if (op==0)
+     mat_o[thread_id_x]=sca*mat[thread_id_x]+scb*vec[thread_id_x%cols];
+   else if(op==1)
+     mat_o[thread_id_x]=mat[thread_id_x]*vec[thread_id_x%cols];
+   else
+     mat_o[thread_id_x]=mat[thread_id_x]/vec[thread_id_x%cols];
+ }
+
+}
+
+__global__ void mat_ewrow_vec(float* mat_o, float* mat, float* vec, long int ops, long int rows, int op,int acc,float sca, float scb)
+{
+
+ int thread_id_x = threadIdx.x+blockIdx.x*blockDim.x;
+ if (acc==1)
+ {
+  if (thread_id_x < ops)
+   if (op==0)
+    mat_o[thread_id_x]=mat_o[thread_id_x]+ sca*mat[thread_id_x]+scb*vec[thread_id_x/rows];
+   else if (op==1)
+    mat_o[thread_id_x]= mat_o[thread_id_x]+mat[thread_id_x]*vec[thread_id_x/rows];
+  else
+    mat_o[thread_id_x]= mat_o[thread_id_x]+mat[thread_id_x]/vec[thread_id_x/rows];
  }
  else
  {
   if (thread_id_x < ops)
    if (op==0)
-     mat_o[thread_id_x]=mat[thread_id_x]+vec[thread_id_x%cols];
+     mat_o[thread_id_x]=sca*mat[thread_id_x]+scb*vec[thread_id_x/rows];
+   else if(op==1)
+     mat_o[thread_id_x]=mat[thread_id_x]*vec[thread_id_x/rows];
    else
-     mat_o[thread_id_x]=mat[thread_id_x]*vec[thread_id_x%cols];
+     mat_o[thread_id_x]=mat[thread_id_x]/vec[thread_id_x/rows];
  }
-
 }
-
 ////////////////////////////////////////////
 ////////////////////////////////////////////
 ////////////////////////////////////////////
@@ -291,9 +321,37 @@ if (thread_id_x < total_ops)
 }
 
 ////////////////////////////////////////////
-////////////SELF OPERATOR///////////////////
+//////////////INPLACE OPERATOR//////////////
+////////////////////////////////////////////
+__global__ void tensor_sqrt(float* o, float* i,int acc,long int total_ops)
+{
+
+int thread_id_x = threadIdx.x +blockIdx.x*blockDim.x;
+if (thread_id_x<total_ops)
+{
+  if (acc==0)
+    o[thread_id_x]=sqrtf(i[thread_id_x]);
+  else
+    o[thread_id_x]+=sqrtf(i[thread_id_x]);
+}
+}
+
+////////////////////////////////////////////
+////////////REDUCTION OPERATOR//////////////
 ////////////////////////////////////////////
 //JUAN_FIX: implement with reduction operators
+__global__ void kernel_row_sum(float* I, float* O, int rows,int cols ,long int ops)
+{
+
+int thread_id_x = threadIdx.x +blockIdx.x*blockDim.x;
+int i=0;
+ if (thread_id_x < ops)
+   #pragma omp parallel for
+   for(i=0;i<cols;i++)
+        O[thread_id_x]+=I[cols*thread_id_x+i];
+
+}
+
 __global__ void kernel_col_sum(float* I, float* O, int rows,int cols ,long int ops)
 {
 

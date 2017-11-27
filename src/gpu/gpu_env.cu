@@ -79,7 +79,7 @@ void gpu_env::error_f()
 {
   if ( error!=cudaSuccess)
   {
-     fprintf(stderr,"Problem in cuda execution getting: %s\n",	cudaGetErrorString(error));
+     fprintf(stderr,"\nProblem in cuda execution getting: %s\n",	cudaGetErrorString(error));
      exit(-1);
   }
 
@@ -250,9 +250,12 @@ switch(t)
        int* cerr_g;
        error=cudaMalloc((void**)&cerr_g,sizeof(int));
        error_f();
+       cudaMemset(cerr_g, 0, sizeof(int));
+       error_f();
        MC_loss<<<dimBlock,dimGrid>>>(T,N,max_row,gsp->col,ops,cerr_g);
        error_f();
        cudaDeviceSynchronize(); 
+
        error_f();
        float* CE_vec;
        error=cudaMalloc((void**)&CE_vec,sizeof(float)*gsp->row*gsp->col);
@@ -290,6 +293,7 @@ switch(t)
   //     getchar();
        *ent=(double)aux1;
        int aux=0;
+
        error=cudaMemcpy(&aux,cerr_g,sizeof(int),cudaMemcpyDeviceToHost);
        *cerr=(double)aux;
        break;
@@ -428,10 +432,9 @@ else
 ///////////////////////////////////////////
 ///////////ELEMENT WISE OPERATOR///////////
 ///////////////////////////////////////////
-
-
 //(sum or product)
-// op{0,1}->0 is add and 1 is product
+// op{0,1,2}->0 is add and 1 is product 2 is sqrt
+//Division can be performed by multiplying by inverse and subtraction can be done as a sum using scb and sca correctly (with -)
 // acc{0,1}->whether to accumulate result in C (1) or set (0)
 //tA and tB are for transposing matrix
 //sca and scb only available when sum is done. Not contemplate for el wise product as it is the same as making the product and then scalar dot product. We do not save memory performing this operation in the same operation as in the sum(where we first make a new float* with the result of scalar dot matrix and then sum)
@@ -534,18 +537,31 @@ int gpu_env::tensor_equal(float* A, float* B,tensor_gpu_specs* sA)
 
 //elwise operator matrix vector
 //op=0 is sum and 1 is prod
-void gpu_env::mat_elwise_vec(float* mat_o,float* mat, float* vec, tensor_gpu_specs* sA,int op,int acc)
+void gpu_env::mat_elwise_vec(float* mat_o,float* mat, float* vec, tensor_gpu_specs* sA,int op,int acc,float sca, float scb, int rdim)
+{
+//op 0 is sum
+//op 1 is multiplication
+//op 2 is division
+if (rdim==1)
 {
   dim3 dimBlock(sA->col);
   dim3 dimGrid(sA->row);
   long int ops = sA->row*sA->col;
 
-  mat_ewcol_vec<<<dimBlock,dimGrid>>>(mat_o,mat,vec,ops,sA->col,op,acc);
+  mat_ewcol_vec<<<dimBlock,dimGrid>>>(mat_o,mat,vec,ops,sA->col,op,acc,sca, scb);
+}
+else
+{
+  dim3 dimBlock(sA->col);
+  dim3 dimGrid(sA->row);
+  long int ops = sA->row*sA->col;
+
+  mat_ewrow_vec<<<dimBlock,dimGrid>>>(mat_o,mat,vec,ops,sA->row,op,acc,sca, scb);
+}
 
   error_f();
   error=cudaDeviceSynchronize();
   error_f();
-
 }
 
 //elwise operator vector vector
@@ -568,10 +584,25 @@ void gpu_env::vec_elwise_vec(float* A, float* B, float* C,tensor_gpu_specs* sA,i
   else
       {fprintf(stderr,"Not implemented\n");exit(-1);}
 }
+///////////////////////////////////////////////
+/////////////////INPLACE OPERATOR//////////////
+///////////////////////////////////////////////
+void gpu_env::mat_inplace_mat(float* o, float* i,tensor_gpu_specs* si,int op, int acc)
+{
+  dim3 dimBlock(si->row);
+  dim3 dimGrid(si->col);
+  if (op==0)//sqrt
+  {
+    
+  tensor_sqrt<<<dimGrid,dimBlock>>>(o,i, acc,si->col*si->row);
+  }
+  else
+  {fprintf(stderr,"Not implemented mat_inplace_mat\n");exit(-1);}    
+}
 
 
 ///////////////////////////////////////////////
-////////////SELF/REDUCTION OPERATOR////////////
+///////////////REDUCTION OPERATOR//////////////
 ///////////////////////////////////////////////
 //This operators should be programed manually using reduction
 //techniques. For the moment we can use wonderfull thurst library
@@ -600,6 +631,26 @@ void gpu_env::reduce_operator(float* p,tensor_gpu_specs* gsp,float* acc)
   copy_data(acc,sum_aux,FROMGPU,sizeof(float));
  
 
+}
+
+float* gpu_env::row_sum(float* A, tensor_gpu_specs* sA)
+{
+  dim3 dimBlock(sA->col);
+  dim3 dimGrid(1);
+  long int ops = sA->row;
+
+  float* O = makeTensor(sA->row);
+  tensor_set_value<<<dimBlock,dimGrid>>>(O,0.0,sA->row);
+  error_f();
+  error=cudaDeviceSynchronize();
+  error_f();
+
+  kernel_row_sum<<<dimBlock,dimGrid>>>(A,O,(int)sA->row,(int)sA->col,ops);
+
+  error_f();
+  error=cudaDeviceSynchronize();
+  error_f();
+  return O;
 }
 
 

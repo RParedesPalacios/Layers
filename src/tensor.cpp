@@ -152,6 +152,8 @@ Tensor::Tensor(int d1,int d2,int d3,int d4)
 }
 
 // Cloning                                                                           
+//JUAN_FIX: Carefull, this does not clone. This creates a tensor pointing exactly to the same memory
+//position
 Tensor * Tensor::Clone()
 {
   Tensor *N;
@@ -160,7 +162,6 @@ Tensor * Tensor::Clone()
   else if (dim==2) N=new Tensor(a,b);
   else if (dim==3) N=new Tensor(a,b,c);
   else N=new Tensor(a,b,c,d);
-
   N->copy(this);
 
   return N;
@@ -501,7 +502,7 @@ void Tensor::copy(Tensor *T)  //copy, reshape etc...
   #ifdef fGPU
   else
   {
-  fprintf(stderr,"Imlementear copy\n");exit(-1);
+    gpu_tensor_op.copy_data(gptr,T->gptr,GPU,T->size*sizeof(float));
   }
   #endif
   
@@ -1063,7 +1064,7 @@ void Tensor::mul(LType val)
 #ifdef fGPU
   else
     {
-      fprintf(stderr,"tensor absolute value\n");exit(-1);
+      gpu_tensor_op.scMat(gptr,gptr,&gsp,val,1,0);
     }
 #endif
 
@@ -1090,7 +1091,7 @@ void Tensor::div(LType val)
 #ifdef fGPU
   else
     {
-      fprintf(stderr,"tensor absolute value\n");exit(-1);
+      gpu_tensor_op.scMat(gptr,gptr,&gsp,1./val,1,0);
     }
 #endif
 
@@ -1117,7 +1118,7 @@ void Tensor::add(LType val)
 #ifdef fGPU
   else
     {
-      fprintf(stderr,"tensor absolute value\n");exit(-1);
+      gpu_tensor_op.scMat(gptr,gptr, &gsp, val ,0,0);
     }
 #endif
 }
@@ -1168,7 +1169,7 @@ void Tensor::sqr()
 #ifdef fGPU
   else
     {
-      fprintf(stderr,"tensor sqrt\n");exit(-1);
+       gpu_tensor_op.mat_inplace_mat(gptr,gptr,&gsp,0,0);
     }
 #endif
 
@@ -1254,7 +1255,7 @@ void Tensor::inc_2Drowwise(Tensor *T)
   #ifdef fGPU
   else
   {
-    gpu_tensor_op.mat_elwise_vec(NULL,gptr,T->gptr,&gsp,0,1);
+    gpu_tensor_op.mat_elwise_vec(gptr,gptr,T->gptr,&gsp,0,0,1.0,1.0,1);
   }
   #endif
 
@@ -1329,11 +1330,11 @@ void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double 
      printDebug(std->gptr,"",std->gsp.row,std->gsp.col);
      printDebug(mu->gptr,"",mu->gsp.row,mu->gsp.col);
      getchar();
-     gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,std->gptr,&(N->gsp),1,0);//product by std     
-     gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,std->gptr,&(N->gsp),1,0);     
+     gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,std->gptr,&(N->gsp),1,0,1.0,1.0,1);//product by std     
+     gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,std->gptr,&(N->gsp),1,0,1.0,1.0,1);     
     
-     gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,mu->gptr,&(N->gsp),0,0);//add mean     
-     gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,mu->gptr,&(N->gsp),0,0);     
+     gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,mu->gptr,&(N->gsp),0,0,1.0,1.0,1);//add mean     
+     gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,mu->gptr,&(N->gsp),0,0,1.0,1.0,1);     
 
      Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
      
@@ -1844,7 +1845,7 @@ void Tensor::maskZeros(Tensor *mask,Tensor *A)
   #ifdef fGPU
   else
   {
-  gpu_tensor_op.mat_elwise_vec(NULL,A->gptr,mask->gptr,&(A->gsp),1,1);
+  gpu_tensor_op.mat_elwise_vec(A->gptr,A->gptr,mask->gptr,&(A->gsp),1,1,1.0,1.0,1);
   }
   #endif
 }
@@ -1949,7 +1950,10 @@ void Tensor::reduceTosum(Tensor *A, Tensor *B,int row)
 #ifdef fGPU
     else
       {
-
+	if (row)
+	    B->gptr=gpu_tensor_op.col_sum(A->gptr,&(A->gsp));
+	else
+            B->gptr=gpu_tensor_op.row_sum(A->gptr,&(A->gsp));
       }
 #endif
   }
@@ -2002,6 +2006,7 @@ void Tensor::reduceTovariance(Tensor *A, Tensor *B,int row)
     Tensor::reduceTomean(A,M,row);
 
     Tensor::reduced_sum(1,A,-1,M,AM,0,row);
+
     Tensor::el_mult(AM,0,AM,0,AM,0);
 
     Tensor::reduceTomean(AM,B,row);
@@ -2033,9 +2038,13 @@ void Tensor::reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int 
     }
 #ifdef fGPU
       else
+	//sum the vector B with the matrix A either by row or by column and multiplying by scalar
 	{
-
-    }
+	if (rdim==0)//sum in dimension 0,that is rows.
+	    gpu_tensor_op.mat_elwise_vec(C->gptr,A->gptr,B->gptr,&(A->gsp),0,inc,scA,scB,0);
+	else
+	    gpu_tensor_op.mat_elwise_vec(C->gptr,A->gptr,B->gptr,&(A->gsp),0,inc,scA,scB,1);
+       }
 #endif
     }
   else if (A->dim==4) {
@@ -2062,7 +2071,8 @@ void Tensor::reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int 
   }
 #ifdef fGPU
     else {
-
+	fprintf(stderr,"Convolution not available in GPU\n");
+	exit(-1);
   }
 #endif
 
@@ -2092,6 +2102,10 @@ void Tensor::reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
 #ifdef fGPU
     else
       {
+	if (rdim==0)//sum in dimension 0,that is rows.
+	    gpu_tensor_op.mat_elwise_vec(C->gptr,A->gptr,B->gptr,&(A->gsp),2,inc,1,1,0);
+	else
+	    gpu_tensor_op.mat_elwise_vec(C->gptr,A->gptr,B->gptr,&(A->gsp),2,inc,1,1,1);
 
       }
 #endif
@@ -2120,6 +2134,8 @@ void Tensor::reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
     }
 #ifdef fGPU
     else {
+	fprintf(stderr,"Convolution not available in GPU\n");
+	exit(-1);
 
     }
 #endif
@@ -2150,6 +2166,10 @@ void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
 #ifdef fGPU
     else
       {
+	if (rdim==0)//sum in dimension 0,that is rows.
+	    gpu_tensor_op.mat_elwise_vec(C->gptr,A->gptr,B->gptr,&(A->gsp),1,inc,1,1,0);
+	else
+	    gpu_tensor_op.mat_elwise_vec(C->gptr,A->gptr,B->gptr,&(A->gsp),1,inc,1,1,1);
 
       }
 #endif

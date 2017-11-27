@@ -18,7 +18,7 @@
 /// Eigen
 using namespace Eigen;
 using namespace std;
-
+#define DEBUG 0
 
 ////////////////////////////////////
 ///// FULLY CONNECTED LAYER CLASS
@@ -49,6 +49,7 @@ void FLayer::mem()
   dvec=new Tensor(din);
 
   //BN
+  printf("Dimension BN %d\n",din);
   bn_mean=new Tensor(din);
   bn_var=new Tensor(din);
   bn_gmean=new Tensor(din);
@@ -158,7 +159,13 @@ void FLayer::addchild(Layer *li)
       
       // initialice here!
       double s=sqrt(2.0/l->din);
-      W->subTensor(lout)->set_rand_gauss(0,s);
+      if (!DEBUG)
+	      W->subTensor(lout)->set_rand_gauss(0,s);
+      else{
+      for (int i=0;i< W->subTensor(lout)->a;i++)
+        for (int j=0;j< W->subTensor(lout)->b;j++)
+            W->subTensor(lout)->set(i,j,gauss(0,s));//set_rand_gauss(0,s);
+      }
       b->subTensor(lout)->set(0.1);
 
       gW->subTensor(lout)->resize(din,l->din);
@@ -267,19 +274,20 @@ void FLayer::fBN()
     Tensor::reduceTomean(E,bn_mean,1);  
     Tensor::reduceTovariance(E,bn_var,1);
 
-
     Tensor::inc(bn_mean,bn_gmean);
     Tensor::inc(bn_var,bn_gvar);
+
     bnc++;
+
 
     Tensor *sd=bn_var->Clone();
 
     sd->add(eps); 
+
     sd->sqr();  
-    
+
     Tensor::reduced_sum(1,E,-1,bn_mean,bn_E,0,1);
     Tensor::reduced_div(bn_E,sd,bn_E,0,1);
-
 
     if (noiser>0.0) {
       bn_E->add_noise_gauss(noiser,0.0,noisesd);
@@ -287,8 +295,8 @@ void FLayer::fBN()
 
     Tensor::reduced_mult(bn_E,bn_g,BNE,0,1);
     Tensor::reduced_sum(1,BNE,1,bn_b,BNE,0,1);
-
     delete sd;
+
   }
   else { // testmode
     Tensor::reduced_sum(1,E,-1.0/bnc,bn_gmean,bn_E,0,1);
@@ -350,7 +358,20 @@ void FLayer::forward()
     ////////////////////////////
   
     if (bn) 
+   {
+/*
+      printf("========================\n");
+      printf("========================\n");
+      printf("========================\n");
+      printf("========================\n");
+      printf("========================\n");
+      printf("=========YA FUERA DE LO ESPECIFICO========\n");
+*/
       Tensor::activation(BNE,N,act);
+ //    //printDebug(BNE->gptr,"",5,10);
+ //    //printDebug(N->gptr,"",5,10);
+ //    //getchar();
+    }
     else 
       Tensor::activation(E,N,act);
 
@@ -381,9 +402,12 @@ void FLayer::forward()
 	if (VERBOSE) fprintf(stderr,"Forward %s W norm %f\n",name,W->subTensor(i)->sum());
 
 	Tensor::mult(N,0,W->subTensor(i),0,l->E,1);
-	
+//	 //printDebug(l->E->gptr,"",5,10);
 	//bias
 	if (!bn) l->E->inc_2Drowwise(b->subTensor(i));
+
+//	 //printDebug(l->E->gptr,"",1,10);
+//     //getchar();
       }
     }
   }
@@ -468,36 +492,172 @@ void FLayer::bBN()
     Tensor::el_mult(Delta,0,bn_E,0,A,0);
     Tensor::reduceTosum(A,gbn_g,1);
 
+    //printf("=======================\n");
+    //printf("=======================\n");
+    //printf("=======================\n");
+    //printf("=======================\n");
+    //printf("======BACKWARD=========\n");
+    //printf("=======================\n");
+    //printf("=======================\n");
+    //printf("=======================\n");
+    //printf("=======================\n");
+    //printDebug(Delta->gptr,"",5,10);
+    //printf("=======================\n");
+    //printDebug(bn_E->gptr,"",5,10);
+    //printf("=======================\n");
+    //printDebug(A->gptr,"",5,10);
+    //printf("=======================\n");
+    //printDebug(gbn_g->gptr,"",1,10);
+    //printf("=======================\n");
+    ////getchar();
     //2 Beta  
     Tensor::reduceTosum(Delta,gbn_b,1);
-  
+
+    //printf("======BETA==========\n");
+     //printDebug(gbn_b->gptr,"",1,10);
+    //printf("=======================\n");
+
     //3 bnE
     Tensor::reduced_mult(Delta,bn_g,gbn_E,0,1);
-  
+
+     //printf("=======BN_E==========\n");
+     //printDebug(Delta->gptr,"",5,10);
+    //printf("=======================\n"); 
+     //printDebug(bn_g->gptr,"",1,10);
+    //printf("=======================\n"); 
+     //printDebug(gbn_E->gptr,"",5,10);
+    //printf("=======================\n"); 
+////getchar();
     //4 Var 
     Tsqvar->add(eps);
+    //printf("======VAR==========\n");
+    //printDebug(Tsqvar->gptr,"",1,10);
+
     Tsqvar->sqr();
+    //printf("================\n");
+    //printDebug(Tsqvar->gptr,"",1,10);
 
     Tvar32->add(eps);
+    //printf("================\n");
+    //printDebug(Tvar32->gptr,"",1,10);
 
+    //printf("=======================\n"); 
+    //printf("=======================\n"); 
+    //printf("elmult\n");
+    //printDebug(Tvar32->gptr,"",1,10);
     Tensor::el_mult(Tvar32,0,Tsqvar,0,Tvar32,0);
+    //printDebug(Tvar32->gptr,"",1,10);
+    //printf("=======================\n"); 
+    //printDebug(Tsqvar->gptr,"",1,10);
+    //printf("=======================\n"); 
+    //printf("=======================\n"); 
+
+
     Tensor::reduced_sum(-0.5,E,0.5,bn_mean,A,0,1);
+
+    //printDebug(E->gptr,"",5,10);
+    //printf("=======================\n"); 
+    //printDebug(bn_mean->gptr,"",1,10);	
+    //printf("=======================\n"); 
+    //printDebug(A->gptr,"",5,10); 
+    //printf("=======================\n"); 
+    //printf("=======================\n"); 
+
+
     Tensor::reduced_div(A,Tvar32,A,0,1);
+
+    //printDebug(A->gptr,"",5,10); 
+    //printf("=======================\n"); 
+    //printf("=======================\n"); 
+
+
     Tensor::el_mult(A,0,gbn_E,0,A,0);
+
+    //printDebug(A->gptr,"",5,10); 
+    //printf("=======================\n"); 
+    //printDebug(gbn_E->gptr,"",5,10); 
+    //printf("=======================\n"); 
+    //printf("=======================\n"); 
+
+
     Tensor::reduceTosum(A,gbn_var,1);
 
+    //printDebug(gbn_var->gptr,"",1,10); 
+
+    ////getchar();
     //5 Mean
+    
+    //printf("=======MEAN=============\n"); 
+    //printDebug(gbn_E->gptr,"",5,10); 
+    //printf("=======================\n"); 
+    //printDebug(Tsqvar->gptr,"",1,10); 
+    //printf("=======================\n"); 
+    //printDebug(A->gptr,"",5,10); 
+
     Tensor::reduced_div(gbn_E,Tsqvar,A,0,1);
+    //printf("=======================\n"); 
+    //printDebug(A->gptr,"",5,10); 
     A->mul(-1);
+   // printf("=======================\n"); 
+    //printDebug(A->gptr,"",5,10); 
     Tensor::reduceTosum(A,gbn_mean,1);
+    //printf("=======================\n"); 
+    //printDebug(gbn_mean->gptr,"",1,10); 
+
+    //printf("=======================\n"); 
+    //printf("=======================\n"); 
+    ////getchar();
 
     //6 Delta
-    Tensor::reduced_div(gbn_E,Tsqvar,Delta,0,1);
-    Tensor::reduced_sum(2.0/batch,E,-2.0/batch,bn_mean,A,0,1);
-    Tensor::reduced_mult(A,gbn_var,A,0,1);
-    Tensor::reduced_sum(1,A,1.0/batch,gbn_mean,Delta,1,1);
 
-    
+    //printf("=======DELTA=============\n"); 
+    //printDebug(gbn_E->gptr,"",5,10);
+   // printf("=======================\n");
+    //printDebug(Tsqvar->gptr,"",1,10);
+   // printf("=======================\n");
+    //printDebug(Delta->gptr,"",5,10);
+  //  printf("=======================\n");
+
+    Tensor::reduced_div(gbn_E,Tsqvar,Delta,0,1);
+    //printDebug(Delta->gptr,"",5,10);
+//    printf("=======================\n");
+//    printf("=======================\n");
+
+
+    Tensor::reduced_sum(2.0/batch,E,-2.0/batch,bn_mean,A,0,1);
+//printf("El batch es %d\n",batch);
+
+//    printf("=======================\n");
+    //printDebug(E->gptr,"",5,10);
+//    printf("=======================\n");
+    //printDebug(bn_mean->gptr,"",1,10);
+//    printf("=======================\n");
+    //printDebug(A->gptr,"",5,10);
+//    printf("=======================\n");
+//    printf("=======================\n");
+
+    Tensor::reduced_mult(A,gbn_var,A,0,1);
+    //printDebug(gbn_var->gptr,"",1,10);
+//    printf("=======================\n");
+    //printDebug(A->gptr,"",5,10);
+//    printf("=======================\n");
+//    printf("=======================\n");
+
+    //printDebug(Delta->gptr,"",5,10);
+    Tensor::reduced_sum(1,A,1.0/batch,gbn_mean,Delta,1,1);
+//     printf("=======================\n");
+    //printDebug(A->gptr,"",5,10);
+//    printf("=======================\n");
+    //printDebug(gbn_mean->gptr,"",1,10);
+//    printf("=======================\n");
+    //printDebug(Delta->gptr,"",5,10);
+//    printf( "Aqui\n");
+//    printf("=======================\n");
+//    printf("=======================\n");
+
+    ////getchar(); 
+
+//    printf( "Aqui\n");
     delete A;
     delete Tvar32;
     delete Tsqvar;
@@ -604,8 +764,31 @@ void FLayer::applygrads()
 
   // BATCH NORM g,b
   if (bn) {
+//   printf("mu/batch %f mu %f\n",mu/batch,mu);
+//   printf("==========APPLY GRADS========\n");
+   //printDebug(gbn_g->gptr,"",1,10);
+//   printf("==================\n");
+   //printDebug(gbn_b->gptr,"",1,10);
+//   printf("==================\n");
+//   printf("==================\n");
+   //printDebug(bn_g->gptr,"",1,10);
+//   printf("==================\n");
+   //printDebug(bn_b->gptr,"",1,10);
+//   printf("==================\n");
+//   printf("==================\n");
+
+
     Tensor::sc_mult(gbn_g,(mu/batch),bn_g,1);
     Tensor::sc_mult(gbn_b,(mu/batch),bn_b,1);
+
+//   printf("==================\n");
+   //printDebug(bn_g->gptr,"",1,10);
+//   printf("==================\n");
+   //printDebug(bn_b->gptr,"",1,10);
+//   printf("==================\n");
+   ////getchar();
+
+
   }
 
 }
@@ -849,7 +1032,7 @@ double OFLayer::get_err(int n)
   }
 
 
-  if (opt==0) Tensor::loss_cross_entropy(T,N,cerr,ent);
+  if (opt==0)Tensor::loss_cross_entropy(T,N,cerr,ent);
   else if (opt==1) Tensor::loss_sse(T,N,D,0,mae,mse);
   else if (opt==2) Tensor::loss_sse(T,N,D,D->dim,mae,mse);
 
