@@ -431,7 +431,7 @@ __global__ void add_noise_with_mask(float* nn_vector,float* rand_vec,float* mask
 
    int thread_id_x = threadIdx.x+blockIdx.x*blockDim.x;
    if (thread_id_x<ops)
-     nn_vector[thread_id_x]+=(mask[thread_id_x]>noiser)*rand_vec[thread_id_x];
+     nn_vector[thread_id_x]+=(mask[thread_id_x]<noiser)*rand_vec[thread_id_x];
 
 }
 
