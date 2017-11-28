@@ -41,11 +41,11 @@ void vec_elwise_vec(float* A, float* B, float* C,tensor_gpu_specs* sA,int op, in
 void mat_inplace_mat(float* o, float* i,tensor_gpu_specs* si,int op, int acc);
 
 //reduction operator
-float* col_sum(float* A, tensor_gpu_specs* sA);
+void col_sum(float* A, tensor_gpu_specs* sA,float* B);
 int row_max(float* A, tensor_gpu_specs* sA,int ind );
 void sum_abs(float* p,tensor_gpu_specs* gsp,float* acc);
 void reduce_operator(float* p,tensor_gpu_specs* gsp,float* acc);
-float* row_sum(float* A, tensor_gpu_specs* sA);
+void row_sum(float* A, tensor_gpu_specs* sA,float* B);
 
 //random number
 

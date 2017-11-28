@@ -1263,11 +1263,16 @@ void Tensor::inc_2Drowwise(Tensor *T)
 }
 
 
-
+bool firstTime=1;
 /// STATIC FUNCS
 void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double &mse)
 {
-
+  if (firstTime)
+  {
+	fprintf(stderr,"Warning. The function sse is not totatly debugged. For the moment the mean and std from data is assumed to be 0 and 1. This could affect in case you have performed a zscore normalization. Press enter to continue\n");
+	getchar();
+	firstTime=0;
+  }
   if (T->dim!=2) msgerr("loss_sse","error T dim!=2");
   if (N->dim!=2) msgerr("loss_sse","error N dim!=2");
 
@@ -1324,12 +1329,9 @@ void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double 
      std->copyStatistics(D,1);//copy std
      mu->copyStatistics(D,2);//copy mean
      
-//     mu->set(0.0);
-//     std->set(1.0);
+     mu->set(0.0);
+     std->set(1.0);
 
-     printDebug(std->gptr,"",std->gsp.row,std->gsp.col);
-     printDebug(mu->gptr,"",mu->gsp.row,mu->gsp.col);
-     getchar();
      gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,std->gptr,&(N->gsp),1,0,1.0,1.0,1);//product by std     
      gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,std->gptr,&(N->gsp),1,0,1.0,1.0,1);     
     
@@ -1633,9 +1635,9 @@ void Tensor::sumcol(Tensor *A,Tensor *B)
   }
   #ifdef fGPU
   else{
-    float* sum;
+    float* sum=gpu_tensor_op.makeTensor(A->a);
     float b;
-    sum=gpu_tensor_op.col_sum(B->gptr,&(B->gsp));
+    gpu_tensor_op.col_sum(B->gptr,&(B->gsp),sum);
     
     gpu_tensor_op.copy_data(A->gptr,sum,GPU,A->a*sizeof(float));
     
@@ -1951,9 +1953,9 @@ void Tensor::reduceTosum(Tensor *A, Tensor *B,int row)
     else
       {
 	if (row)
-	    B->gptr=gpu_tensor_op.col_sum(A->gptr,&(A->gsp));
+	    gpu_tensor_op.col_sum(A->gptr,&(A->gsp),B->gptr);
 	else
-            B->gptr=gpu_tensor_op.row_sum(A->gptr,&(A->gsp));
+            gpu_tensor_op.row_sum(A->gptr,&(A->gsp),B->gptr);
       }
 #endif
   }

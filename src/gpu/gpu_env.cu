@@ -169,6 +169,7 @@ long int ops = sp->col*sp->row;
 long int sample_dim=sp->col;
 
 double alfa=1;
+float* auxE=NULL;
 switch(f)
 {
   case ACT_RLU:
@@ -180,7 +181,7 @@ switch(f)
   case ACT_SOF:
        {
         ops=sp->row;
-        float* auxE = makeTensor(sp->col,sp->row);
+        auxE = makeTensor(sp->col,sp->row);
         set_sc(auxE, 0.0, sp);
 	Softmax<<<dimBlock,dimGrid>>>(E,N,auxE,sample_dim,ops);
 	break;
@@ -199,6 +200,8 @@ switch(f)
 error_f();
 error=cudaDeviceSynchronize();
 error_f();
+if (auxE!=NULL)
+	destroyTensor(auxE);
 }
 //derivative of activation functions
 void gpu_env::dactivation(float* E, float* N,float* D, int f,tensor_gpu_specs* sp)
@@ -263,23 +266,6 @@ switch(t)
        CE_loss<<<dimBlock,dimGrid>>>(N,max_row,CE_vec,gsp->col,ops);
        cudaDeviceSynchronize(); 
        error_f();
-      //////////////////////////////////////
-/*
-      float* CE_vec_cpu=(float*)malloc(gsp->col*gsp->row*sizeof(float ));
-      copy_data(CE_vec_cpu,CE_vec,FROMGPU,gsp->col*gsp->row*sizeof(float ));
-      printDebug(CE_vec,"",gsp->col,gsp->row);
-      for (int i=0;i<gsp->col*gsp->row;i++)
-      {
-	if (isnan(CE_vec_cpu[i]))
-        {
-       		printf ("%d\n",i);
-                printf ("%f\n",CE_vec_cpu[i]);
-
-        }
-       } 
-      getchar();
-*/
-///////////////////////////////////////////////
        float* result_ce;
        error=cudaMalloc((void**)&result_ce,sizeof(float));
        error_f(); 
@@ -289,13 +275,12 @@ switch(t)
        float aux1;
        error=cudaMemcpy(&aux1,result_ce,sizeof(float),cudaMemcpyDeviceToHost);
        error_f();
-  //     printf("lA CE %f\n",aux1);
-  //     getchar();
        *ent=(double)aux1;
        int aux=0;
 
        error=cudaMemcpy(&aux,cerr_g,sizeof(int),cudaMemcpyDeviceToHost);
        *cerr=(double)aux;
+       destroyTensor(max_row);
        break;
        }
   case SSE:
@@ -491,15 +476,12 @@ void gpu_env::mat_elwise_mat(float* A, float* B, float* C,tensor_gpu_specs* sA,t
 	if (trA==1 && trB==1)
         {
            mat_ewprod_mat<<<dimBlock,dimGrid>>>(C,tA,tB,acc,ops);
-           destroyTensor(tA);
-           destroyTensor(tB);
         }
 	if (trA==1 && trB==0)
         {
           mat_ewprod_mat<<<dimBlock,dimGrid>>>(C,tA,B,acc,ops);
-          destroyTensor(tA);
         }
-	if (trA==0 && trB==1){mat_ewprod_mat<<<dimBlock,dimGrid>>>(C,A,tB,acc,ops);destroyTensor(tB);}
+	if (trA==0 && trB==1){mat_ewprod_mat<<<dimBlock,dimGrid>>>(C,A,tB,acc,ops);}
 	if (trA==0 && trB==0){
 
             mat_ewprod_mat<<<dimBlock,dimGrid>>>(C,A,B,acc,ops);
@@ -509,7 +491,11 @@ void gpu_env::mat_elwise_mat(float* A, float* B, float* C,tensor_gpu_specs* sA,t
 	error_f();
 	error=cudaDeviceSynchronize();
 	error_f();
-
+	if (trA)
+		destroyTensor(tA);
+	if (trB)
+		destroyTensor(tB);
+	error_f(); 
 
   }
   else
@@ -633,45 +619,42 @@ void gpu_env::reduce_operator(float* p,tensor_gpu_specs* gsp,float* acc)
 
 }
 
-float* gpu_env::row_sum(float* A, tensor_gpu_specs* sA)
+void gpu_env::row_sum(float* A, tensor_gpu_specs* sA,float* B)
 {
   dim3 dimBlock(sA->col);
   dim3 dimGrid(1);
   long int ops = sA->row;
 
-  float* O = makeTensor(sA->row);
-  tensor_set_value<<<dimBlock,dimGrid>>>(O,0.0,sA->row);
+  tensor_set_value<<<dimBlock,dimGrid>>>(B,0.0,sA->row);
   error_f();
   error=cudaDeviceSynchronize();
   error_f();
 
-  kernel_row_sum<<<dimBlock,dimGrid>>>(A,O,(int)sA->row,(int)sA->col,ops);
+  kernel_row_sum<<<dimBlock,dimGrid>>>(A,B,(int)sA->row,(int)sA->col,ops);
 
   error_f();
   error=cudaDeviceSynchronize();
   error_f();
-  return O;
 }
 
 
-float* gpu_env::col_sum(float* A, tensor_gpu_specs* sA)
+void gpu_env::col_sum(float* A, tensor_gpu_specs* sA,float* B)
 {
   dim3 dimBlock(sA->col);
   dim3 dimGrid(1);
   long int ops = sA->col;
 
-  float* O = makeTensor(sA->col);
-  tensor_set_value<<<dimBlock,dimGrid>>>(O,0.0,sA->col);
+  tensor_set_value<<<dimBlock,dimGrid>>>(B,0.0,sA->col);
   error_f();
   error=cudaDeviceSynchronize();
   error_f();
 
-  kernel_col_sum<<<dimBlock,dimGrid>>>(A,O,(int)sA->row,(int)sA->col,ops);
+  kernel_col_sum<<<dimBlock,dimGrid>>>(A,B,(int)sA->row,(int)sA->col,ops);
  
   error_f();
   error=cudaDeviceSynchronize();
   error_f();
-  return O;
+  
 }
 
 int gpu_env::row_max(float* A, tensor_gpu_specs* sA,int ind)
