@@ -82,7 +82,7 @@ Tensor::Tensor(int d1,int d2)
   dim=2;
   T=NULL;
 
-  if ((d1!=UNSET)&&(d2==UNSET)) { // matrix but a vectors of 1D vectors with different sizes
+  if ((d1!=UNSET)&&(d2==UNSET)) { // not a matrix but a vector of 1D vectors with different sizes
 
     a=d1;
     b=d2;
@@ -1558,6 +1558,8 @@ Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
     LMatrix Res=A->ptr2.row(i).transpose()*B->ptr2.row(i);
     Map<RowVectorXf> v(Res.data(), Res.size());
     C->ptr2.row(i)=v;
+    Res.resize(0,0);
+    v.resize(0);
   }
   }
   #ifdef fGPU
@@ -1870,6 +1872,7 @@ void Tensor::RegL1(Tensor *A,LType l1)
     else N->ptr1(i)+=l1;
   
   A->fromLin(N);
+  delete N;
 }
 void Tensor::RegMaxN(Tensor *A,LType maxn) 
 {
