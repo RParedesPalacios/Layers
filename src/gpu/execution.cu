@@ -21,11 +21,19 @@ long int gpu_seed=1;
 //initialice cublas handle
 void cublasInit()
 {
+  int i=0;
 
   status=cublasCreate(&p_cublas);
+  while ((status!=  CUBLAS_STATUS_SUCCESS)&&(i<10)) {
+    status=cublasCreate(&p_cublas);
+    i++;
+    fprintf(stderr,".");
+  }
+  fprintf(stderr,"\n");
+  
   if ( status!=  CUBLAS_STATUS_SUCCESS)
   {
-     fprintf(stderr,"Problem in cuBlas execution getting: NOT IMPLEMENTED \n");
+     fprintf(stderr,"Problem in cuBlas Create\n");
      exit(1);
 
   }
