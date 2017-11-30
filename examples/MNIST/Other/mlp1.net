@@ -36,8 +36,8 @@ network N1 {
 
 script {
   
-  D1.div(255.0)
-  D2.div(255.0)
+  D1[:,S].div(255.0)
+  D2[:,S].div(255.0)
 
   N1.noiser=1.0
   N1.noisesd=0.3

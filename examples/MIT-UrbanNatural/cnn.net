@@ -53,9 +53,9 @@ network N1 {
 
 script {
   
-  D1.zscore()
-  D2.zscore(D1)
-
+  D1[:,S].zscore()
+  D2.getstats(D1)
+  D2[:,S].zscore()
 
   N1.in.flip=1
   N1.l2=0.001

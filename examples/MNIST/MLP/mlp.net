@@ -44,8 +44,9 @@ network N1 {
 //RUN SCRIPT 
 script {
   
-  D1.zscore()
-  D2.zscore(D1)
+  D1[:,S].zscore()
+  D2.getstats(D1)
+  D2[:,S].zscore()
 
 
   N1.in.noisesd=1.0
