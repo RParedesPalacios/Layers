@@ -1267,12 +1267,6 @@ bool firstTime=1;
 /// STATIC FUNCS
 void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double &mse)
 {
-  if (firstTime)
-  {
-	fprintf(stderr,"Warning. The function sse is not totatly debugged. For the moment the mean and std from data is assumed to be 0 and 1. This could affect in case you have performed a zscore normalization. Press enter to continue\n");
-	getchar();
-	firstTime=0;
-  }
   if (T->dim!=2) msgerr("loss_sse","error T dim!=2");
   if (N->dim!=2) msgerr("loss_sse","error N dim!=2");
 
@@ -1287,18 +1281,18 @@ void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double 
 
     Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
     if(useCPU)
-    {
-      Res->abs();
-      mae+=Res->sum()/T->b;
-    }
-    #ifdef fGPU
+      {
+	Res->abs();
+	mae+=Res->sum()/T->b;
+      }
+#ifdef fGPU
     else
-    {
-      float aux=0;
-      gpu_tensor_op.sum_abs(Res->gptr,&(Res->gsp),&aux);
-      mae+=aux/T->b;
-    }
-    #endif
+      {
+	float aux=0;
+	gpu_tensor_op.sum_abs(Res->gptr,&(Res->gsp),&aux);
+	mae+=aux/T->b;
+      }
+#endif
 
     Res->abs();
     mae+=Res->sum()/T->b;
@@ -1318,41 +1312,48 @@ void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double 
     }
 #ifdef fGPU
     else {
-     //desnormalizar
-     Tensor* Nn=new Tensor(N->a,N->b);
-     Tensor* Tn=new Tensor(T->a,T->b);     
-     Tensor *Res=new Tensor(T->a,T->b);
-     Tensor* mu = new Tensor(T->b);
-     Tensor* std = new Tensor(T->b);    
+      if (firstTime)
+	{
+	  fprintf(stderr,"Warning. The function sse is not totatly debugged. For the moment the mean and std from data is assumed to be 0 and 1. This could affect in case you have performed a zscore normalization. Press enter to continue\n");
+	  getchar();
+	  firstTime=0;
+	}
+
+      //desnormalizar
+      Tensor* Nn=new Tensor(N->a,N->b);
+      Tensor* Tn=new Tensor(T->a,T->b);     
+      Tensor *Res=new Tensor(T->a,T->b);
+      Tensor* mu = new Tensor(T->b);
+      Tensor* std = new Tensor(T->b);    
 
  
-     std->copyStatistics(D,1);//copy std
-     mu->copyStatistics(D,2);//copy mean
+      std->copyStatistics(D,1);//copy std
+      mu->copyStatistics(D,2);//copy mean
      
-     mu->set(0.0);
-     std->set(1.0);
+      mu->set(0.0);
+      std->set(1.0);
 
-     gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,std->gptr,&(N->gsp),1,0,1.0,1.0,1);//product by std     
-     gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,std->gptr,&(N->gsp),1,0,1.0,1.0,1);     
+      gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,std->gptr,&(N->gsp),1,0,1.0,1.0,1);//product by std     
+      gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,std->gptr,&(N->gsp),1,0,1.0,1.0,1);     
     
-     gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,mu->gptr,&(N->gsp),0,0,1.0,1.0,1);//add mean     
-     gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,mu->gptr,&(N->gsp),0,0,1.0,1.0,1);     
+      gpu_tensor_op.mat_elwise_vec(Nn->gptr,N->gptr,mu->gptr,&(N->gsp),0,0,1.0,1.0,1);//add mean     
+      gpu_tensor_op.mat_elwise_vec(Tn->gptr,T->gptr,mu->gptr,&(N->gsp),0,0,1.0,1.0,1);     
 
-     Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
+      Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
      
-     Tensor::el_mult(Res,0,Res,0,Res,0); //(T-N)*(T-N)
+      Tensor::el_mult(Res,0,Res,0,Res,0); //(T-N)*(T-N)
 
-     mse+=Res->sum()/T->b*-1;
-     Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
-     float aux=0;
-     gpu_tensor_op.sum_abs(Res->gptr,&(Res->gsp),&aux);
-     mae+=aux/T->b;
+      mse+=Res->sum()/T->b*-1;
+      Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
+      float aux=0;
+      gpu_tensor_op.sum_abs(Res->gptr,&(Res->gsp),&aux);
+      mae+=aux/T->b;
 
-     delete Res;
-     delete Tn;
-     delete Nn; 
-     delete mu;
-     delete std;
+      delete Res;
+      delete Tn;
+      delete Nn; 
+      delete mu;
+      delete std;
     }
 #endif
   }

@@ -93,6 +93,7 @@ class Layer {
   virtual void load(FILE *fe){}
   virtual void printkernels(FILE *fe){}
   virtual void addchild(Layer *l){}
+  virtual void shared(Layer *l){}
   virtual void addparent(Layer *l){}
   virtual void forward(){}
   virtual void backward(){}
@@ -127,6 +128,7 @@ class FLayer : public Layer {
 
   void mem();
   void addchild(Layer *l);
+  void shared(Layer *l);
   void addparent(Layer *l);
   void forward();
   void fBN();
@@ -183,6 +185,7 @@ class OLayer : public Layer {
   OLayer();
   OLayer(int batch,int op,char *name);
   void addchild(Layer *l);
+  void shared(Layer *l);
   void addparent(Layer *l);
   void forward();
   void backward();
@@ -239,6 +242,7 @@ class CLayer : public Layer {
 
 
   void addchild(Layer *l);
+  void shared(Layer *l);
   void addparent(Layer *l);
   void forward();
   void backward();
@@ -314,6 +318,7 @@ class PLayer : public CLayer {
 
 
   void addchild(Layer *l);
+  void shared(Layer *l);
   void addparent(Layer *l);
   void forward();
   void backward();
@@ -340,6 +345,7 @@ class CatLayer : public CLayer {
   int cat,catvec[100];
 
   void addchild(Layer *l);
+  void shared(Layer *l);
   void addparent(Layer *l);
   void forward();
   void backward();
@@ -360,6 +366,7 @@ class AddLayer : public CLayer {
   int add,addvec[100];
 
   void addchild(Layer *l);
+  void shared(Layer *l);
   void addparent(Layer *l);
   void forward();
   void backward();

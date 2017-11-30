@@ -74,6 +74,7 @@ void PLayer::addchild(Layer *l)
     }
   }
 }
+void PLayer::shared(Layer *li){} 
 
 void PLayer::addparent(Layer *l)
 {

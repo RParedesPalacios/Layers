@@ -74,6 +74,8 @@ void AddLayer::addchild(Layer *l)
   }
 }
 
+void AddLayer::shared(Layer *li){}
+
 void AddLayer::addparent(Layer *l)
 {
   int i,j;

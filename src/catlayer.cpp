@@ -74,6 +74,7 @@ void CatLayer::addchild(Layer *l)
     }
   }
 }
+void CatLayer::shared(Layer *li){}
 
 void CatLayer::addparent(Layer *l)
 {

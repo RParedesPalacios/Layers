@@ -103,6 +103,13 @@ void CLayer::addchild(Layer *l)
   }
 }
 
+void CLayer::shared(Layer *li)
+{
+
+
+}
+
+
 void CLayer::addparent(Layer *l)
 {
   int i,j;

@@ -52,6 +52,7 @@ void OLayer::addchild(Layer *l)
     l->addparent(this);
   }
 }
+void OLayer::shared(Layer *li){}
 
 void OLayer::addparent(Layer *l)
 {

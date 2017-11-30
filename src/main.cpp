@@ -19,7 +19,6 @@ extern "C" int netparser (char *nfich) ;
 #define MAX_VAR 10000
 
 
-
 ////////////////////////////////////
 // GLOBAL
 extern int useCPU;
@@ -140,9 +139,10 @@ public:
 	int dev;
 	sscanf(line,"Const device gpu %d\n",&dev);
 
+	gpu_tensor_op.gpu_info(dev);
+
 	cublasInit();
 	curandInit();
-	gpu_tensor_op.gpu_info(dev);
 	useCPU=0;
 	fprintf(stderr,"Layers using GPU %d\n",dev);
 
@@ -639,6 +639,7 @@ public:
     int act,nn;
     int i;
 
+
     sscanf(line,"link %s %s %s %s\n",net1,layer1,net2,layer2);
     if (VERBOSE) fprintf(stderr,"#### %s\n",line);
     sprintf(lname,"%s:%s",net2,layer2);
@@ -685,6 +686,37 @@ public:
     }
   }
 
+
+
+  void runshared(char *line) {
+    char lname[MAX_CHAR];
+    char name[MAX_CHAR];
+    char net1[MAX_CHAR];
+    char layer1[MAX_CHAR];
+    char net2[MAX_CHAR];
+    char layer2[MAX_CHAR];
+    char ltype[MAX_CHAR];
+    Layer *l1,*l2;
+    int i;
+
+    sscanf(line,"shared %s %s %s %s\n",net1,layer1,net2,layer2);
+    sprintf(lname,"%s:%s",net1,layer1);
+
+    for(i=0;i<Lc;i++) {
+      if (!strcmp(lname,LTable[i]->name)) break;
+    }
+    l1=LTable[i];
+
+    sprintf(lname,"%s:%s",net2,layer2);
+    for(i=0;i<Lc;i++) {
+	if (!strcmp(lname,LTable[i]->name)) break;
+    }
+    l2=LTable[i];
+
+    // Shared
+    l1->shared(l2);
+    
+  }
 
   void runendnet(char *line) {
     int i;
@@ -769,6 +801,7 @@ public:
 	  for(i=0;i<Dc;i++)
 	    if (!strcmp(DTable[i]->name,dname)) break;
 	  d=DTable[i];
+
 	  if (l->out) {((OFLayer *)l)->settarget(d);}
 	  else {
 	    if (l->type==1) {((IFLayer *)l)->setsource(d);}
@@ -1249,6 +1282,7 @@ public:
       else if (!strcmp(cad,"data")) rundata(line);
       else if (!strcmp(cad,"layer")) runlayer(line);
       else if (!strcmp(cad,"link")) runlink(line);
+      else if (!strcmp(cad,"shared")) runshared(line);
       else if (!strcmp(cad,"EndNetwork")) runendnet(line);
       else if (!strcmp(cad,"var")) runVar(line);
       else if (!strcmp(cad,"exit")) exit(1);
