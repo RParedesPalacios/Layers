@@ -281,6 +281,9 @@ switch(t)
        error=cudaMemcpy(&aux,cerr_g,sizeof(int),cudaMemcpyDeviceToHost);
        *cerr=(double)aux;
        destroyTensor(max_row);
+       cudaFree(result_ce);
+       cudaFree(cerr_g);
+       cudaFree(CE_vec);	
        break;
        }
   case SSE:
