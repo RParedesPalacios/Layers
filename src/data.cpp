@@ -319,6 +319,7 @@ void Data::limits(int &sini,int &sfin,int &dini,int &dfin)
   if (dfin==-1) dfin=size;
   if (sini==-1) sini=1;
   if (sfin==-1) sfin=num;
+  
 
   if (sini<1) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
   if (dini<1) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
@@ -1132,8 +1133,8 @@ GData::GData(int n,int d,int t,int p,char *name)
   else if (type==4) { /// suniform
     fprintf(stderr,"Creating generative suniform data %s %dx%d\n",name,num,dim);
   }
-  else if (type==5) { /// one_shot
-    fprintf(stderr,"Creating generative one-shot data %s,%d %dx%d\n",name,param,num,dim);
+  else if (type==5) { /// one_hot
+    fprintf(stderr,"Creating generative one-hot data %s,%d %dx%d\n",name,param,num,dim);
   }
 
   Mem();

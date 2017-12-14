@@ -1109,7 +1109,7 @@ void Tensor::add(LType val)
       else if (dim==2)
 	  #pragma omp parallel for
 	for(int i=0;i<a;i++)
-	  for(int j=0;i<b;i++)
+	  for(int j=0;j<b;j++)
 	    ptr2(i,j)+=val;
       else 
 	for(int i=0;i<a;i++)
@@ -1134,7 +1134,7 @@ void Tensor::abs()
       else if (dim==2)
 	  #pragma omp parallel for
 	for(int i=0;i<a;i++)
-	  for(int j=0;i<b;i++)
+	  for(int j=0;j<b;j++)
 	    ptr2(i,j)=fabs(ptr2(i,j));
       else 
 	for(int i=0;i<a;i++)
@@ -1160,7 +1160,7 @@ void Tensor::sqr()
       else if (dim==2)
 	  #pragma omp parallel for
 	for(int i=0;i<a;i++)
-	  for(int j=0;i<b;i++)
+	  for(int j=0;j<b;j++)
 	    ptr2(i,j)=sqrt(ptr2(i,j));
       else 
 	for(int i=0;i<a;i++)
@@ -1368,17 +1368,32 @@ void Tensor::loss_cross_entropy(Tensor *T,Tensor *N,double &cerr,double &ent)
   if (N->dim!=2) msgerr("loss_cross_entropy","error N dim!=2");
   
   if (useCPU) {
-    int i,j,rindex,nindex;
-    for(i=0;i<T->a;i++) {
-      T->row_max(i,&rindex);
-      N->row_max(i,&nindex);
-      if (rindex!=nindex) cerr++;
-      for(j=0;j<T->b;j++) {
-	if (j==rindex) {if (N->ptr2(i,j)!=0.0) ent-=log(N->ptr2(i,j));}
-	else if (N->ptr2(i,j)!=1.0) ent-=log(1-N->ptr2(i,j));
+    if (T->b>1) {
+      int i,j,rindex,nindex;
+      for(i=0;i<T->a;i++) {
+	T->row_max(i,&rindex);
+	N->row_max(i,&nindex);
+	if (rindex!=nindex) cerr++;
+	for(j=0;j<T->b;j++) {
+	  if (j==rindex) {if (N->ptr2(i,j)!=0.0) ent-=log(N->ptr2(i,j));}
+	  else if (N->ptr2(i,j)!=1.0) ent-=log(1-N->ptr2(i,j));
+	}
+      }
+    }
+    else {
+      for(int i=0;i<T->a;i++) {
+	if (T->ptr2(i,0)) {
+	  ent-=log(N->ptr2(i,0));
+	  if (N->ptr2(i,0)<0.5) cerr++;
+	}
+	else {
+	  ent-=log(1-N->ptr2(i,0));
+	  if (N->ptr2(i,0)>0.5) cerr++;
+	}
       }
     }
   }
+
 #ifdef fGPU
   else {
    int op=0;
