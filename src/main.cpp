@@ -530,7 +530,6 @@ public:
       int op;
       //operador={add, sub, imult, omult, div, sigmoid, tanh, log, relu}
       if (!strcmp(cad,"add")) op=OP_SUM;
-      else if (!strcmp(cad,"add")) op=OP_SUM;
       else if (!strcmp(cad,"sub")) op=OP_SUB;
       else if (!strcmp(cad,"imult")) op=OP_IMULT;
       else if (!strcmp(cad,"omult")) op=OP_OMULT;
@@ -538,7 +537,7 @@ public:
       else if (!strcmp(cad,"sigmoid")) op=OP_SIGM;
       else if (!strcmp(cad,"tanh")) op=OP_TANH;
       else if (!strcmp(cad,"log")) op=OP_LOG;
-      else if (!strcmp(cad,"relu")) op=OP_RELU;
+      else if (!strcmp(cad,"relu")) op=OP_MEAN; /// !!!!!
       else err("incorrect operand","O Layer");
 
       sprintf(lname,"%s:%s",innet,name);

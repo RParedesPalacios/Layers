@@ -41,16 +41,11 @@ void OLayer::addchild(Layer *l)
     if (N->size!=l->N->size) {
       fprintf(stderr,"Error connecting with operator %s with %s %d!=%d\n",name,l->name,N->size,l->N->size);
   }
-  
 
-  for(int i=0;i<lout;i++)
-    if (Lout[i]==l) enc=1;
+  Lout[lout++]=l;
+  fprintf(stderr,"Connecting %s --> %s\n",name,l->name);
+  l->addparent(this);
 
-  if (!enc) {
-    Lout[lout++]=l;
-    fprintf(stderr,"Connecting %s --> %s with \n",name,l->name);
-    l->addparent(this);
-  }
 }
 void OLayer::shared(Layer *li){}
 
@@ -58,12 +53,12 @@ void OLayer::addparent(Layer *l)
 {
   int i,j;
   
-  if ((op>=OP_SIGM)&&(lin>0)) {
+  if ((op>=OP_MEAN)&&(lin>0)) {
     fprintf(stderr,"Unary operator only accepts 1 parent layer\n");
     exit(1);
   }
 
-  if ((op<OP_SIGM)&&(lin>1)) {
+  if ((op<OP_MEAN)&&(lin>1)) {
     fprintf(stderr,"Bimary operator only accepts 2 parent layer\n");
     exit(1);
   }
@@ -118,6 +113,15 @@ void OLayer::forward()
     if (op==OP_OMULT) Tensor::out_mult(t1,t2,N,0);
     if (op==OP_DIV) {}
   }
+  else if (op<=10) {
+    Tensor *t1=Lin[0]->N;
+    if (op==OP_MEAN) {
+      Tensor *n=new Tensor(t1->b);
+      Tensor::reduceTomean(t1,n,1);
+      Tensor::augment(n,N,1);
+      delete n;
+    }
+  }
   else {
     Tensor *t1=Lin[0]->N;
     if (op==OP_SIGM) Tensor::activation(t1,N,ACT_SIG);
@@ -133,10 +137,14 @@ void OLayer::backward()
 {
   int i,b;
   
+  if (VERBOSE) fprintf(stderr,"%s Delta norm %f\n",name,Delta->sum());
 
   if (op<=5) {
     Tensor *t1=Lin[0]->Delta;
     Tensor *t2=Lin[1]->Delta;
+
+    Tensor *n1=Lin[0]->N;
+    Tensor *n2=Lin[1]->N;
 
     if (op==OP_SUM) {
       Tensor::inc(Delta,t1);
@@ -144,11 +152,11 @@ void OLayer::backward()
     }
     if (op==OP_SUB) {
       Tensor::inc(Delta,t1);
-      Tensor::sum(1.0,t2,0,-1.0,Delta,0,t2,0);
+      Tensor::sc_mult(Delta,-1.0, t2,1);
     }
     if (op==OP_IMULT) {
-      Tensor::el_mult(Delta,0,t2,0,t1,1);
-      Tensor::el_mult(Delta,0,t1,0,t2,1);
+      Tensor::el_mult(Delta,0,n2,0,t1,1);
+      Tensor::el_mult(Delta,0,n1,0,t2,1);
     }
     if (op==OP_OMULT) {
       int s1=Lin[0]->din;
@@ -170,6 +178,12 @@ void OLayer::backward()
       delete n;
       delete m1;
       delete m2;
+    }
+  }
+  else if (op<=10) {
+    Tensor *t1=Lin[0]->Delta;
+    if (op==OP_MEAN) {
+      Tensor::sc_mult(Delta, 1.0/t1->a, t1,1);
     }
   }
   else {

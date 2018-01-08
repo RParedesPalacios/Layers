@@ -110,6 +110,8 @@ void Net::net2dot()
         fprintf(fs,"%s [label=\"""^*"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
     else if (ol->op==OP_SIGM)
         fprintf(fs,"%s [label=\"""sigmoid"" \",style=filled,fontsize=12, fillcolor=Gray,shape=diamond]\n",pch);
+    else if (ol->op==OP_MEAN)
+        fprintf(fs,"%s [label=\"""mean"" \",style=filled,fontsize=12, fillcolor=Gray,shape=diamond]\n",pch);
       else 
         fprintf(fs,"%s [label=\" ""o"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
 
@@ -769,6 +771,10 @@ void Net::printerrors(int num)
     else if (o->opt==2) {
       fprintf(stderr,"%s AE MSE=%f  MAE=%f\n",o->name,o->mse/num,o->mae/num);
       fprintf(flog,"%s AE MSE=%f  MAE=%f\n",o->name,o->mse/num,o->mae/num);
+    }
+    else if (o->opt==3) {
+      fprintf(stderr,"%s MAX loss=%f\n",o->name,o->loss/num);
+      fprintf(flog,"%s MAX loss=%f\n",o->name,o->loss/num);
     }
   }
   

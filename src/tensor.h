@@ -151,6 +151,8 @@ class Tensor {
   static void RegL1(Tensor *A,LType l1);
   static void RegMaxN(Tensor *A,LType maxn);
 
+  // AUGMENTATIONS
+  static void augment(Tensor *A, Tensor *B, int adim);
   // REDUCTIONS
   static Tensor *reduce(Tensor *A,int rdim);
   static void reduceTomean(Tensor *A, Tensor *B,int rowcol);

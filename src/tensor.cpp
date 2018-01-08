@@ -1041,7 +1041,7 @@ void Tensor::load(FILE *fs)
       }
   else
     for(int i=0;i<a;i++) 
-      ptr[i]->save(fs);
+      ptr[i]->load(fs);
 }
 
 //Juan: Not implemented
@@ -1905,12 +1905,32 @@ void Tensor::RegMaxN(Tensor *A,LType maxn)
 
 
 
-// REDUCED FUNCTIONS 2D <--> 1D                                                      
+// AUGMENT FUNCTIONS 1D <--> 2D                                                      
+void Tensor::augment(Tensor *A, Tensor *B, int adim)
+{
+  if ((A->dim!=1)||(B->dim!=2)) msgerr("augment","error A dim!=1 or Bdim!=2");
+  
+  if (adim==0) {
+    #pragma omp parallel for
+    for(int i=0;i<B->a;i++) 
+      for(int j=0;j<B->b;j++) 
+	B->ptr2(i,j)=A->ptr1(i);
+  }
+  else {
+    #pragma omp parallel for
+    for(int i=0;i<B->a;i++)
+      for(int j=0;j<B->b;j++)
+	B->ptr2(i,j)=A->ptr1(j);
+  }
+}
+
+
+// REDUCE FUNCTIONS 
 
 // 4D -> 2D
 Tensor * Tensor::reduce(Tensor *A,int rdim) 
 {
-  if (A->dim!=4) msgerr("reduceTosum","error A dim!=4\n");
+  if (A->dim!=4) msgerr("reduce","error A dim!=4\n");
   
   Tensor *N;
 

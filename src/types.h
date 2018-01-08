@@ -40,13 +40,24 @@ typedef float LType;
 
 //OPERATORS
 
+////////////////////
 // Binary
+////////////////////
 #define OP_SUM 1
 #define OP_SUB 2
 #define OP_IMULT 3
 #define OP_OMULT 4
 #define OP_DIV 5
+
+////////////////////
 /// Unary
+////////////////////
+
+// Reductions
+#define OP_MEAN 10
+#define OP_VAR  11
+
+/// Activations
 #define OP_SIGM 21
 #define OP_TANH 22
 #define OP_LOG 23

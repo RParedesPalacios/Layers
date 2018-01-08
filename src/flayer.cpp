@@ -338,6 +338,15 @@ void FLayer::forward()
   FLayer *l;
   CLayer *cin;
 
+  if (lin>0)
+    if (Lin[0]->type==OLAYER) {
+      OLayer *l;
+      l=(OLayer *)Lin[0];
+      N->copy(l->N);
+      if (VERBOSE) fprintf(stderr,"%s from OP(%s) = %f\n",name,l->name,N->sum());
+      reshape=1;
+    }
+
   if (reshape) {
     
     if (Lin[0]->type==OLAYER) {
@@ -881,10 +890,11 @@ double OFLayer::get_err(int n)
 
   
   else if (opt<5) {
-    // max min                                                                            
+    // max min            
     for(i=0;i<n;i++)
-      for(j=0;j<din;j++) loss+=N->get(i,j)/din;
-
+      for(j=0;j<din;j++) {
+	loss+=N->get(i,j)/din;
+      }
   }
   else {
     //maxlog minlog                                                                       
@@ -931,8 +941,8 @@ void OFLayer::backward()
     // max min
     for(i=0;i<batch;i++)
       for(j=0;j<din;j++)
-	if (opt==3) Delta->set(i,j,-1.0);
-	else Delta->set(i,j,1.0);
+	if (opt==3) Delta->set(i,j,1.0);
+	else Delta->set(i,j,-1.0);
   }
   else {
     // maxlog minlog
