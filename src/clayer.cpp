@@ -7,15 +7,6 @@
 #include "utils.h"
 #include "tensor.h"
 
-#ifdef MKL 
-#define EIGEN_USE_MKL_ALL
-#endif
-
-#include "Eigen/Dense"
-
-
-using namespace Eigen;
-using namespace std;
 
 extern double gn[LUT];
 extern double un[LUT];

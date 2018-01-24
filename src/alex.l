@@ -168,13 +168,26 @@ sub             { display(sub_);          }
 store           { display(store_);        }
 getstats        { display(getstats_);     }
 copy            { display(copy_);         }
-
+if              { display(if_);           }
+else            { display(else_);         }
 
 bin             { display(bin_);          }
 int             { display(int_);          }
 real            { display(real_);         }
 exp             { display(exp_);          }
 sqr             { display(sqr_);          }
+false           { display(FALSE_);        }
+true            { display(TRUE_);         }
+
+"&&"            { display(AND_);          }
+"||"            { display(OR_);           }
+"=="            { display(EQUAL_);        }
+"!="            { display(NOTEQUAL_);     }
+">"             { display(GREAT_);        }
+">="            { display(GREATEQ_);      }
+"<"             { display(LESS_);         }
+"<="            { display(LESSEQ_);       }
+"!"             { display(NOT_);          }
 
 "+"             { display(MAS_);    }
 "-"             { display(MENOS_);  }

@@ -7,15 +7,6 @@
 #include "utils.h"
 
 
-#ifdef MKL 
-#define EIGEN_USE_MKL_ALL
-#endif
-
-#include "Eigen/Dense"
-
-using namespace Eigen;
-using namespace std;
-
 ////////////////////////////////////
 ///// POOLING LAYER CLASS
 ////////////////////////////////////

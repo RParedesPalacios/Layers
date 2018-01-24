@@ -20,6 +20,7 @@ int useCPU=0;
 using namespace Eigen;
 using namespace std;
 
+
 //////////////////////////////
 ////// RANDOM GENERATORS
 double gn[LUT];

@@ -33,16 +33,21 @@
  testout_  forward_  backward_  resetstats_  printerrors_  reseterrors_
  trainmode_  testmode_  update_  test_  evaluate_  zscore_  center_  yuv_  
  maxmin_  shuffle_  next_  set_  mul_  div_  add_  sub_  store_  getstats_
- bin_  int_  real_  for_   copy_ imult_ omult_ sigmoid_ tanh_ relu_ 
+ bin_  int_  real_  copy_ imult_ omult_ sigmoid_ tanh_ relu_ 
+ for_  if_  else_ 
 /****************************************************************  operators */
  BCB_  ECB_  BSB_  ESB_  BRB_  ERB_  PER_  COM_  EQ_  RAR_  COL_  
- MAS_  MENOS_  POR_  DIV_  MOD_  PORPOR_  log_  exp_  sqr_ 
+ MAS_  MENOS_  POR_  DIV_  MOD_  PORPOR_  log_  exp_  sqr_  TRUE_  FALSE_
+ AND_  OR_  EQUAL_  NOTEQUAL_  GREAT_  GREATEQ_  LESS_  LESSEQ_  NOT_
+
+%nonassoc IFAUX_
+%nonassoc else_
 /**************************************************** tokens with attributes */
 %token<ident> id_  nfile_  cecho_
 %token<creal> cte_
 /********************************************** nonterminals with attributes */
 %type<aux>    gentype  filetype  fparam  namelayer  parameter  
-              functions  /*op_unary*/  op_mul  op_add 
+              functions  op_una  op_mul  op_add  op_rel  op_eq  op_log 
               comnetvoid  comnetfile  comnetdat  comnetexp  
               comdatvoid  comdatfile  comdatdat  comdatexp  
               comlayfile comlaydatlay  comcopy
@@ -50,9 +55,8 @@
 %type<aux4>   alpha  beta  
 %type<aux2>   datlay
 %type<rango>  rank
-%type<expfor> rest
-%type<creal>  cte
-%type<expre>  exp_suf  exp_unary  exp_mul  exp  
+%type<expfor> restfor
+%type<expre>  exp_suf  exp_unary  exp_mul  exp_add  exp_rel  exp_eq  exp
 /*****************************************************************************/
 %%
 /*****************************************************************************/
@@ -78,15 +82,15 @@ lconstants
        | const
        ;
 /*****************************************************************************/
-const  : batch_   EQ_  cte  
+const  : batch_   EQ_  cte_  
 
        { insert_gconstants(BATCH, (int)$3, ""); }
 
-       | threads_ EQ_  cte  
+       | threads_ EQ_  cte_  
 
        { insert_gconstants(THREADS, (int)$3, ""); }
 
-       | seed_  EQ_  cte
+       | seed_  EQ_  cte_
 
        { insert_gconstants(SEED, (int)$3, ""); }
 
@@ -94,15 +98,15 @@ const  : batch_   EQ_  cte
 
        { insert_gconstants(DEVICE, -1, ""); }
 
-       | device_  EQ_  gpu_  cte
+       | device_  EQ_  gpu_  cte_
 
        { insert_gconstants(DEVICE, (int)$4, ""); }
 
-       | cuDNN_  EQ_  cte
+       | cuDNN_  EQ_  cte_
 
        { insert_gconstants(CUDNN, (int)$3, ""); }
 
-       | cuBLAS_  EQ_  cte
+       | cuBLAS_  EQ_  cte_
 
        { insert_gconstants(CUBLAS, (int)$3, ""); }
 
@@ -190,11 +194,11 @@ dpargen: gentype
 
        { inser_param_data(GENERATED, "", $1, -1, -1); }
 
-       | numnodes_  EQ_  cte  
+       | numnodes_  EQ_  cte_  
 
        { inser_param_data(GENERATED, "", -1, (int)$3, -1); }
 
-       | pos_  EQ_  cte 
+       | pos_  EQ_  cte_ 
 
        { inser_param_data(GENERATED, "", -1, -1, (int)$3); }
        ;
@@ -204,15 +208,15 @@ ldparcrea
        | dparcrea
        ;
 /*****************************************************************************/
-dparcrea: nrows_  EQ_  cte  
+dparcrea: nrows_  EQ_  cte_  
 
        { inser_param_data(CREADATA, "", (int)$3, -1, -1); }
 
-       | ncolsample_  EQ_  cte  
+       | ncolsample_  EQ_  cte_  
 
        { inser_param_data(CREADATA, "", -1, (int)$3, -1); }
 
-       | ncoltarget_  EQ_  cte 
+       | ncoltarget_  EQ_  cte_ 
 
        { inser_param_data(CREADATA, "", -1, -1, (int)$3); }
        ;
@@ -399,23 +403,23 @@ cilparam
        ;
 /*****************************************************************************/
 ciparam           
-       : nz_  EQ_  cte 
+       : nz_  EQ_  cte_ 
 
        { insert_param_layer(1, (int)$3); }
  
-       | nr_  EQ_  cte  
+       | nr_  EQ_  cte_  
 
        { insert_param_layer(2, (int)$3); }
 
-       | nc_  EQ_  cte
+       | nc_  EQ_  cte_
 
        { insert_param_layer(3, (int)$3); }
 
-       | cr_  EQ_  cte
+       | cr_  EQ_  cte_
 
        { insert_param_layer(4, (int)$3); }
 
-       | cc_  EQ_  cte
+       | cc_  EQ_  cte_
 
        { insert_param_layer(5, (int)$3); }
 
@@ -504,7 +508,7 @@ fparam
 
        { $$ = FALSE; }
 
-       | numnodes_  EQ_  cte 
+       | numnodes_  EQ_  cte_
 
        { 
          $$ = TRUE;
@@ -518,27 +522,27 @@ clparam
        ;
 /*****************************************************************************/
 cparam         
-       : nk_  EQ_  cte  
+       : nk_  EQ_  cte_  
 
        { insert_param_layer(1, (int)$3); }
 
-       | kr_  EQ_  cte  
+       | kr_  EQ_  cte_  
 
        { insert_param_layer(2, (int)$3); }
 
-       | kc_  EQ_  cte
+       | kc_  EQ_  cte_
 
        { insert_param_layer(3, (int)$3); }
 
-       | rpad_  EQ_  cte  
+       | rpad_  EQ_  cte_  
 
        { insert_param_layer(4, (int)$3); }
 
-       | cpad_  EQ_  cte 
+       | cpad_  EQ_  cte_ 
 
        { insert_param_layer(5, (int)$3); }
 
-       | stride_  EQ_  cte
+       | stride_  EQ_  cte_
 
        { insert_param_layer(6, (int)$3); }
        ;
@@ -549,11 +553,11 @@ mplparam
        ; 
 /*****************************************************************************/
 mpparam           
-       : sizer_  EQ_  cte  
+       : sizer_  EQ_  cte_  
 
        { insert_param_layer(1, (int)$3); }
 
-       | sizec_  EQ_  cte 
+       | sizec_  EQ_  cte_ 
 
        { insert_param_layer(2, (int)$3); }
        ;
@@ -623,8 +627,17 @@ lactions
        ;
 /*****************************************************************************/
 actions: amendment
-       | command       
-       | for_  id_  EQ_  exp  COL_ rest 
+       | command
+   
+       | if_  BRB_  exp  ERB_
+
+       { get_if($3); } 
+   
+         BCB_  lactions  ECB_  restif
+
+       { get_endif(); } 
+       
+       | for_  id_  EQ_  exp  COL_ restfor 
 
        { ptsymbol t = search_name($2);
          if (t == NULL) t = insert_name($2); 
@@ -650,7 +663,18 @@ actions: amendment
        }
        ;
 /*****************************************************************************/
-rest   : exp
+restif :  %prec IFAUX_
+
+       { get_else(); } 
+
+       | else_  
+   
+       { get_else(); } 
+
+         BCB_  lactions  ECB_  
+       ;
+/*****************************************************************************/
+restfor: exp
 
        { 
          $$.expre1.psymbol = NULL;  $$.expre1.reftemp = cr_var_temp();  
@@ -859,8 +883,8 @@ alpha  /* : Empty string
        : COL_      
 
        { 
-         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte(-1); 
-         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte(-1); 
+         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte_1(); 
+         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte_1(); 
          $$.aux = -1; 
        }
 
@@ -871,7 +895,7 @@ alpha  /* : Empty string
        | COL_  exp   
 
        { 
-         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte(-1); 
+         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte_1(); 
          $$.fin = $2; $$.aux = -1; 
        }
 
@@ -879,7 +903,7 @@ alpha  /* : Empty string
 
        { 
          $$.ini = $1; $$.aux = -1; 
-         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte(-1); 
+         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte_1(); 
        }
 
        | exp  COL_  exp 
@@ -894,8 +918,8 @@ beta   /* : Empty string
        : COL_                
 
        { 
-         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte(-1);
-         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte(-1);
+         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte_1();
+         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte_1();
          $$.aux = -1; 
        }
 
@@ -906,7 +930,7 @@ beta   /* : Empty string
        | COL_  exp               
 
        { 
-         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte(-1);
+         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte_1();
          $$.fin = $2; $$.aux = -1; 
        }
 
@@ -914,7 +938,7 @@ beta   /* : Empty string
 
        { 
          $$.ini = $1; $$.aux = -1; 
-         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte(-1);
+         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte_1();
        }
 
        | exp  COL_  exp
@@ -924,40 +948,40 @@ beta   /* : Empty string
        | real_         
 
        { 
-         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte(-1);
-         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte(-1);
+         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte_1();
+         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte_1();
          $$.aux = REAL; 
        }
 
        | bin_         
     
        { 
-         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte(-1);
-         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte(-1);
+         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte_1();
+         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte_1();
          $$.aux = BIN; 
        } 
 
        | int_        
 
        { 
-         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte(-1);
-         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte(-1);
+         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte_1();
+         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte_1();
          $$.aux = INT; 
        }
  
        | S_           
 
        { 
-         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte(-1);
-         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte(-1);
+         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte_1();
+         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte_1();
          $$.aux = SAMPLE; 
        }
 
        | T_           
 
        { 
-         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte(-1);
-         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte(-1);
+         $$.ini.psymbol = NULL; $$.ini.reftemp = cr_var_temp_cte_1();
+         $$.fin.psymbol = NULL; $$.fin.reftemp = cr_var_temp_cte_1();
          $$.aux = TARGET; 
        } 
        ;
@@ -1106,9 +1130,39 @@ matweights
        | N_         { $$ = "N";  }
        ;
 /*****************************************************************************/
-exp    :  exp_mul           { $$ = $1; }   
+exp    :  exp_eq           { $$ = $1; }   
 
-       |  exp  op_add  exp_mul
+       |  exp  op_log  exp_eq
+
+       { 
+         $$.psymbol = NULL;  $$.reftemp = cr_var_temp();  
+	 get_exp_log($$.reftemp, $1, $2, $3);
+       }
+       ;
+/*****************************************************************************/
+exp_eq :  exp_rel           { $$ = $1; }   
+
+       |  exp_eq  op_eq  exp_rel
+
+       { 
+         $$.psymbol = NULL;  $$.reftemp = cr_var_temp();  
+	 get_exp_eq($$.reftemp, $1, $2, $3);
+       }
+       ;
+/*****************************************************************************/
+exp_rel:  exp_add           { $$ = $1; }   
+
+       |  exp_rel  op_rel  exp_add
+
+       { 
+         $$.psymbol = NULL;  $$.reftemp = cr_var_temp();  
+	 get_exp_rel($$.reftemp, $1, $2, $3);
+       }
+       ;
+/*****************************************************************************/
+exp_add:  exp_mul           { $$ = $1; }   
+
+       |  exp_add  op_add  exp_mul
 
        { 
          $$.psymbol = NULL;  $$.reftemp = cr_var_temp();  
@@ -1129,6 +1183,13 @@ exp_mul:  exp_unary         { $$ = $1; }
 exp_unary
        :  exp_suf           { $$ = $1; }   
 
+       |  op_una  exp_unary
+
+       { 
+         $$.psymbol = NULL;  $$.reftemp = cr_var_temp();  
+	 get_exp_unary($$.reftemp, $1, $2);
+       }
+
        |  functions  BRB_  exp_unary  ERB_
 
        { 
@@ -1146,15 +1207,25 @@ exp_suf:  BRB_  exp  ERB_   { $$ = $2; }
 	 if ($$.psymbol == NULL) yyerror("Undefined variable name");
        }
 
-       |  cte
+       |  cte_
 
        { 
-         $$.psymbol = NULL;  
-	 if ($1 == -1)     $$.reftemp = cr_var_temp_cte(-1);
-	 else {
-	   $$.reftemp = cr_var_temp();
-	   get_init_cte($$.reftemp, $1);
-	 }
+         $$.psymbol = NULL; $$.reftemp = cr_var_temp();
+         get_init_cte($$.reftemp, $1);
+       }
+
+       |  TRUE_
+
+       { 
+         $$.psymbol = NULL; $$.reftemp = cr_var_temp();
+         get_init_cte($$.reftemp, 1.0);
+       }
+
+       |  FALSE_
+
+       { 
+         $$.psymbol = NULL; $$.reftemp = cr_var_temp();
+         get_init_cte($$.reftemp, 0.0);
        }
 
        |  id_  PER_  id_  PER_  parameter   
@@ -1192,19 +1263,33 @@ exp_suf:  BRB_  exp  ERB_   { $$ = $2; }
        }
        ;
 /*****************************************************************************/
-op_add :  MAS_     { $$ = ADDITION; }
-       |  MENOS_   { $$ = SUBTRACTION; }
+op_log :  AND_       { $$ = AND; }
+       |  OR_        { $$ = OR;  }
        ;
 /*****************************************************************************/
-op_mul :  POR_     { $$ = MULTIPLICATION; }
-       |  DIV_     { $$ = DIVISION;       }
-       |  MOD_     { $$ = MODULUS;        }
-       |  PORPOR_  { $$ = EXPONET;        }
+op_eq  :  EQUAL_     { $$ = EQUAL;    }
+       |  NOTEQUAL_  { $$ = NOTEQUAL; }
+       ;
+/*****************************************************************************/
+op_rel :  GREAT_     { $$ = GREAT;   }
+       |  GREATEQ_   { $$ = GREATEQ; }
+       |  LESS_      { $$ = LESS;    }
+       |  LESSEQ_    { $$ = LESSEQ;  }
+       ;
+/*****************************************************************************/
+op_add :  MAS_       { $$ = ADDITION; }
+       |  MENOS_     { $$ = SUBTRACTION; }
+       ;
+/*****************************************************************************/
+op_mul :  POR_       { $$ = MULTIPLICATION; }
+       |  DIV_       { $$ = DIVISION;       }
+       |  MOD_       { $$ = MODULUS;        }
+       |  PORPOR_    { $$ = EXPONET;        }
        ; 
 /*****************************************************************************/
-cte    : cte_          { $$ = $1;  } 
-       | MAS_    cte_  { $$ = $2;  }
-       | MENOS_  cte_  { $$ = -$2; }
+op_una :  MAS_       { $$ = ADDITION;    }
+       |  MENOS_     { $$ = SUBTRACTION; }
+       |  NOT_       { $$ = NOT;         }
        ;
 /*****************************************************************************/
 functions

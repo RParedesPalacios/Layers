@@ -1573,8 +1573,6 @@ Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
     LMatrix Res=A->ptr2.row(i).transpose()*B->ptr2.row(i);
     Map<RowVectorXf> v(Res.data(), Res.size());
     C->ptr2.row(i)=v;
-    Res.resize(0,0);
-    v.resize(0);
   }
   }
   #ifdef fGPU

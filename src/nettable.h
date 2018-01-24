@@ -4,12 +4,17 @@
 #ifndef _LIBTDS_H
 #define _LIBTDS_H
 /********************************************************* General constants */
+#define MaxTdM 1000         /* Maximum number of inputs in table of macros   */
 #define MaxMem 1000         /* Maximum number of instructions                */
 #define MaxTdN 1000         /* Maximum number of inputs in table of networks */
 #define MaxTdL 1000         /* Maximum number of inputs in table of layers   */
 #define MaxTdD 1000         /* Maximum number of inputs in table of data     */
 #define MaxPar   7          /* Maximum number of parameters per layer        */
- 
+#define MaxSizeLin 1000     /* Maximum size lines                            */
+
+#define FORMAL  0
+#define ACTUAL  1
+
 #define TRUE  1
 #define FALSE 0
 
@@ -119,23 +124,31 @@
 #define TARGET 3
 #define SAMPLE 4
 
-#define  ADDITION        0
-#define  SUBTRACTION     1
-#define  MULTIPLICATION  2
-#define  DIVISION        3
-#define  INNERMULT       4
-#define  OUTERMULT       5
-#define  SIGMOID         6
-#define  TANH            7
-#define  RELU            8
-#define  MODULUS         9
-#define  EXPONET        10
-#define  LOGARITHM      11
-#define  EXPONENTIAL    12
-#define  SQUARE         13
-
-/******************************************************* Auxiliary structures */
-typedef struct symbol { /***************************************** Name Table */
+#define  AND             0
+#define  OR              1
+#define  EQUAL           2
+#define  NOTEQUAL        3
+#define  GREAT           4
+#define  GREATEQ         5
+#define  LESS            6
+#define  LESSEQ          7
+#define  ADDITION        8
+#define  SUBTRACTION     9
+#define  MULTIPLICATION 10
+#define  DIVISION       11
+#define  MODULUS        12
+#define  EXPONET        13
+#define  NOT            14
+#define  LOGARITHM      15
+#define  EXPONENTIAL    16
+#define  SQUARE         17
+#define  INNERMULT      18
+#define  OUTERMULT      19
+#define  SIGMOID        20
+#define  TANH           21
+#define  RELU           22
+/****************************************************** Auxiliary structures */
+typedef struct symbol { /**************************************** Name Table */
   char *ident;
   struct symbol *succ;
 } typesymbol;
@@ -144,20 +157,20 @@ typedef struct expre { /******************************************************/
   ptsymbol psymbol;
   int     reftemp; 
   } EXPRE;
-typedef struct aux4 { /********************************************************/
+typedef struct aux4 { /*******************************************************/
   EXPRE ini;
   EXPRE fin;
   int   aux; 
   } AUX4;
-typedef struct rango { /*******************************************************/
+typedef struct rango { /******************************************************/
   AUX4 row;
   AUX4 col;
   } RANGO;
-typedef struct tuple { /*******************************************************/
+typedef struct tuple { /******************************************************/
   int ref;
   int typ; 
   } TUPLE;
-typedef struct tddata { /**************************** Elements of data table  */
+typedef struct tddata { /*************************** Elements of data table  */
   char *name;
   int   level;
   int   type;
@@ -170,7 +183,7 @@ typedef struct tddata { /**************************** Elements of data table  */
   int   ncolsample;  
   int   ncoltarget;
   } TDDATA;
-typedef struct tdnet { /*************************** Elements of network table */
+typedef struct tdnet { /************************** Elements of network table */
   char *name;
   int   reftr;
   int   typtr;
@@ -182,13 +195,13 @@ typedef struct tdnet { /*************************** Elements of network table */
   int   eelem;                   
   int   start;                   
   }TDNET;
-typedef struct node {/*********************************************************/
+typedef struct node {/********************************************************/
   int  refnet;
   int   reflay; 
   struct node *succ;
   } typenode;
 typedef typenode *pnode;
-typedef struct tdlay  {/***************************** Elements of layer table */
+typedef struct tdlay  {/**************************** Elements of layer table */
   char *name;
   int   type;  
   int   refnet;
@@ -212,12 +225,24 @@ typedef struct expfor { /*****************************************************/
   EXPRE expre1;
   EXPRE expre2; 
   } EXPFOR;
+typedef struct param { /**************************************** Remplace ****/
+  char *param;
+  struct param *succ;
+  } typeparam;
+typedef typeparam *pparam;
+typedef struct tdmacro  { /* Elements of macro table */
+  char  *name;
+  int    pini;  
+  int    pfin;
+  int    npfor;
+  int    npact;
+  pparam fpf;    
+  pparam lpf;
+  pparam fpa;    
+  pparam lpa;
+  }TDMACRO;
 /************************************** External variables defined in the AL */
-#ifndef YY_TYPEDEF_YY_SIZE_T
-#define YY_TYPEDEF_YY_SIZE_T
-typedef size_t yy_size_t;
-#endif
-extern yy_size_t yyleng;
+extern int yyleng;
 extern FILE *yyin;
 extern int   yylineno;
 extern char *yytext;
@@ -256,8 +281,10 @@ int   search_states(char *netname, char *layname) ;
 void  get_net_links(int n, int l) ;
 
 void get_amendment(int type, int ref, int cod, EXPRE value) ;
-
 void get_echo(char *aux) ;
+void get_if(EXPRE exp1) ;
+void get_else() ;
+void get_endif() ;
 void get_for(ptsymbol s, EXPRE exp1, EXPRE exp2, EXPRE exp3) ;
 void get_endfor() ;
 
@@ -280,21 +307,25 @@ void get_com_data_copy_rank(int ref, RANGO r, int cod, char *aux) ;
 void get_com_data_copy (int ref, int cod, char *aux) ;
 
 void get_init_cte(int ref, float val) ;
-void get_init_amend(int type, int ref, int lay, int cod) ;
-void get_functions(int ref, int aux, EXPRE val) ;
-void get_exp_mul(int ref, EXPRE op1, int op, EXPRE op2) ;
-void get_exp_add(int ref, EXPRE op1, int op, EXPRE op2) ;
 void get_init_elem(int ref, int dat, EXPRE f, EXPRE c) ;
+void get_init_amend(int type, int ref, int lay, int cod) ;
+void get_exp_unary(int ref, int aux, EXPRE val) ;
+void get_functions(int ref, int aux, EXPRE val) ;
+void get_exp_log(int ref, EXPRE op1, int op, EXPRE op2) ;
+void get_exp_eq (int ref, EXPRE op1, int op, EXPRE op2) ;
+void get_exp_rel(int ref, EXPRE op1, int op, EXPRE op2) ;
+void get_exp_add(int ref, EXPRE op1, int op, EXPRE op2) ;
+void get_exp_mul(int ref, EXPRE op1, int op, EXPRE op2) ;
 void get_exp_eqvar(ptsymbol s, EXPRE op) ;
-void  get_exp_eqelem(int ref, EXPRE f, EXPRE c, EXPRE der) ;
+void get_exp_eqelem(int ref, EXPRE f, EXPRE c, EXPRE der) ;
 
 void strexpre(char *p, EXPRE val) ;
-int  cr_var_temp_cte(int cte) ;
-int     cr_var_temp() ;
-void    create_list_names() ;
+int  cr_var_temp_cte_1() ; 
+int  cr_var_temp() ;
+void create_list_names() ;
+void show_list_names () ;
 ptsymbol insert_name(char *x) ;
 ptsymbol search_name (char *x) ;
-void    show_list_names () ;
 
 void yyerror(const char *msg) ;
 void emit (char *str) ;

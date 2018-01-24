@@ -8,16 +8,6 @@
 #include "utils.h"
 #include "tensor.h"
 
-#ifdef MKL 
-#define EIGEN_USE_MKL_ALL
-#endif
-
-#include "Eigen/Dense"
-
-
-/// Eigen
-using namespace Eigen;
-using namespace std;
 
 #define DEBUG 0
 
@@ -100,28 +90,28 @@ FLayer::FLayer(int in,int batch,char *name):Layer(batch,name)
 FLayer::FLayer(Layer *In,int batch,char *name):Layer(batch,name)
 {
   if (In->type==FLAYER) {
-
+    fprintf(stderr,"Error %s after flayer %s\n",name,In->name);
+    exit(1);
   }
   else if (In->type==OLAYER) {
     OLayer *l=(OLayer *)In;
     din=l->din;
     if (din<=0) {
-      fprintf(stderr,"Error %s with %d neurons\n",name,din);
+      fprintf(stderr,"Error %s after %s with %d neurons\n",name,l->name,din);
       exit(1);
     }
-    reshape=1;
   }
   else {
     CLayer *cin;
-
     cin=(CLayer *)In;
     din=cin->outz*cin->outr*cin->outc;
-    reshape=1;
     if (din<=0) {
-      fprintf(stderr,"Error %s with %d neurons\n",name,din);
+      fprintf(stderr,"Error %s after %s with %d neurons\n",name,cin->name,din);
       exit(1);
     }
   }
+  
+  reshape=1;
   type=1;
   // Linear
   act=0;
@@ -203,10 +193,20 @@ void FLayer::addchild(Layer *li)
 
 }
 
+void FLayer::addparent(Layer *l)
+{
+  if ((lin>0)&&(reshape)) {
+    fprintf(stderr,"Error, reshape layer (%s) can only have one parent layer, (%s)\n",name,l->name);
+    exit(1);
+  }
+
+  Lin[lin]=l;
+  lin++;
+}
+
 void FLayer::shared(Layer *li) 
 {
-  //The last connection parameters are
-  //shared with the first
+  // sharing fixed now for [0]<->[0]
 
   FLayer *l=(FLayer *)li;
 
@@ -220,18 +220,6 @@ void FLayer::shared(Layer *li)
   l->pgb->ptr[0]=pgb->ptr[0];
   
   fprintf(stderr,"%s->%s sharing parameters with %s->%s\n",name,li->name,name,Lout[0]->name);
-}
-
-void FLayer::addparent(Layer *l)
-{
-  if ((lin>0)&&(reshape)) {
-    fprintf(stderr,"Error, reshape layer (%s) can only have one parent layer, (%s)\n",name,l->name);
-    exit(1);
-  }
-
-  Lin[lin]=l;
-  lin++;
-
 }
 
 
@@ -284,6 +272,8 @@ void FLayer::resetstats()
 //////////////////////
 ///// FORWARD
 //////////////////////
+
+// Batch Norm
 void FLayer::fBN()
 {
   int i,j;
@@ -338,7 +328,8 @@ void FLayer::forward()
   FLayer *l;
   CLayer *cin;
 
-  if (lin>0)
+  
+  if (lin>0) 
     if (Lin[0]->type==OLAYER) {
       OLayer *l;
       l=(OLayer *)Lin[0];
@@ -346,9 +337,9 @@ void FLayer::forward()
       if (VERBOSE) fprintf(stderr,"%s from OP(%s) = %f\n",name,l->name,N->sum());
       reshape=1;
     }
+  
 
-  if (reshape) {
-    
+  if (reshape) {    
     if (Lin[0]->type==OLAYER) {
       OLayer *l;
       l=(OLayer *)Lin[0];
@@ -403,6 +394,8 @@ void FLayer::forward()
   
     if (VERBOSE) fprintf(stderr,"N(%s,%d) = %f\n",name,act,N->sum());
   }
+
+
 
   //////////////////////////////
   // FORWARD TO CHILD LAYERS

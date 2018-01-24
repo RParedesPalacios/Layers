@@ -34,9 +34,15 @@ int    ptdl = 0;
 char   *mem[MaxMem]; /*********************************************** Memory */
 int    pmem = 0;
 
-int      pstv;            /**** Pointer to the segment of temporal variables */
+int      pstv = 1;        /**** Pointer to the segment of temporal variables */
 ptsymbol ptnames = NULL;  /************************** head to the name table */
 int      fcteneg = FALSE;
+
+TDMACRO  tdm [MaxTdM];    /*************************** Remplace: Macro Table */
+int      ptdm = 0;
+
+FILE *fc; FILE *fd;                    /* Remplace: file names: input output */
+int ismacro = FALSE, dump = TRUE, numlin = 0;                    /* Remplace */
 /*****************************************************************************/
 /***************************** general constants *****************************/
 /*****************************************************************************/
@@ -764,6 +770,28 @@ void get_echo(char *aux)
   emit(line);
 }
 /*****************************************************************************/
+void get_if(EXPRE exp1)
+{ char line[140], opd1[140];
+
+  strexpre(opd1, exp1); 
+  sprintf(line, "command If %s", opd1);
+  emit(line);
+}
+/*****************************************************************************/
+void get_else()
+{ char line[140];
+
+  sprintf(line,"command Else");
+  emit(line);
+}
+/*****************************************************************************/
+void get_endif()
+{ char line[140];
+
+  sprintf(line,"command EndIf");
+  emit(line);
+}
+/*****************************************************************************/
 void get_for(ptsymbol s, EXPRE exp1, EXPRE exp2, EXPRE exp3)
 { char line[140], opd1[140], opd2[140], opd3[140];
 
@@ -809,8 +837,6 @@ void get_com_lay_datlay(int refnd, int refld, int cod, int refns, int refls)
 /*****************************************************************************/
 void get_com_lay_copy(int ref1, int ref2, int cod, char *aux)
 { char line[140]; char *aux2;
-
-printf(":::::::::::::::::::::::::[%s]\n",aux);
 
   if (cod == copy) aux2 ="copy";
   sprintf(line,"command layer %s %s %s %s", aux2, tdn[ref1].name, 
@@ -911,7 +937,7 @@ void get_com_data_void(int ref, int cod)
   case shuffle:  {aux = "shuffle"; break;}
   case next:     {aux = "next";    break;}
   }
-  e.psymbol = NULL;  e.reftemp = cr_var_temp_cte(-1);
+  e.psymbol = NULL;  e.reftemp = cr_var_temp_cte_1();
   strexpre(opd, e);
 
   if ((cod==shuffle)||(cod==next)) 
@@ -978,7 +1004,7 @@ void get_com_data_exp (int ref, int cod, EXPRE val)
   case (subtraction):    {aux = "sub"; break; }
   case (set):            {aux = "set"; break; }
   }
-  e.psymbol = NULL;  e.reftemp = cr_var_temp_cte(-1);
+  e.psymbol = NULL;  e.reftemp = cr_var_temp_cte_1();
   strexpre(opd, e);
   sprintf(line, "command data %s %s %s %s %s %s NONE %s", aux, tdd[ref].name,
 	  opd, opd, opd, opd, opd1);
@@ -1010,7 +1036,7 @@ void get_com_data_copy (int ref, int cod, char *aux)
 { char line[140], opd[140]; char *aux2; EXPRE e; 
 
   if (cod == copy) aux2 ="copy";
-  e.psymbol = NULL;  e.reftemp = cr_var_temp_cte(-1);
+  e.psymbol = NULL;  e.reftemp = cr_var_temp_cte_1();
   strexpre(opd, e);
   sprintf(line, "command data %s %s %s %s %s %s NONE %s", aux2, tdd[ref].name,
 	  opd, opd, opd, opd, aux);
@@ -1083,6 +1109,20 @@ void get_init_amend(int type, int ref, int dat, int cod)
   emit(line);
 }
 /*****************************************************************************/
+void  get_exp_unary(int ref, int cod, EXPRE val)
+{ char line[140];  char *aux;
+ 
+  switch(cod) {
+  case (ADDITION):    { aux = "+"; break;}
+  case (SUBTRACTION): { aux = "-"; break;}
+  case (NOT):         { aux = "!"; break;}
+  }
+  if (val.psymbol == NULL) 
+    sprintf(line, "var unaryop #%d %s #%d", ref, aux, val.reftemp);
+  else sprintf(line, "var unaryop #%d %s %s", ref, aux, val.psymbol->ident);
+  emit(line);
+}
+/*****************************************************************************/
 void get_functions(int ref, int cod, EXPRE val)
 { char line[140];  char *aux;
  
@@ -1096,19 +1136,54 @@ void get_functions(int ref, int cod, EXPRE val)
   else sprintf(line, "var function #%d %s %s", ref, aux, val.psymbol->ident);
   emit(line);
 }
+
 /*****************************************************************************/
-void get_exp_mul(int ref, EXPRE op1, int op, EXPRE op2)
+void get_exp_log(int ref, EXPRE op1, int op, EXPRE op2)
 { char line[140], line2[140];  char *aux;
  
   switch(op) {
-  case (MULTIPLICATION): { aux = "*";  break;}
-  case (DIVISION):       { aux = "/";  break;}
-  case (MODULUS):        { aux = "%";  break;}
-  case (EXPONET):        { aux = "**"; break;}
+  case (AND):  { aux = "&&";  break;}
+  case (OR):   { aux = "||";  break;}
   }
   if (op1.psymbol == NULL) 
-    sprintf(line, "var operator #%d %s #%d", ref, aux, op1.reftemp);
-  else sprintf(line, "var operator #%d %s %s", ref, aux, op1.psymbol->ident);
+    sprintf(line, "var binaryop #%d %s #%d", ref, aux, op1.reftemp);
+  else sprintf(line, "var binaryop #%d %s %s", ref, aux, op1.psymbol->ident);
+
+  if (op2.psymbol == NULL)  sprintf(line2, " #%d", op2.reftemp);
+  else sprintf(line2, " %s", op2.psymbol->ident);
+  strcat(line,line2);
+  emit(line);
+}
+/*****************************************************************************/
+void get_exp_eq(int ref, EXPRE op1, int op, EXPRE op2)
+{ char line[140], line2[140];  char *aux;
+ 
+  switch(op) {
+  case (EQUAL):    { aux = "==";  break;}
+  case (NOTEQUAL): { aux = "!=";  break;}
+  }
+  if (op1.psymbol == NULL) 
+    sprintf(line, "var binaryop #%d %s #%d", ref, aux, op1.reftemp);
+  else sprintf(line, "var binaryop #%d %s %s", ref, aux, op1.psymbol->ident);
+
+  if (op2.psymbol == NULL)  sprintf(line2, " #%d", op2.reftemp);
+  else sprintf(line2, " %s", op2.psymbol->ident);
+  strcat(line,line2);
+  emit(line);
+}
+/*****************************************************************************/
+void get_exp_rel(int ref, EXPRE op1, int op, EXPRE op2)
+{ char line[140], line2[140];  char *aux;
+ 
+  switch(op) {
+  case (GREAT):   { aux = ">";  break;}
+  case (GREATEQ): { aux = ">="; break;}
+  case (LESS):    { aux = "<";  break;}
+  case (LESSEQ):  { aux = "<="; break;}
+  }
+  if (op1.psymbol == NULL) 
+    sprintf(line, "var binaryop #%d %s #%d", ref, aux, op1.reftemp);
+  else sprintf(line, "var binaryop #%d %s %s", ref, aux, op1.psymbol->ident);
 
   if (op2.psymbol == NULL)  sprintf(line2, " #%d", op2.reftemp);
   else sprintf(line2, " %s", op2.psymbol->ident);
@@ -1124,8 +1199,27 @@ void get_exp_add(int ref, EXPRE op1, int op, EXPRE op2)
   case (SUBTRACTION): { aux = "-";  break;}
   }
   if (op1.psymbol == NULL) 
-    sprintf(line, "var operator #%d %s #%d", ref, aux, op1.reftemp);
-  else sprintf(line, "var operator #%d %s %s", ref, aux, op1.psymbol->ident);
+    sprintf(line, "var binaryop #%d %s #%d", ref, aux, op1.reftemp);
+  else sprintf(line, "var binaryop #%d %s %s", ref, aux, op1.psymbol->ident);
+
+  if (op2.psymbol == NULL)  sprintf(line2, " #%d", op2.reftemp);
+  else sprintf(line2, " %s", op2.psymbol->ident);
+  strcat(line,line2);
+  emit(line);
+}
+/*****************************************************************************/
+void get_exp_mul(int ref, EXPRE op1, int op, EXPRE op2)
+{ char line[140], line2[140];  char *aux;
+ 
+  switch(op) {
+  case (MULTIPLICATION): { aux = "*";  break;}
+  case (DIVISION):       { aux = "/";  break;}
+  case (MODULUS):        { aux = "%";  break;}
+  case (EXPONET):        { aux = "**"; break;}
+  }
+  if (op1.psymbol == NULL) 
+    sprintf(line, "var binaryop #%d %s #%d", ref, aux, op1.reftemp);
+  else sprintf(line, "var binaryop #%d %s %s", ref, aux, op1.psymbol->ident);
 
   if (op2.psymbol == NULL)  sprintf(line2, " #%d", op2.reftemp);
   else sprintf(line2, " %s", op2.psymbol->ident);
@@ -1159,16 +1253,15 @@ void strexpre(char *p, EXPRE val)
  else sprintf(p, "%s" , val.psymbol->ident);
 }
 /*****************************************************************************/
-int  cr_var_temp_cte(int cte) 
+int  cr_var_temp_cte_1() 
 { char line[140];
 
-  if (cte == -1)
-    if (fcteneg == FALSE) {
-      sprintf(line, "var initcte #%d %f", 0, -1.0);
-      emit(line); fcteneg = TRUE;
-      return 0;
-    }
-    else return 0;
+ if (fcteneg == FALSE) {
+   sprintf(line, "var initcte #%d %f", 0, -1.0);
+   emit(line); fcteneg = TRUE;
+   return 0;
+ }
+ else return 0;
 }
 /*****************************************************************************/
 int cr_var_temp()
@@ -1225,7 +1318,7 @@ void dump_file()
 /*****************************************************************************/
 void begin_experiment()
 { 
-  pstv = 1; tdn[ptdn] = tdnini; tdl[ptdl] = tdlini; tdd[ptdd] = tddini; 
+  tdn[ptdn] = tdnini; tdl[ptdl] = tdlini; tdd[ptdd] = tddini; 
 }
 /*****************************************************************************/
 void end_experiment()
@@ -1234,25 +1327,274 @@ void end_experiment()
   sprintf(line,"End"); emit(line);
 }
 /*****************************************************************************/
+/*****************************************************************************/
+/***********************************************************************/
+char *replace_str(char *str, char *orig, char *rep)
+{  char *buffer;  char *p; char *q; char *r; char aux1[140], aux2[140];
+
+  if(!(p = strstr(str, orig))) return str;
+
+  buffer = (char*)malloc(MaxSizeLin);
+  q = str; r = buffer;
+  do {
+    strncpy(r, q, p-q);  r = r + (p-q);
+    memset(aux1, '\0', sizeof(aux1));
+    strncpy(aux1,(p - 1), 1);
+    memset(aux2, '\0', sizeof(aux2));
+    strncpy(aux2,(p + strlen(orig)), 1); 
+    if (((strcmp(aux1,"(")==0) || (strcmp(aux1," ")==0)  || 
+         (strcmp(aux1,")")==0) || (strcmp(aux1,"\n")==0) ||
+         (strcmp(aux1,"[")==0) || (strcmp(aux1,"\t")==0) ||
+         (strcmp(aux1,"{")==0) || (strcmp(aux1,"=")==0)  ||
+         (strcmp(aux1,"+")==0) || (strcmp(aux1,"-")==0)  ||
+         (strcmp(aux1,"<")==0) || (strcmp(aux1,">")==0)  ||
+         (strcmp(aux1,"!")==0) || (strcmp(aux1,"/")==0)  ||
+         (strcmp(aux1,"&")==0) || (strcmp(aux1,"%")==0)  ||
+         (strcmp(aux1,"|")==0) || (strcmp(aux1,".")==0)  || 
+         (strcmp(aux1,"*")==0) || (strcmp(aux1,",")==0)) && 
+        ((strcmp(aux2,"(")==0) || (strcmp(aux2," ")==0)  || 
+         (strcmp(aux2,")")==0) || (strcmp(aux2,"\n")==0) ||
+         (strcmp(aux2,"[")==0) || (strcmp(aux2,"\t")==0) ||
+         (strcmp(aux2,"{")==0) || (strcmp(aux2,"=")==0)  ||
+         (strcmp(aux2,"+")==0) || (strcmp(aux2,"-")==0)  ||
+         (strcmp(aux2,"<")==0) || (strcmp(aux2,">")==0)  ||
+         (strcmp(aux2,"!")==0) || (strcmp(aux2,"/")==0)  ||
+         (strcmp(aux2,"&")==0) || (strcmp(aux2,"%")==0)  ||
+         (strcmp(aux2,"|")==0) || (strcmp(aux2,".")==0)  || 
+         (strcmp(aux2,"*")==0)))
+    {
+      sprintf(r, "%s", rep);
+      p = p + strlen(orig);  r = r + strlen(rep);
+    }
+    else {
+      sprintf(r, "%s", orig); 
+      p = p + strlen(orig);  r = r + strlen(orig);
+    }
+    q = p;  /* we look for other occurrences of the parameter */
+  } while (p = strstr(q, orig));
+  sprintf(r, "%s", q);
+  return buffer;
+}
+/***********************************************************************/
+int replaceparam(int k)
+{ int i; char *m, *pa, *pf; pparam q, p;
+
+  if (tdm[k].npfor != tdm[k].npact) return FALSE; 
+  for ( i = tdm[k].pini; (i <= tdm[k].pfin); i++) {
+    m = mem[i];
+    q = tdm[k].fpf; p = tdm[k].fpa;
+    while ((q != NULL) && (p != NULL)) {
+      pf = strdup(q->param); pa = strdup(p->param);
+      m = replace_str(m, pf, pa);
+      free(pf); free(pa);
+      q = q->succ; p = p->succ;
+    }
+    fprintf(fd,"%s",m);
+    if (strcmp(mem[i], m) != 0) free(m); 
+  }
+  return TRUE;
+}
+/***********************************************************************/
+void storeline(int k, char *s)
+{ char *d = malloc (strlen(s) + 1); 
+
+  strcpy (d,s); mem[pmem] = d; pmem++;
+  if ( tdm[k].pini < 0 ) tdm[k].pini = tdm[k].pfin = pmem-1;
+  else tdm[k].pfin = pmem-1;
+}
+/***********************************************************************/
+int searchmacro(char *macroname)
+{ int i, k = -1, ok = TRUE;
+
+  for (i = 0; ((i < ptdm) && ok); i++)
+    if (strcmp(tdm[i].name, macroname) == 0) { k = i; ok = FALSE; }
+  return k;
+}
+/***********************************************************************/
+int crmacro(char *macroname)
+{ int k = -1;
+
+  if (searchmacro(macroname) < 0) {  
+    tdm[ptdm].name  = strdup(macroname); 
+    tdm[ptdm].npfor = 0;                 tdm[ptdm].npact = 0;
+    tdm[ptdm].pini  = -1;                tdm[ptdm].pfin  = -1;        
+    tdm[ptdm].fpf = NULL;                tdm[ptdm].lpf  = NULL;        
+    tdm[ptdm].fpa = NULL;                tdm[ptdm].lpa  = NULL;        
+    k = ptdm;  ptdm++;
+  }
+  return k;
+}
+/***********************************************************************/
+int searchparam(int type, int k, char *paramname)
+{ pparam p;
+
+  if (type == FORMAL)  p = tdm[k].fpf;
+  else  p = tdm[k].fpa;
+  while (p != NULL) {
+    if (strcmp(paramname, p->param) == 0) return TRUE;
+    else p = p->succ;
+  }
+  return FALSE;
+}
+/***********************************************************************/
+int addparam(int type, int k, char *paramname)
+{ pparam p; 
+
+  if (searchparam(type, k, paramname)) return FALSE;
+  if (type == FORMAL)  { 
+    p =  (pparam)malloc(sizeof(typeparam));
+    p->param = strdup(paramname); p->succ = NULL; 
+    tdm[k].npfor++;
+    if (tdm[k].lpf == NULL) { tdm[k].fpf = p; tdm[k].lpf = p; }
+    else { tdm[k].lpf->succ = p; tdm[k].lpf = p; }
+  }
+  else { /*  type == ACTUAL  */
+    p =  (pparam)malloc(sizeof(typeparam));
+    p->param = strdup(paramname); p->succ = NULL; 
+    tdm[k].npact++; 
+    if (tdm[k].lpa == NULL) { tdm[k].fpa = p; tdm[k].lpa = p; }
+    else { tdm[k].lpa->succ = p; tdm[k].lpa = p; }
+  }
+  return TRUE;
+}
+/*****************************************************************************/
+void error(const char *msg)
+{ fprintf(stderr, "\nError at line %d: %s\n", numlin, msg); }
+/*****************************************************************************/
+int remplace(char *nfich)
+{ char linea [1024]; char *res; char *token; int nm = -1, i; pparam p,q;
+
+  if ((fc = fopen (nfich, "r")) == NULL) {
+    fprintf (stderr, "Fichero %s erróneo\n", nfich);
+    return FALSE;
+  }
+  fd = fopen ("aux.net", "w");
+  /******************************************************* read/dump loop ****/
+  while (fgets(linea, 1024, fc) != NULL) {
+    linea[strlen(linea)] = '\0'; res = strdup(linea); numlin++;
+    token = strtok(res, " \n\t"); 
+    if (token == NULL) dump = TRUE;
+    else {
+      /************************************************* MACRO DEFINITION ****/
+      if (strcmp(token, "define") == 0) {
+	if ((ismacro == FALSE) && (dump == TRUE)) {
+          /* extract name of macro and create macro */
+	  token = strtok(NULL, " \n\t");
+	  if (token != NULL) {
+/*          printf("DEFINE %s\n",token);                  */
+	    if ((nm = crmacro(token)) >= 0) {
+	      token = strtok(NULL, " \n\t");
+              /* extracts formal parameters */
+	      while( token != NULL ) {
+		if (! addparam(FORMAL, nm, token))
+		  { error("Parameter name already exists\n"); return FALSE; }
+		token = strtok(NULL, " \n\t");
+	      }
+	      ismacro = TRUE; dump = FALSE;
+	    }
+	    else { error("Macro name already exists\n"); return FALSE; }
+	  }
+	  else { error("Name of the macro is needed\n"); return FALSE; }
+	}
+	else { error("Nested macros are not allowed\n"); return FALSE; }
+      }
+      /*********************************************** MACRO TERMINATION ****/ 
+      else if (strcmp(token, "done") == 0) {
+	if (ismacro == TRUE) {
+/*	  printf("DONE\n");                               */
+	  ismacro = FALSE; nm = -1; dump = FALSE;
+	}
+	else { error("Error in macro definition\n"); return FALSE; }
+      }
+      /****************************************************** MACRO CALL ****/
+      else if (strcmp(token, "call") == 0) {
+	if ((ismacro == FALSE) && (dump == TRUE)) {
+          /* extract name of macro */
+	  token = strtok(NULL, " \n\t");
+	  if (token != NULL) {
+/*	    printf("CALL %s\n",token);                    */
+	    if ((nm = searchmacro(token)) >= 0) {
+              /* extracts actual parameters */
+	      token = strtok(NULL, " \n\t");
+	      while( token != NULL ) {
+		if (! addparam(ACTUAL, nm, token))
+		  { error("Parameter name already exists\n"); return FALSE; }
+		token = strtok(NULL, " \n\t");
+	      }
+	      ismacro = FALSE; dump = FALSE;
+/*            printf("%s: %d %d %d %d ->", tdm[nm].name, tdm[nm].pini,
+/*  	  	     tdm[nm].pfin, tdm[nm].npfor, tdm[nm].npact);
+/*  	      q = tdm[nm].fpf; p = tdm[nm].fpa;
+/*  	      while ((q != NULL) && (p != NULL)) {
+/*  	        printf("(%s, %s)", q->param, p->param);
+/*  	        q = q->succ; p = p->succ;
+/*  	      }
+/*  	      printf("\n");                                      */
+     	      /* Replace actual parameters for formal ones */
+	      if (!replaceparam(nm))
+		{ error("Number of parameters wrong\n"); return FALSE; }
+       	      /* Release the memory of the current parameters */
+	      while (tdm[nm].fpa != NULL) {
+		p = tdm[nm].fpa; tdm[nm].fpa = p->succ; free(p);
+	      }
+	      tdm[nm].npact = 0; tdm[nm].fpa = NULL; tdm[nm].lpa = NULL;
+	    }
+	    else { error("Macro name not defined\n"); return FALSE; }
+	  }
+	  else { error("Name of the macro is needed\n"); return FALSE; }
+	}
+	else { error("Error in macro call\n"); return FALSE; }
+      }
+      /********************************************************** OTHERS *****/
+      else dump = TRUE;
+    } /* fin (token != NULL) */
+    /************************************************* Dump lines of code ****/
+    if (dump) {
+      if (ismacro) storeline(nm, linea);
+      else fprintf(fd,"%s",linea);
+    }
+    else dump = TRUE;
+  } /****************************************** end of the read/dump loop ****/
+  fclose(fc);  fclose(fd); 
+  /* Release the memory of the formal parameters */
+  for (i = 0; (i < ptdm); i++) {
+    while (tdm[i].fpf != NULL) {
+      p = tdm[i].fpf; tdm[i].fpf = p->succ; free(p);
+    }
+    tdm[i].npfor = 0; tdm[i].fpf = NULL; tdm[i].lpf = NULL;
+  }
+  pmem = 0;
+  return TRUE;
+}
+/*****************************************************************************/
+/*****************************************************************************/
 int netparser (char *nfich) 
 /* Manages the command line and invokes the syntactic-semantic analyzer.     */
 { int i, n = 0; char line[140]; FILE *fe;
 
+  sprintf(line,"rm aux.net 2>/dev/null"); system(line); 
   sprintf(line,"rm netparser.run 2>/dev/null"); system(line);
-  if ((yyin = fopen (nfich, "r")) == NULL) {
-    fprintf (stderr, "Invalid file: %s\n", nfich);
+  if (! remplace(nfich)) {
+    fprintf (stderr, "Error in the first pass (macros)\n");
     exit(1);      
   }
-  else {        
-    yyparse (); dump_file(); 
-
-    fe=fopen("netparser.run","rt");
-    if (fe == NULL) { /* parser failed */
-      fprintf(stdout,"%3d.- ", yylineno); yyparse ();
-      fprintf(stdout,"\n");               dump_file(); 
+  else {
+    if ((yyin = fopen ("aux.net", "r")) == NULL) {
+      fprintf (stderr, "Invalid file: %s\n", nfich);
       exit(1);
     }
-    fclose(fe);
+    else {
+      yyparse (); dump_file();
+
+      fe=fopen("netparser.run","rt");
+      if (fe == NULL) { /* parser failed */
+	fprintf(stdout,"%3d.- ", yylineno); yyparse ();
+	fprintf(stdout,"\n");               dump_file();
+	exit(1);
+      }                                   
+      fclose(fe);
+    }
+    return 0;
   }
 }
 /*****************************************************************************/

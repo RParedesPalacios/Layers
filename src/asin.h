@@ -1,24 +1,21 @@
-/* A Bison parser, made by GNU Bison 2.3.  */
+/* A Bison parser, made by GNU Bison 2.5.  */
 
-/* Skeleton interface for Bison's Yacc-like parsers in C
-
-   Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002, 2003, 2004, 2005, 2006
-   Free Software Foundation, Inc.
-
-   This program is free software; you can redistribute it and/or modify
+/* Bison interface for Yacc-like parsers in C
+   
+      Copyright (C) 1984, 1989-1990, 2000-2011 Free Software Foundation, Inc.
+   
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
-
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
+   
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor,
-   Boston, MA 02110-1301, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -29,9 +26,10 @@
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-
+   
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
+
 
 /* Tokens.  */
 #ifndef YYTOKENTYPE
@@ -156,196 +154,63 @@
      bin_ = 372,
      int_ = 373,
      real_ = 374,
-     for_ = 375,
-     copy_ = 376,
-     imult_ = 377,
-     omult_ = 378,
-     sigmoid_ = 379,
-     tanh_ = 380,
-     relu_ = 381,
-     BCB_ = 382,
-     ECB_ = 383,
-     BSB_ = 384,
-     ESB_ = 385,
-     BRB_ = 386,
-     ERB_ = 387,
-     PER_ = 388,
-     COM_ = 389,
-     EQ_ = 390,
-     RAR_ = 391,
-     COL_ = 392,
-     MAS_ = 393,
-     MENOS_ = 394,
-     POR_ = 395,
-     DIV_ = 396,
-     MOD_ = 397,
-     PORPOR_ = 398,
-     log_ = 399,
-     exp_ = 400,
-     sqr_ = 401,
-     id_ = 402,
-     nfile_ = 403,
-     cecho_ = 404,
-     cte_ = 405
+     copy_ = 375,
+     imult_ = 376,
+     omult_ = 377,
+     sigmoid_ = 378,
+     tanh_ = 379,
+     relu_ = 380,
+     for_ = 381,
+     if_ = 382,
+     else_ = 383,
+     BCB_ = 384,
+     ECB_ = 385,
+     BSB_ = 386,
+     ESB_ = 387,
+     BRB_ = 388,
+     ERB_ = 389,
+     PER_ = 390,
+     COM_ = 391,
+     EQ_ = 392,
+     RAR_ = 393,
+     COL_ = 394,
+     MAS_ = 395,
+     MENOS_ = 396,
+     POR_ = 397,
+     DIV_ = 398,
+     MOD_ = 399,
+     PORPOR_ = 400,
+     log_ = 401,
+     exp_ = 402,
+     sqr_ = 403,
+     TRUE_ = 404,
+     FALSE_ = 405,
+     AND_ = 406,
+     OR_ = 407,
+     EQUAL_ = 408,
+     NOTEQUAL_ = 409,
+     GREAT_ = 410,
+     GREATEQ_ = 411,
+     LESS_ = 412,
+     LESSEQ_ = 413,
+     NOT_ = 414,
+     IFAUX_ = 415,
+     id_ = 416,
+     nfile_ = 417,
+     cecho_ = 418,
+     cte_ = 419
    };
 #endif
-/* Tokens.  */
-#define batch_ 258
-#define threads_ 259
-#define seed_ 260
-#define cpu_ 261
-#define gpu_ 262
-#define device_ 263
-#define cuDNN_ 264
-#define cuBLAS_ 265
-#define filename_ 266
-#define tr_ 267
-#define ts_ 268
-#define va_ 269
-#define ascii_ 270
-#define binary_ 271
-#define gauss_ 272
-#define uniform_ 273
-#define ones_ 274
-#define zeros_ 275
-#define oneshot_ 276
-#define pos_ 277
-#define nrows_ 278
-#define ncolsample_ 279
-#define ncoltarget_ 280
-#define F_ 281
-#define FI_ 282
-#define FO_ 283
-#define C_ 284
-#define CI_ 285
-#define MP_ 286
-#define CAT_ 287
-#define O_ 288
-#define ADD_ 289
-#define classification_ 290
-#define regression_ 291
-#define autoencoder_ 292
-#define max_ 293
-#define min_ 294
-#define maxlog_ 295
-#define minlog_ 296
-#define nz_ 297
-#define nr_ 298
-#define nc_ 299
-#define cr_ 300
-#define cc_ 301
-#define numnodes_ 302
-#define T_ 303
-#define S_ 304
-#define W_ 305
-#define GW_ 306
-#define B_ 307
-#define GB_ 308
-#define N_ 309
-#define nk_ 310
-#define kr_ 311
-#define kc_ 312
-#define rpad_ 313
-#define cpad_ 314
-#define stride_ 315
-#define sizer_ 316
-#define sizec_ 317
-#define mu_ 318
-#define mmu_ 319
-#define l2_ 320
-#define l1_ 321
-#define maxn_ 322
-#define drop_ 323
-#define noiser_ 324
-#define noisesd_ 325
-#define brightness_ 326
-#define contrast_ 327
-#define lambda_ 328
-#define noiseb_ 329
-#define advf_ 330
-#define bn_ 331
-#define act_ 332
-#define shift_ 333
-#define flip_ 334
-#define adv_ 335
-#define balance_ 336
-#define cropmode_ 337
-#define trainable_ 338
-#define const_ 339
-#define data_ 340
-#define network_ 341
-#define script_ 342
-#define printkernels_ 343
-#define change_ 344
-#define train_ 345
-#define save_ 346
-#define load_ 347
-#define testout_ 348
-#define forward_ 349
-#define backward_ 350
-#define resetstats_ 351
-#define printerrors_ 352
-#define reseterrors_ 353
-#define trainmode_ 354
-#define testmode_ 355
-#define update_ 356
-#define test_ 357
-#define evaluate_ 358
-#define zscore_ 359
-#define center_ 360
-#define yuv_ 361
-#define maxmin_ 362
-#define shuffle_ 363
-#define next_ 364
-#define set_ 365
-#define mul_ 366
-#define div_ 367
-#define add_ 368
-#define sub_ 369
-#define store_ 370
-#define getstats_ 371
-#define bin_ 372
-#define int_ 373
-#define real_ 374
-#define for_ 375
-#define copy_ 376
-#define imult_ 377
-#define omult_ 378
-#define sigmoid_ 379
-#define tanh_ 380
-#define relu_ 381
-#define BCB_ 382
-#define ECB_ 383
-#define BSB_ 384
-#define ESB_ 385
-#define BRB_ 386
-#define ERB_ 387
-#define PER_ 388
-#define COM_ 389
-#define EQ_ 390
-#define RAR_ 391
-#define COL_ 392
-#define MAS_ 393
-#define MENOS_ 394
-#define POR_ 395
-#define DIV_ 396
-#define MOD_ 397
-#define PORPOR_ 398
-#define log_ 399
-#define exp_ 400
-#define sqr_ 401
-#define id_ 402
-#define nfile_ 403
-#define cecho_ 404
-#define cte_ 405
-
 
 
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
+{
+
+/* Line 2068 of yacc.c  */
 #line 10 "asin.y"
-{ /********************************************************************/
+ /********************************************************************/
   char*   ident;                      /* for the "identifier" terminal       */
   float   creal;                      /* for the "real constant" terminal    */
   int     aux;                        /* For non-terminals with 1 attributes */
@@ -354,14 +219,17 @@ typedef union YYSTYPE
   RANGO   rango;                      /* For non-terminals with rank         */
   EXPRE   expre;                      /* For non-terminal expression         */
   EXPFOR  expfor;                     /* For two exp of FOR                  */
-}
-/* Line 1529 of yacc.c.  */
-#line 360 "asin.h"
-	YYSTYPE;
+
+
+
+/* Line 2068 of yacc.c  */
+#line 227 "asin.h"
+} YYSTYPE;
+# define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
-# define YYSTYPE_IS_TRIVIAL 1
 #endif
 
 extern YYSTYPE yylval;
+
 
