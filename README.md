@@ -14,7 +14,7 @@
 	* Easy to use. 
 	* Layers provides a prototype and script language in order to ease the networks definition and experimentation. 
 	* Optimized for CPU and GPU.
-	* Mainly for academic use. Layers is used in the following subjects:
+	* Mainly for academic use.
 	
 ## Usage
 
