@@ -15,9 +15,7 @@
 	* Layers provides a prototype and script language in order to ease the networks definition and experimentation. 
 	* Optimized for CPU and GPU.
 	* Mainly for academic use. Layers is used in the following subjects:
-		* Neural Networks
-		* Computer Vision
-
+	
 ## Usage
 
 Layers only requires one argument, a net file:
