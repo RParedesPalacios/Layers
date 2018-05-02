@@ -12,6 +12,7 @@ cd src
 make clean
 make CORE=0 ## FOR CPU
 make CORE=1 ## FOR GPU, check CudaNN is installed and LD_LIBRARY_PATH set
+make install
 ~~~
 
 By default a Linux target is selected with standard optimizations but you can choose other systems and optimizations, see table
@@ -58,6 +59,16 @@ Modify this line in Makefile to the suitable g++ version:
 ~~~c
 CXX= g++-7
 ~~~
+
+### Install
+
+~~~shell
+make install
+~~~
+
+will copy the binaries to /usr/local/bin 
+
+
 
 
 
