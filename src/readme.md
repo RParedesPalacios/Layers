@@ -10,10 +10,17 @@
 ~~~shell
 cd src
 make clean
-make CORE=0 ## FOR CPU
-make CORE=1 ## FOR GPU, check CudaNN is installed and LD_LIBRARY_PATH set
+make ## will run with default compiling setting, see below
 make install
 ~~~
+
+Compuiling on CPU or GPU can be selected with the CORE parameter:
+
+~~~shell
+make CORE=0 ## FOR CPU (Default)
+make CORE=1 ## FOR GPU, check CudaNN is installed and LD_LIBRARY_PATH set
+~~~
+
 
 By default a Linux target is selected with standard optimizations but you can choose other systems and optimizations, see table
 
@@ -29,7 +36,7 @@ By default a Linux target is selected with standard optimizations but you can ch
 | 2  | 3  | MAC  | NO  | NO  | NO  |
 | 2  | 4  | MAC  | NO  | NO  | Yes |
 
-__Default values, TARGET=1, OPT=3__
+__Default values, CORE=0, TARGET=1, OPT=3__
 
 
 Example for LINUX using AVX instruction set:
