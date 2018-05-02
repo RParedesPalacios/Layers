@@ -22,7 +22,6 @@ By default a Linux target is selected with standard optimizations but you can ch
 | 1  | 2  | Linux  | NO |  YES | NO  |
 | 1  | 3  | Linux  | NO  | NO  | NO  |
 | 1  | 4  | Linux  | NO  | NO  | Yes |
-|   |   |  | | | |
 | 2  | 1  | MAC  | YES  | NO  | NO |
 | 2  | 2  | MAC  | NO |  YES | NO  |
 | 2  | 3  | MAC  | NO  | NO  | NO  |
