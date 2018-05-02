@@ -18,7 +18,7 @@
 	
 ## Compiling
 
-Instructions to compile [here](https://github.com/RParedesPalacios/Layers/src/readme.md)
+Instructions to compile [here](https://github.com/RParedesPalacios/Layers/blob/master/src/readme.md)
 
 ## Usage
 
