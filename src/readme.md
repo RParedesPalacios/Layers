@@ -17,7 +17,7 @@ make CORE=1 ## FOR GPU, check CudaNN is installed and LD_LIBRARY_PATH set
 By default a Linux target is selected with standard optimizations but you can choose other systems and optimizations, see table
 
 | TARGET | OPT  | SYSTEM  | AVX  | SSE  | Debug  |
-|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|
 | 1  | 1  | Linux  | YES  | NO  | NO |
 | 1  | 2  | Linux  | NO |  YES | NO  |
 | 1  | 3  | Linux  | NO  | NO  | NO  |
