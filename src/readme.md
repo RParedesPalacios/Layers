@@ -34,7 +34,7 @@ By default a Linux target is selected with standard optimizations but you can ch
 | 2  | 1  | MAC  | YES  | no  | no |
 | 2  | 2  | MAC  | no |  YES | no  |
 | 2  | 3  | MAC  | no  | no  | no  |
-| 2  | 4  | MAC  | no  | no  | Yes |
+| 2  | 4  | MAC  | no  | no  | YES |
 
 __Default values, CORE=0, TARGET=1, OPT=3__
 
