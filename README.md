@@ -16,6 +16,10 @@
 	* Optimized for CPU and GPU.
 	* Mainly for academic use.
 	
+## Compiling
+
+Instructions to compile [here](https://github.com/RParedesPalacios/Layers/src/readme.md)
+
 ## Usage
 
 Layers only requires one argument, a net file:
