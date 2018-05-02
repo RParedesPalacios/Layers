@@ -51,6 +51,11 @@ or for MAC:
 make CORE=0 TARGET=2 
 ~~~
 
+or GPU and Linux:
+
+~~~shell
+make CORE=1 TARGET=1 
+~~~
 
 
 ### Compiling on MAC:
