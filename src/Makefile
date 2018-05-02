@@ -13,17 +13,6 @@ GPU_LIBFLAGS =
 LAYERS = layers
 
 
-
-all: $(GPU_OBJ) $(OBJ) bin2ascii ascii2bin $(LAYERS) 
-
-install:
-	cp ascii2bin /usr/local/bin
-	cp bin2ascii /usr/local/bin
-	cp layers /usr/local/bin
-clean:
-	rm *.o
-
-
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),install)
 
@@ -114,7 +103,7 @@ endif
 
 ifdef CORE
 ifeq ($(CORE),1)
-
+$(info ----> set CORE GPU)
 cuda_path := $(LAYERS_CUDA_PATH)
 ifeq ($(cuda_path),)
 $(error Set enviroment variable LAYERS_CUDA_PATH with directory to cuda)
@@ -220,8 +209,18 @@ ascii2bin: ascii2bin.cpp data.o utils.o $(GPU_OBJ)
 bin2ascii: bin2ascii.cpp data.o utils.o
 	$(CXX) $(CXXFLAGS)  $(GPU_CXXFLAGS) -o bin2ascii bin2ascii.cpp data.o utils.o  $(GPU_OBJ) $(GPU_LIBFLAGS)
 
-$(LAYERS): main.cpp $(OBJ)
+$(LAYERS): main.cpp $(OBJ) $(GPU_OBJ)
 	$(CXX) $(CXXFLAGS) $(GPU_CXXFLAGS) -o $(LAYERS) main.cpp $(OBJ) $(GPU_OBJ) $(LIBFLAGS) $(GPU_LIBFLAGS)
+
+#-------------------------
+
+install:
+	cp ascii2bin /usr/local/bin
+	cp bin2ascii /usr/local/bin
+	cp layers /usr/local/bin
+clean:
+	rm *.o
+
 
 
 ###########################################################################
