@@ -3,13 +3,13 @@
 ## Compile and install
 
 > 
-> you need to have **g++** and **make** installed, and the **Flex** library to link the parser (-lfl). In case you want to modify the parser (but this is no requiered for normal installation) you would need Bison  as well.
+> you need to have **g++** and **make** installed, and the **Flex** library to link the parser (-lfl). In case you want to modify the parser (but this is not requiered for normal installation) you would need Bison  as well.
 >
 
 
 ~~~shell
 cd src
-make clean
+make cleanno
 make ## will run with default compiling setting, see below
 make install
 ~~~
@@ -26,15 +26,15 @@ By default a Linux target is selected with standard optimizations but you can ch
 
 | TARGET | OPT  | SYSTEM  | AVX  | SSE  | Debug  |
 |---|---|---|---|---|---|
-| 1  | 1  | Linux  | YES  | NO  | NO |
-| 1  | 2  | Linux  | NO |  YES | NO  |
-| 1  | 3  | Linux  | NO  | NO  | NO  |
-| 1  | 4  | Linux  | NO  | NO  | Yes |
+| 1  | 1  | Linux  | YES  | no  | no |
+| 1  | 2  | Linux  | no |  YES | no  |
+| 1  | 3  | Linux  | no  | no  | no  |
+| 1  | 4  | Linux  | no  | no  | Yes |
 |  |   |  | | | |
-| 2  | 1  | MAC  | YES  | NO  | NO |
-| 2  | 2  | MAC  | NO |  YES | NO  |
-| 2  | 3  | MAC  | NO  | NO  | NO  |
-| 2  | 4  | MAC  | NO  | NO  | Yes |
+| 2  | 1  | MAC  | YES  | no  | no |
+| 2  | 2  | MAC  | no |  YES | no  |
+| 2  | 3  | MAC  | no  | no  | no  |
+| 2  | 4  | MAC  | no  | no  | Yes |
 
 __Default values, CORE=0, TARGET=1, OPT=3__
 

@@ -1,12 +1,18 @@
 
 ########################################################################
-
 OBJ =	asin.o alex.o nettable.o utils.o data.o layer.o flayer.o \
 	clayer.o player.o catlayer.o net.o cpu_convol.o tensor.o addlayer.o olayer.o
 GPU_OBJ =
 
 CXX=g++
 CXXFLAGS =  -fopenmp -I Eigen -g
+
+GPU_CXXFLAGS = 
+GPU_LIBFLAGS =
+
+LAYERS = layers
+
+
 
 all: $(GPU_OBJ) $(OBJ) bin2ascii ascii2bin $(LAYERS) 
 
@@ -18,6 +24,8 @@ clean:
 	rm *.o
 
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),install)
 
 ## TARGET=1 LINUX
 ## TARGET=2 MAC
@@ -103,9 +111,6 @@ endif
 
 #---------------------------------- Compile for GPU
 ##GPU FLAGS
-GPU_CXXFLAGS = 
-GPU_LIBFLAGS =
-LAYERS = layers
 
 ifdef CORE
 ifeq ($(CORE),1)
@@ -130,6 +135,8 @@ else
 $(info ----> DEFAULT: set CORE=0 CPU)
 endif
 
+endif
+endif
 
 
 all: $(GPU_OBJ) $(OBJ) bin2ascii ascii2bin $(LAYERS)
