@@ -20,8 +20,8 @@ data {
 //NETWORK
 network N1 {  
   //data
-  data tr D1  //mandatory
-  data ts D2 //optional
+  data tr D1 
+  data ts D2 
 
   // Fully Connected Input 
   FI in 
