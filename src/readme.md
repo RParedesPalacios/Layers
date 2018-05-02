@@ -14,7 +14,7 @@ make ## will run with default compiling setting, see below
 make install
 ~~~
 
-Compuiling on CPU or GPU can be selected with the CORE parameter:
+Compiling on CPU or GPU can be selected with the CORE parameter:
 
 ~~~shell
 make CORE=0 ## FOR CPU (Default)
