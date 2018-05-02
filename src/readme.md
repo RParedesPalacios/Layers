@@ -9,7 +9,7 @@
 
 ~~~shell
 cd src
-make cleanno
+make clean
 make ## will run with default compiling setting, see below
 make install
 ~~~
