@@ -1332,7 +1332,7 @@ void end_experiment()
 char *replace_str(char *str, char *orig, char *rep)
 {  char *buffer;  char *p; char *q; char *r; char aux1[140], aux2[140];
 
-  if(!(p = strstr(str, orig))) return str;
+  if(!((p = strstr(str, orig)))) return str;
 
   buffer = (char*)malloc(MaxSizeLin);
   q = str; r = buffer;
@@ -1371,7 +1371,7 @@ char *replace_str(char *str, char *orig, char *rep)
       p = p + strlen(orig);  r = r + strlen(orig);
     }
     q = p;  /* we look for other occurrences of the parameter */
-  } while (p = strstr(q, orig));
+  } while ((p = strstr(q, orig)));
   sprintf(r, "%s", q);
   return buffer;
 }
@@ -1465,7 +1465,7 @@ int remplace(char *nfich)
 { char linea [1024]; char *res; char *token; int nm = -1, i; pparam p,q;
 
   if ((fc = fopen (nfich, "r")) == NULL) {
-    fprintf (stderr, "Fichero %s erróneo\n", nfich);
+    fprintf (stderr, "Fichero %s incorrecto\n", nfich);
     return FALSE;
   }
   fd = fopen ("aux.net", "w");
@@ -1522,14 +1522,7 @@ int remplace(char *nfich)
 		token = strtok(NULL, " \n\t");
 	      }
 	      ismacro = FALSE; dump = FALSE;
-/*            printf("%s: %d %d %d %d ->", tdm[nm].name, tdm[nm].pini,
-/*  	  	     tdm[nm].pfin, tdm[nm].npfor, tdm[nm].npact);
-/*  	      q = tdm[nm].fpf; p = tdm[nm].fpa;
-/*  	      while ((q != NULL) && (p != NULL)) {
-/*  	        printf("(%s, %s)", q->param, p->param);
-/*  	        q = q->succ; p = p->succ;
-/*  	      }
-/*  	      printf("\n");                                      */
+
      	      /* Replace actual parameters for formal ones */
 	      if (!replaceparam(nm))
 		{ error("Number of parameters wrong\n"); return FALSE; }

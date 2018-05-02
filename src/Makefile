@@ -1,50 +1,116 @@
-#############################
-# FOR LINUX
-############################
 
-## REGULAR
-#LIBFLAGS = -lm -lfl
-#CXXFLAGS = -fopenmp -I Eigen -O3
+########################################################################
 
-## SIMD instructions SSE2 ENABLED
-#LIBFLAGS = -lm -lfl 
-#CXXFLAGS = -fopenmp -I Eigen -march=native -msse2 -O3
+OBJ =	asin.o alex.o nettable.o utils.o data.o layer.o flayer.o \
+	clayer.o player.o catlayer.o net.o cpu_convol.o tensor.o addlayer.o olayer.o
+GPU_OBJ =
 
-## SIMD instructions AVX ENABLED
-LIBFLAGS = -lm -lfl 
+CXX=g++
+CXXFLAGS =  -fopenmp -I Eigen -g
+
+all: $(GPU_OBJ) $(OBJ) bin2ascii ascii2bin $(LAYERS) 
+
+install:
+	cp ascii2bin /usr/local/bin
+	cp bin2ascii /usr/local/bin
+	cp layers /usr/local/bin
+clean:
+	rm *.o
+
+
+
+## TARGET=1 LINUX
+## TARGET=2 MAC
+ifdef TARGET
+ifeq ($(TARGET),1)
+$(info set Linux)
+endif
+ifeq ($(TARGET),2)
+$(info set Mac)
+endif
+else
+$(info ----> DEFAULT: set TARGET LINUX)
+CXX = g++
+CXXFLAGS = -fopenmp -I Eigen -O3
+endif
+
+
+#### LINUX
+ifdef TARGET
+ifeq ($(TARGET),1)
+# OPT=1: AVX
+# OPT=2: SSE
+# OPT=3: Nothing
+# OPT=4: Debug
+CXX = g++
+ifdef OPT
+ifeq ($(OPT),1)
+$(info set AVX)
 CXXFLAGS = -fopenmp -I Eigen -march=native -mavx -O3
-## DEBUGING
-#LIBFLAGS = -lm -lfl
-#CXXFLAGS = -fopenmp -I Eigen -g
+endif
+ifeq ($(OPT),2)
+$(info set SSE)
+CXXFLAGS = -fopenmp -I Eigen -march=native -msse2 -O3
+endif
+ifeq ($(OPT),3)
+$(info set no opt)
+CXXFLAGS = -fopenmp -I Eigen -O3
+endif
+ifeq ($(OPT),4)
+$(info set Debug)
+CXXFLAGS =  -fopenmp -I Eigen -g
+endif
+endif
+endif
 
-############################
-# FOR MAC:
-############################
-#CXXFLAGS = -I . -O3
-#LIBFLAGS = -ll
 
+#### MAC
+ifeq ($(TARGET),2)
+# OPT=1: AVX
+# OPT=2: SSE
+# OPT=3: Nothing
+# OPT=4: Debug
+$(info ##################################################)
+$(info Have you install g++ instead of clang?)
+$(info if not try: brew install gcc --without-multilib)
+$(info ##################################################)
+## Put here the g++ version installed
+CXX= g++-7
+CXXFLAGS = -fopenmp -I . -O3
+ifdef OPT
+ifeq ($(OPT),1)
+$(info set AVX)
+CXXFLAGS = -fopenmp -I . -march=native -mavx -O3
+endif
+ifeq ($(OPT),2)
+$(info set SSE)
+CXXFLAGS = -fopenmp -I . -march=native -msse2 -O3 
+endif
+ifeq ($(OPT),3)
+$(info set no opt)
+CXXFLAGS = -fopenmp -I . -O3
+endif
+ifeq ($(OPT),4)
+$(info set Debug)
+CXXFLAGS =  -fopenmp -I . -g
+endif
+endif
+endif
+endif
+
+
+
+
+#---------------------------------- Compile for GPU
 ##GPU FLAGS
 GPU_CXXFLAGS = 
 GPU_LIBFLAGS =
 LAYERS = layers
 
-
-##########################################################################Eige
-OBJ =	asin.o alex.o nettable.o utils.o data.o layer.o flayer.o \
-	clayer.o player.o catlayer.o net.o cpu_convol.o tensor.o addlayer.o olayer.o
-GPU_OBJ =
-
-
-all: checkGPU
-
-#---------------------------------- Compile for GPU
-checkGPU:
-#compile for GPU
 ifdef CORE
-
 ifeq ($(CORE),1)
-cuda_path := $(LAYERS_CUDA_PATH)
 
+cuda_path := $(LAYERS_CUDA_PATH)
 ifeq ($(cuda_path),)
 $(error Set enviroment variable LAYERS_CUDA_PATH with directory to cuda)
 endif
@@ -61,15 +127,17 @@ endif
 #endif
 endif
 else
-ifneq ($(MAKECMDGOALS),clean)
-$(error Execute make CORE=0 for CPU compiling and make CORE=1 for gpu and cpu compiling)
-endif
+$(info ----> DEFAULT: set CORE=0 CPU)
 endif
 
+
+
 all: $(GPU_OBJ) $(OBJ) bin2ascii ascii2bin $(LAYERS)
+
+
 #---------------------------------- Netparser
 C_OPT = -pedantic
-C_OBJ    = alex.o asin.o 
+C_OBJ = alex.o asin.o 
 
 nettable.o: nettable.c
 	gcc -c nettable.c $(C_OPT)
@@ -81,13 +149,13 @@ alex.o: alex.c asin.c
 	gcc -c alex.c  $(C_OPT)
 
 asin.c: asin.y
-	bison -oasin.c -d asin.y
+	bison -o asin.c -d asin.y
 
 alex.c: alex.l 
 	flex -oalex.c alex.l
-#---------------------------------- layers
-CXX = g++
 
+
+#---------------------------------- layers
 utils:	utils.cpp utils.h
 	$(CXX) $(CXXFLAGS) -c utils.cpp
 
@@ -147,8 +215,6 @@ bin2ascii: bin2ascii.cpp data.o utils.o
 
 $(LAYERS): main.cpp $(OBJ)
 	$(CXX) $(CXXFLAGS) $(GPU_CXXFLAGS) -o $(LAYERS) main.cpp $(OBJ) $(GPU_OBJ) $(LIBFLAGS) $(GPU_LIBFLAGS)
-clean:
-	rm *.o 
 
 
 ###########################################################################

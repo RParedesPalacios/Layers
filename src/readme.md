@@ -6,7 +6,6 @@
 > you need to have **g++** and **make** installed, and the **Flex** library to link the parser (-lfl). In case you want to modify the parser (but this is no requiered for normal installation) you would need Bison  as well.
 >
 
-### **Since version V.04 the compilation is just straightforward:**
 
 ~~~shell
 cd src
@@ -15,25 +14,49 @@ make CORE=0 ## FOR CPU
 make CORE=1 ## FOR GPU, check CudaNN is installed and LD_LIBRARY_PATH set
 ~~~
 
-### Compiling on MAC:
+By default a Linux target is selected with standard optimizations but you can choose other systems and optimizations, see table
+
+| TARGET | OPT  | SYSTEM  | AVX  | SSE  | Debug  |
+|---|---|---|---|---|---|---|
+| 1  | 1  | Linux  | YES  | NO  | NO |
+| 1  | 2  | Linux  | NO |  YES | NO  |
+| 1  | 3  | Linux  | NO  | NO  | NO  |
+| 1  | 4  | Linux  | NO  | NO  | Yes |
+|   |   |  | | | |
+| 2  | 1  | MAC  | YES  | NO  | NO |
+| 2  | 2  | MAC  | NO |  YES | NO  |
+| 2  | 3  | MAC  | NO  | NO  | NO  |
+| 2  | 4  | MAC  | NO  | NO  | Yes |
+
+__Default values, TARGET=1, OPT=3__
 
 
-* Use the MAC Flags that appear in the Makefile
+Example for LINUX using AVX instruction set:
 
-* You need some alternative to:
- 
- clock_gettime and CLOCK_MONOTONIC
- 
-* See this stackoverflow [post](http://stackoverflow.com/questions/5167269/clock-gettime-alternative-in-mac-os-x) or just **comment the following line in the net.cpp**
-
-~~~c
-#define USETIME 
+~~~shell
+make CORE=0 TARGET=1 OPT=1
 ~~~
 
-* In case you use a gcc compiler from Homebrew, unlink it and use the default gcc installed:
+or for MAC:
+
+~~~shell
+make CORE=0 TARGET=2 
+~~~
+
+
+
+### Compiling on MAC:
+
+We suggest to install GCC from Homebrew to support openmp:
+
+~~~shell
+brew install gcc --without-multilib
+~~~
+
+Modify this line in Makefile to the suitable g++ version:
 
 ~~~c
-brew unlink gcc
+CXX= g++-7
 ~~~
 
 

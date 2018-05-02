@@ -300,7 +300,7 @@ void get_com_net_exp (int ref, int cod, EXPRE val) ;
 void get_com_data_void_rank(int ref, RANGO r, int cod) ;
 void get_com_data_void(int ref, int cod) ;
 void get_com_data_file(int ref, int cod, char *valor) ;
-void get_com_data_data(int ref1, int cod, int ref2) ;
+void get_com_data_dat(int ref1, int cod, int ref2) ;
 void get_com_data_exp_rank(int ref, RANGO r, int cod, EXPRE val) ;
 void get_com_data_exp(int ref, int cod, EXPRE val) ;
 void get_com_data_copy_rank(int ref, RANGO r, int cod, char *aux) ;
