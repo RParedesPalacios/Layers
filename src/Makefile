@@ -105,19 +105,19 @@ CXX= g++
 CXXFLAGS = -fopenmp -I . -O3
 ifdef OPT
 ifeq ($(OPT),1)
-$(info set AVX)
+$(info set POWER7 VSX)
 CXXFLAGS = -fopenmp -I . -mvsx -maltivec -mcpu=power7 -O3
 endif
 ifeq ($(OPT),2)
-$(info set AVX)
+$(info set POWER8 VSX)
 CXXFLAGS = -fopenmp -I . -mvsx -maltivec -mcpu=power8 -O3
 endif
 ifeq ($(OPT),3)
-$(info set AVX)
+$(info set POWER9 VSX)
 CXXFLAGS = -fopenmp -I . -mvsx -maltivec -mcpu=power9 -O3
 endif
 ifeq ($(OPT),4)
-$(info set SSE)
+$(info set no opt)
 CXXFLAGS = -fopenmp -I . -O3 
 endif
 ifeq ($(OPT),5)
