@@ -103,7 +103,9 @@ ifeq ($(TARGET),3)
 # OPT=5: Debug
 $(info #################################)
 $(info Perhaps is better to reduce smt:)
-$(info sudo ppc64_cpu --smt=2)
+$(info sudo ppc64_cpu --smt=1)
+$(info or deactivate it)
+$(info sudo ppc64_cpu --smt=off)
 $(info #################################)
 CXX= g++
 CXXFLAGS = -fopenmp -I . -O3
