@@ -21,7 +21,7 @@ make CORE=0 ## FOR CPU (Default)
 make CORE=1 ## FOR GPU, check CudaNN is installed and LD_LIBRARY_PATH set
 ~~~
 
-On how to install NVIDIA GPU Libraries [here](...)
+On how to install NVIDIA GPU Libraries [here](https://github.com/RParedesPalacios/Layers/blob/master/src/gpu_install.md)
 
 ## Target system and CPU optimizations
 
