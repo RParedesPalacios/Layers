@@ -21,6 +21,9 @@ make CORE=0 ## FOR CPU (Default)
 make CORE=1 ## FOR GPU, check CudaNN is installed and LD_LIBRARY_PATH set
 ~~~
 
+On how to install NVIDIA GPU Libraries [here](...)
+
+## Target system and CPU optimizations
 
 By default a Linux target is selected with standard optimizations but you can choose other systems and optimizations, see table
 

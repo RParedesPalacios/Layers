@@ -93,6 +93,40 @@ CXXFLAGS =  -fopenmp -I . -g
 endif
 endif
 endif
+
+#### POWER
+ifeq ($(TARGET),3)
+# OPT=1: VSX-7
+# OPT=2: VSX-8
+# OPT=3: VSX-9
+# OPT=4: Nothing
+# OPT=5: Debug
+CXX= g++
+CXXFLAGS = -fopenmp -I . -O3
+ifdef OPT
+ifeq ($(OPT),1)
+$(info set AVX)
+CXXFLAGS = -fopenmp -I . -mvsx -maltivec -mcpu=power7 -O3
+endif
+ifeq ($(OPT),2)
+$(info set AVX)
+CXXFLAGS = -fopenmp -I . -mvsx -maltivec -mcpu=power8 -O3
+endif
+ifeq ($(OPT),3)
+$(info set AVX)
+CXXFLAGS = -fopenmp -I . -mvsx -maltivec -mcpu=power9 -O3
+endif
+ifeq ($(OPT),4)
+$(info set SSE)
+CXXFLAGS = -fopenmp -I . -O3 
+endif
+ifeq ($(OPT),5)
+$(info set Debug)
+CXXFLAGS =  -fopenmp -I . -g
+endif
+endif
+endif
+
 endif
 
 
