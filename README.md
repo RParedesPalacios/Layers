@@ -13,7 +13,7 @@
 	* Flexible.
 	* Easy to use. 
 	* Layers provides a prototype and script language in order to ease the networks definition and experimentation. 
-	* Optimized for CPU and GPU.
+	* Optimized for CPU and GPU (still under developmnet).
 	* Mainly for academic use.
 	
 ## Compiling
