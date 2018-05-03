@@ -137,7 +137,7 @@ endif
 
 ifdef CORE
 ifeq ($(CORE),1)
-$(info ----> set CORE GPU)
+$(info set CORE GPU)
 cuda_path := $(LAYERS_CUDA_PATH)
 ifeq ($(cuda_path),)
 $(error Set enviroment variable LAYERS_CUDA_PATH with directory to cuda)
