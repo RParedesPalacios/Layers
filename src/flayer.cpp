@@ -917,11 +917,19 @@ void OFLayer::backward()
 
   if (opt==0) {// Softmax, CrossEnt
     if (lout>0) {
+      Tensor *Tmp=new Tensor(N->a,N->b);
+      Tensor::el_mult(N,0,N,0,Tmp,0); //N.*N
+      Tensor::sum(1,N,0,-1,Tmp,0,Tmp,0); //N-(N.*N)
+      Tensor::el_mult(Delta,0,Tmp,0,Delta,0); //D*(N-(N.*N))
+      delete Tmp;
+      
+      /*
       for(i=0;i<batch;i++)
 	for(j=0;j<din;j++) {
 	  LType val=N->get(i,j);
 	  Delta->set(i,j,Delta->get(i,j)*(val-(val*val))); 
 	}
+      */
     }
     Tensor::sum(lambda,T,0,-lambda,N,0,Delta,1);
     //Delta+=(T-N)*lambda;
