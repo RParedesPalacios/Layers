@@ -397,7 +397,14 @@ public:
         if (VTable[ind1]<=VTable[ind2]) VTable[ind]=1;
         else VTable[ind]=0;
       }
-
+      if (!strcmp(op,"==")){
+        if (VTable[ind1]==VTable[ind2]) VTable[ind]=1;
+        else VTable[ind]=0;
+      }
+      if (!strcmp(op,"!=")){
+        if (VTable[ind1]!=VTable[ind2]) VTable[ind]=1;
+        else VTable[ind]=0;
+      }
       
     }
 
@@ -1206,7 +1213,7 @@ public:
       point=fin;
     }
     /////////////////////////////////////
-     // IF
+    // IF
     /////////////////////////////////////
     else if (!strcmp(ctype,"If")) { 
       int ini=point+1;
