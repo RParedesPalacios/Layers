@@ -1863,7 +1863,7 @@ void Tensor::maskZeros(Tensor *mask,Tensor *A)
   #ifdef fGPU
   else
   {
-  gpu_tensor_op.mat_elwise_vec(A->gptr,A->gptr,mask->gptr,&(A->gsp),1,1,1.0,1.0,1);
+  gpu_tensor_op.mat_elwise_vec(A->gptr,A->gptr,mask->gptr,&(A->gsp),1,0,1.0,1.0,1);
   }
   #endif
 }
