@@ -101,23 +101,31 @@ ifeq ($(TARGET),3)
 # OPT=3: VSX-9
 # OPT=4: Nothing
 # OPT=5: Debug
+$(info #################################)
+$(info Perhaps is better to reduce smt:)
+$(info sudo ppc64_cpu --smt=1)
+$(info Or deactivate it:)
+$(info sudo ppc64_cpu --smt=off)
+$(info Also play with the cores:)
+$(info sudo ppc64_cpu --cores-on=16)
+$(info #################################)
 CXX= g++
 CXXFLAGS = -fopenmp -I . -O3
 ifdef OPT
 ifeq ($(OPT),1)
-$(info set AVX)
+$(info set POWER7 VSX)
 CXXFLAGS = -fopenmp -I . -mvsx -maltivec -mcpu=power7 -O3
 endif
 ifeq ($(OPT),2)
-$(info set AVX)
+$(info set POWER8 VSX)
 CXXFLAGS = -fopenmp -I . -mvsx -maltivec -mcpu=power8 -O3
 endif
 ifeq ($(OPT),3)
-$(info set AVX)
+$(info set POWER9 VSX)
 CXXFLAGS = -fopenmp -I . -mvsx -maltivec -mcpu=power9 -O3
 endif
 ifeq ($(OPT),4)
-$(info set SSE)
+$(info set no opt)
 CXXFLAGS = -fopenmp -I . -O3 
 endif
 ifeq ($(OPT),5)
@@ -137,7 +145,7 @@ endif
 
 ifdef CORE
 ifeq ($(CORE),1)
-$(info ----> set CORE GPU)
+$(info set CORE GPU)
 cuda_path := $(LAYERS_CUDA_PATH)
 ifeq ($(cuda_path),)
 $(error Set enviroment variable LAYERS_CUDA_PATH with directory to cuda)
