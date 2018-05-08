@@ -320,7 +320,7 @@ void Data::limits(int &sini,int &sfin,int &dini,int &dfin)
   if (sini==-1) sini=1;
   if (sfin==-1) sfin=num;
   
-
+  
   if (sini<1) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
   if (dini<1) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
 
@@ -333,23 +333,26 @@ void Data::copyto(Data *D,int Dsini,int Dsfin,int Ddini,int Ddfin,int Dtype,int 
   int i,j,k;
   int *ind;
 
+  //fprintf(stderr,"copyto (%d %d %d %d)-->(%d %d %d %d)\n",sini,sfin,dini,dfin,Dsini,Dsfin,Ddini,Ddfin);
   // Destination
   D->limits(Dsini,Dsfin,Ddini,Ddfin);
 
-  if (Dsfin<Dsini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
-  if (Ddfin<Ddini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
+  if (Dsfin<Dsini) {fprintf(stderr,"copyto: Incorrect sizes\n");exit(1);}
+  if (Ddfin<Ddini) {fprintf(stderr,"copyto: Incorrect sizes\n");exit(1);}
 
   // Source
   limits(sini,sfin,dini,dfin);
 
-  if (sfin<sini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
-  if (dfin<dini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
+  if (sfin<sini) {fprintf(stderr,"copyto: Incorrect sizes\n");exit(1);}
+  if (dfin<dini) {fprintf(stderr,"copyto: Incorrect sizes\n");exit(1);}
   
+  /*
     if (type==0) fprintf(stderr,"copy %s[%d:%d,%d:%d]->%s[%d:%d,%d:%d] only real\n",name,sini,sfin,dini,dfin,D->name,Dsini,Dsfin,Ddini,Ddfin);
     else if (type==1) fprintf(stderr,"copy %s[%d:%d,%d:%d]->%s[%d:%d,%d:%d] only bin\n",name,sini,sfin,dini,dfin,D->name,Dsini,Dsfin,Ddini,Ddfin);
     else if (type==2) fprintf(stderr,"copy %s[%d:%d,%d:%d]->%s[%d:%d,%d:%d] only int\n",name,sini,sfin,dini,dfin,D->name,Dsini,Dsfin,Ddini,Ddfin);
     else fprintf(stderr,"copy %s[%d:%d,%d:%d]->%s[%d:%d,%d:%d]\n",name,sini,sfin,dini,dfin,D->name,Dsini,Dsfin,Ddini,Ddfin);
-  
+  */
+
   dini--;sini--;
   dfin--;sfin--;
   
@@ -991,12 +994,12 @@ void Data::shuffle()
       for(j=0;j<out;j++) bcc[j]=0;
 
       for(i=0;i<num;i++)
-	for(j=0;j<out;j++)
+	for(j=0;j<out;j++) {
 	  if (M(i,j+dim)==1) bcc[j]++;
-
+	}
 
       for(j=0;j<out;j++) {
-	//fprintf(stderr,"Class %d : %d\n",j,bcc[j]);
+	fprintf(stderr,"Class %d : %d\n",j,bcc[j]);
 
 	bci[j]=(int *)malloc(bcc[j]*sizeof(int));
 

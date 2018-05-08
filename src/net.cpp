@@ -1030,12 +1030,6 @@ void Net::testOut(FILE *fs)
       else
         ((ICLayer *)lvec[i])->setsource(Dtest);
 
-  
-  for(i=0;i<layers;i++)
-    if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
-      ((OFLayer *)lvec[i])->settarget(Dtest);
-  
-
   fprintf(stderr,"writting test output\n");
   testmode();
   preparebatch(Dtest,0);
@@ -1067,11 +1061,6 @@ void Net::testOut(FILE *fs)
         ((IFLayer *)lvec[i])->setsource(Dtrain);
       else
         ((ICLayer *)lvec[i])->setsource(Dtrain);
-
-
-  for(i=0;i<layers;i++)
-    if ((lvec[i]->out)&&(lvec[i]->D!=NULL))
-      ((OFLayer *)lvec[i])->settarget(Dtrain);
 
 }
 
