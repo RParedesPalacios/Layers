@@ -357,7 +357,14 @@ public:
       ind1=findvar(cad1);
       VTable[ind]=VTable[ind1];
     }
-    else {
+    else if (!strcmp(op,"unaryop")) {
+      sscanf(line,"var unaryop %s %s %s\n",cad,op,cad1); 
+      ind=findvar(cad);
+      ind1=findvar(cad1);   
+      // Arithmetic
+      if (!strcmp(op,"-")) VTable[ind]=-VTable[ind1];
+    }
+    else if (!strcmp(op,"binaryop")) {
       sscanf(line,"var binaryop %s %s %s %s\n",cad,op,cad1,cad2); 
       ind=findvar(cad);
       ind1=findvar(cad1);   
@@ -374,18 +381,22 @@ public:
 	VTable[ind]=i1%i2;
       }
       // Logical
-      if (!strcmp(op,">")) 
+      if (!strcmp(op,">")) {
 	if (VTable[ind1]>VTable[ind2]) VTable[ind]=1;
 	else VTable[ind]=0;
-      if (!strcmp(op,"<"))
+      }
+      if (!strcmp(op,"<")){
         if (VTable[ind1]<VTable[ind2]) VTable[ind]=1;
         else VTable[ind]=0;
-      if (!strcmp(op,">="))
+      }
+      if (!strcmp(op,">=")){
         if (VTable[ind1]>=VTable[ind2]) VTable[ind]=1;
         else VTable[ind]=0;
-      if (!strcmp(op,"<="))
+      }
+      if (!strcmp(op,"<=")){
         if (VTable[ind1]<=VTable[ind2]) VTable[ind]=1;
         else VTable[ind]=0;
+      }
 
       
     }
@@ -1193,6 +1204,75 @@ public:
 	r=getvar(vf);
       }
       point=fin;
+    }
+    /////////////////////////////////////
+     // IF
+    /////////////////////////////////////
+    else if (!strcmp(ctype,"If")) { 
+      int ini=point+1;
+      int fin,n;
+      char var[MAX_CHAR];
+      float vf;
+
+      sscanf(line,"command If %s",vf,var);
+      vf=getvar(var);
+
+      // IF
+      if (vf==1.0) {
+	int r=0,found=0;
+	for(fin=ini;;fin++) {
+	  strcpy(line,block[fin]);
+	  sscanf(line,"%s %s ",cad,cad2);
+	  if (!strcmp(cad2,"If")) r++;
+	  if (!strcmp(cad2,"EndIf")) {
+	    if (r==0) break;
+	    else r--;
+	  }
+	  if (!strcmp(cad2,"Else")) {
+	    if (r==0) {found=fin;}
+	  }
+	}
+	IBlock *niblock;
+	if (found)
+	  niblock=new IBlock(this,ini,found-1);
+	else
+	  niblock=new IBlock(this,ini,fin-1);
+	niblock->run();
+	
+	point=fin;
+      }
+      // ELSE
+      else {
+	int r=0,found=0;
+	for(fin=ini;;fin++) {
+	  strcpy(line,block[fin]);
+	  sscanf(line,"%s %s ",cad,cad2);
+	  if (!strcmp(cad2,"If")) r++;
+	  if (!strcmp(cad2,"EndIf")) {
+	    if (r==0) break;
+	    else r--;
+	  }
+	  if (!strcmp(cad2,"Else")) {
+	    if (r==0) {found=1;ini=fin+1;break;}
+	  }
+	}
+
+	if (found) {
+	  int r=0;
+	  for(fin=ini;;fin++) {
+	    strcpy(line,block[fin]);
+	    sscanf(line,"%s %s ",cad,cad2);
+	    if (!strcmp(cad2,"If")) r++;
+	    if (!strcmp(cad2,"EndIf")) {
+	      if (r==0) break;
+	      else r--;
+	    }
+	  }
+	}
+	IBlock *niblock=new IBlock(this,ini,fin-1);
+	niblock->run();
+	point=fin;
+      }
     }
     /////////////////////////////////////
     // ECHO
