@@ -251,6 +251,37 @@ public:
     }
   }
 
+  void runevar(char *line) {
+    //@evar i data D1 [nrows,ncolsample,ncoltarget]
+    char dname[MAX_CHAR];
+    char var[MAX_CHAR];
+    char cad[MAX_CHAR];
+    char op[MAX_CHAR];
+
+    int i;
+    int ind;
+    
+    sscanf(line,"evar %s %s %s %s\n",var,op,dname,cad);
+
+    if (!strcmp(op,"data")) { 
+      for(i=0;i<Dc;i++) {
+        if (!strcmp(dname,DTable[i]->name)) break;
+      }
+      Data *data=DTable[i];
+      ind=findvar(var);
+
+      //nrows,ncolsample,ncoltarget
+      //num, dim, out
+      if (!strcmp(cad,"nrows")) 
+	VTable[ind]=data->num;
+      else if (!strcmp(cad,"ncolsample")) 
+	VTable[ind]=data->dim;
+      else if (!strcmp(cad,"ncoltarget")) 
+	VTable[ind]=data->out;
+    }
+  }
+
+
   void runVar(char *line) {
     char name[MAX_CHAR];
     char dname[MAX_CHAR];
@@ -327,11 +358,11 @@ public:
       VTable[ind]=VTable[ind1];
     }
     else {
-      sscanf(line,"var operator %s %s %s %s\n",cad,op,cad1,cad2); 
+      sscanf(line,"var binaryop %s %s %s %s\n",cad,op,cad1,cad2); 
       ind=findvar(cad);
       ind1=findvar(cad1);   
       ind2=findvar(cad2);   
-      // OP
+      // Arithmetic
       if (!strcmp(op,"+")) VTable[ind]=VTable[ind1]+VTable[ind2];
       if (!strcmp(op,"-")) VTable[ind]=VTable[ind1]-VTable[ind2];
       if (!strcmp(op,"/")) VTable[ind]=VTable[ind1]/VTable[ind2];
@@ -342,6 +373,21 @@ public:
 	int i2=VTable[ind2];
 	VTable[ind]=i1%i2;
       }
+      // Logical
+      if (!strcmp(op,">")) 
+	if (VTable[ind1]>VTable[ind2]) VTable[ind]=1;
+	else VTable[ind]=0;
+      if (!strcmp(op,"<"))
+        if (VTable[ind1]<VTable[ind2]) VTable[ind]=1;
+        else VTable[ind]=0;
+      if (!strcmp(op,">="))
+        if (VTable[ind1]>=VTable[ind2]) VTable[ind]=1;
+        else VTable[ind]=0;
+      if (!strcmp(op,"<="))
+        if (VTable[ind1]<=VTable[ind2]) VTable[ind]=1;
+        else VTable[ind]=0;
+
+      
     }
 
   }
@@ -1266,6 +1312,22 @@ public:
     line=line+6;
     system(line);
   }
+  void runrename(char *line)
+  {
+    char fname1[100],fname2[100],name[100],var[100],ext[100];
+    char com[100];
+
+    sscanf(line,"rename %s %s %s %s",fname1,name,var,ext);
+
+    int i=getvar(var);
+
+    sprintf(fname2,"%s%d%s",name,i,ext);
+
+    sprintf(com,"mv %s %s",fname1,fname2);
+
+    fprintf(stderr,"%s\n",com);
+    system(com);
+  }
 
   void run() {
     char line[MAX_CHAR];
@@ -1283,7 +1345,6 @@ public:
       else if (!strcmp(cad,"data")) rundata(line);
       else if (!strcmp(cad,"layer")) runlayer(line);
       else if (!strcmp(cad,"link")) runlink(line);
-      else if (!strcmp(cad,"shared")) runshared(line);
       else if (!strcmp(cad,"EndNetwork")) runendnet(line);
       else if (!strcmp(cad,"var")) runVar(line);
       else if (!strcmp(cad,"exit")) exit(1);
@@ -1291,6 +1352,9 @@ public:
       else if (!strcmp(cad,"amendment")) runamendment(line);
       ///---- @
       else if (!strcmp(cad,"shell")) runShell(line);      
+      else if (!strcmp(cad,"rename")) runrename(line);      
+      else if (!strcmp(cad,"evar")) runevar(line);
+      else if (!strcmp(cad,"shared")) runshared(line);
     }
   }
 };
