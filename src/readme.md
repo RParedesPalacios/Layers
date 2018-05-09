@@ -38,6 +38,12 @@ By default a Linux target is selected with standard optimizations but you can ch
 | 2  | 2  | MAC  | no |  YES | no  |
 | 2  | 3  | MAC  | no  | no  | no  |
 | 2  | 4  | MAC  | no  | no  | YES |
+|  |   |  | | | |
+| 3  | 1  | POWER7  | --  | --  | no |
+| 3  | 2  | POEWR8  | -- |  -- | no  |
+| 3  | 3  | POWER9  | --  | --  | no  |
+| 3  | 4  | POWER  | --  | --  | YES |
+
 
 __Default values, CORE=0, TARGET=1, OPT=3__
 
@@ -73,6 +79,15 @@ Modify this line in Makefile to the suitable g++ version:
 
 ~~~c
 CXX= g++-7
+~~~
+
+### IBM POWER
+
+On __IBM POWER__ VSX and Altivec instructions sets are activated. Runnin on POWER requieres 
+to use the OMP\_NUM\_THREADS directive:
+
+~~~shell
+OMP_NUM_THREADS=8 layers file.net
 ~~~
 
 ### Install
