@@ -3,7 +3,7 @@
 ## Compile and install
 
 > 
-> you need to have **g++** and **make** installed, and the **Flex** library to link the parser (-lfl). In case you want to modify the parser (but this is not requiered for normal installation) you would need Bison  as well.
+> you need to have **g++** and **make** installed, and the **Flex** library to link the parser (-lfl). In case you want to modify the parser (but this is not required for normal installation) you would need Bison  as well.
 >
 
 
@@ -83,11 +83,29 @@ CXX= g++-7
 
 ### IBM POWER
 
-On __IBM POWER__ VSX and Altivec instructions sets are activated. Runnin on POWER requieres 
+On IBM POWER, VSX and Altivec instruction sets are activated. Running on POWER requieres 
 to use the OMP\_NUM\_THREADS directive:
 
 ~~~shell
 OMP_NUM_THREADS=8 layers file.net
+~~~
+
+Also is recommended to reduce smt:
+
+~~~shell
+sudo ppc64_cpu --smt=1
+~~~
+
+Or deactivate it:
+
+~~~shell
+sudo ppc64_cpu --smt=off
+~~~
+
+Select cores:
+
+~~~shell
+sudo ppc64_cpu --cores-on=16
 ~~~
 
 ### Install
