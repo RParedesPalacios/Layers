@@ -1158,11 +1158,10 @@ public:
 	  }
 	}
 	else { // source Layer
-	  sscanf(line,"command data copy %s %f %f %f %f %f layer %s %s",dname1,&sini1,&sfin1,&cini1,&cfin1,&ctype1,net1,layer1);
+	  sscanf(line,"command data copy  %s    %s %s %s %s %s  layer %s %s",dname1, csini1,csfin1,ccini1,ccfin1,cctype1,net1,layer1);
 
 	  getnamevar(dname1);
-	  fprintf(stderr,"data %s %s:%s\n",d1->name,net1,layer1);
-
+	  	  
 	  sprintf(lname,"%s:%s",net1,layer1);
 	  Layer *l;
 	  for(i=0;i<Lc;i++)
