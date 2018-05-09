@@ -465,7 +465,7 @@ void Data::copyL(LMatrix N,int sini,int sfin,int dini,int dfin,int type) {
   if (sfin<sini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
   if (dfin<dini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
 
-  fprintf(stderr,"copylayer to %s[%d:%d,%d:%d]\n",name,sini,sfin,dini,dfin);
+  //fprintf(stderr,"copylayer to %s[%d:%d,%d:%d]\n",name,sini,sfin,dini,dfin);
 
   dini--;sini--;
   dfin--;sfin--;
@@ -491,10 +491,11 @@ void Data::copyL(LMatrix N,int sini,int sfin,int dini,int dfin,int type) {
   int p=0;
   for(j=dini;j<=dfin;j++,p++) 
     if ((type==-1)||((type==0)&&(freal[j]))||((type==1)&&(fbin[j]))||((type==2)&&(fint[j])))
-      for(i=0;i<b;i++)
+      for(i=0;i<b;i++) 
 	M(sini+i,j)=N(i,p);
 
-  fprintf(stderr,"Layer copy %dx%d done\n",b,d);
+  
+  //fprintf(stderr,"Layer copy %dx%d done\n",b,d);
       
 }
 
@@ -535,7 +536,7 @@ double Data::get(int s,int d) {
   }
 
   
-  return M(s,d);
+  return M(s-1,d-1);
 }
 void Data::set(int s,int d,double val){
 
@@ -549,7 +550,7 @@ void Data::set(int s,int d,double val){
   }
 
 
-  M(s,d)=val;
+  M(s-1,d-1)=val;
 }
 
 

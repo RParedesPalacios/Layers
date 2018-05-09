@@ -278,6 +278,7 @@ public:
 	VTable[ind]=data->dim;
       else if (!strcmp(cad,"ncoltarget")) 
 	VTable[ind]=data->out;
+
     }
   }
 
@@ -1440,7 +1441,8 @@ public:
       else if (!strcmp(cad,"shell")) runShell(line);      
       else if (!strcmp(cad,"rename")) runrename(line);      
       else if (!strcmp(cad,"evar")) runevar(line);
-      else if (!strcmp(cad,"shared")) runshared(line);
+      else if (!strcmp(cad,"shared")) runshared(line);      
+      else if (!strcmp(cad,"pause")) getchar();
     }
   }
 };

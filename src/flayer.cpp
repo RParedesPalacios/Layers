@@ -380,6 +380,7 @@ void FLayer::forward()
     else 
       Tensor::activation(E,N,act);
 
+
     ////////////////////////////
     // POST-ACTIVATION
     ////////////////////////////
