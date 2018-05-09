@@ -96,11 +96,10 @@ endif
 
 #### POWER
 ifeq ($(TARGET),3)
-# OPT=1: VSX-7
-# OPT=2: VSX-8
-# OPT=3: VSX-9
-# OPT=4: Nothing
-# OPT=5: Debug
+# OPT=1: POWER7
+# OPT=2: POWER8
+# OPT=3: POWER9
+# OPT=4: Debug
 $(info #################################)
 $(info Perhaps is better to reduce smt:)
 $(info sudo ppc64_cpu --smt=1)
@@ -125,10 +124,6 @@ $(info set POWER9 VSX)
 CXXFLAGS = -fopenmp -I . -mvsx -maltivec -mcpu=power9 -O3
 endif
 ifeq ($(OPT),4)
-$(info set no opt)
-CXXFLAGS = -fopenmp -I . -O3 
-endif
-ifeq ($(OPT),5)
 $(info set Debug)
 CXXFLAGS =  -fopenmp -I . -g
 endif
