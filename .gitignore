@@ -7,6 +7,7 @@
 # Apps & stuff
 src/ascii2bin
 src/layers
+src/bin2ascii
 
 Tutorial/figs/simulN2.pdf
 
