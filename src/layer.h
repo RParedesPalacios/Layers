@@ -182,6 +182,7 @@ class OFLayer : public FLayer {
 
 class OLayer : public Layer {
  public:
+  Tensor *dE;
   OLayer();
   OLayer(int batch,int op,char *name);
   void addchild(Layer *l);

@@ -68,6 +68,7 @@ void OLayer::addparent(Layer *l)
 
     N=new Tensor(batch,din);
     Delta=new Tensor(batch,din);
+    dE=new Tensor(batch,din);
   }
   else { // in case of binary op check sizes
     int s1,s2;
@@ -178,9 +179,16 @@ void OLayer::backward()
   }
   else {
     Tensor *t1=Lin[0]->Delta;
+    Tensor *n1=Lin[0]->N;
 
-    if (op==OP_SIGM) Tensor::dactivation(N,N,Delta,ACT_SIG);
-    if (op==OP_RELU) Tensor::dactivation(N,N,Delta,ACT_RLU);
+    if (op==OP_SIGM) {
+      Tensor::dactivation(n1,N,dE,ACT_SIG);
+      Tensor::el_mult(Delta,0,dE,0,t1,0);
+    }
+    if (op==OP_RELU) {
+      Tensor::dactivation(n1,N,dE,ACT_RLU);
+      Tensor::el_mult(Delta,0,dE,0,t1,0);
+    }
     if (op==OP_TANH) {}
     if (op==OP_LOG) {}
   }

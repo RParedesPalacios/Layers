@@ -969,7 +969,7 @@ void Data::shuffle()
   int i,j,s,k,l;
 
 
-  fprintf(stderr,"Shuffle %s\n",name);
+  //fprintf(stderr,"Shuffle %s\n",name);
 
   if (!balance) {
     for(i=0;i<num;i++)
