@@ -782,6 +782,7 @@ public:
     
   }
 
+
   void runendnet(char *line) {
     int i;
     Net *n=NTable[Nc];

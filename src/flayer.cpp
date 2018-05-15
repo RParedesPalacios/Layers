@@ -219,7 +219,7 @@ void FLayer::shared(Layer *li)
   l->gb->ptr[0]=gb->ptr[0];
   l->pgb->ptr[0]=pgb->ptr[0];
   
-  fprintf(stderr,"%s->%s sharing parameters with %s->%s\n",name,li->name,name,Lout[0]->name);
+  fprintf(stderr,"%s->%s sharing parameters with %s->%s\n",name,Lout[0]->name,li->name,li->Lout[0]->name);
 }
 
 
