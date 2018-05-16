@@ -76,28 +76,28 @@ Layer::Layer(int batch,char *name)
 
 }
 
-void Layer::setbrightness(double f){ fprintf(stderr,"Layer %s setting brightness %f\n",name,f);brightness=f;}
+void Layer::setbrightness(double f){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting brightness %f\n",name,f);brightness=f;}
 
-void Layer::setcontrast(double f){ fprintf(stderr,"Layer %s setting contrast %f\n",name,f);contrast=f;}
+void Layer::setcontrast(double f){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting contrast %f\n",name,f);contrast=f;}
 
-void Layer::setflip(int f){fprintf(stderr,"Layer %s setting flip %d\n",name,f);flip=f;}
-void Layer::setshift(int f){ fprintf(stderr,"Layer %s setting shift %d\n",name,f);shift=f;}
+void Layer::setflip(int f){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting flip %d\n",name,f);flip=f;}
+void Layer::setshift(int f){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting shift %d\n",name,f);shift=f;}
 void Layer::setmu(double m){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting mu %f\n",name,m);mu=m;resetmomentum();}
 void Layer::setmmu(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting mmu %f\n",name,m);mmu=m;}
-void Layer::setdrop(double m){ fprintf(stderr,"Layer %s setting drop %f\n",name,m);drop=m;}
-void Layer::setl2(double m){  fprintf(stderr,"Layer %s setting l2 %f\n",name,m);l2=m;}
-void Layer::setl1(double m){fprintf(stderr,"Layer %s setting l1 %f\n",name,m);l1=m;}
-void Layer::setmaxn(double m){ fprintf(stderr,"Layer %s setting maxn %f\n",name,m);maxn=m;}
+void Layer::setdrop(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting drop %f\n",name,m);drop=m;}
+void Layer::setl2(double m){  if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting l2 %f\n",name,m);l2=m;}
+void Layer::setl1(double m){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting l1 %f\n",name,m);l1=m;}
+void Layer::setmaxn(double m){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting maxn %f\n",name,m);maxn=m;}
 void Layer::setlambda(double l){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting lambda %f\n",name,l);lambda=l;}
 void Layer::trainmode(){trmode=1;}
 void Layer::testmode(){trmode=0;}
-void Layer::setact(int i){fprintf(stderr,"Layer %s setact to %d\n",name,i);act=i;}
-void Layer::setbn(int i){ fprintf(stderr,"Layer %s setting BN %d\n",name,i);bn=i;}
-void Layer::setnoiser(double m){fprintf(stderr,"Layer %s setting noiser %f\n",name,m);noiser=m;}
-void Layer::setnoisesd(double m){fprintf(stderr,"Layer %s setting noisesd %f\n",name,m);noisesd=m;}
-void Layer::setnoiseb(double m){fprintf(stderr,"Layer %s setting binary noise %f\n",name,m);noiseb=m;}
+void Layer::setact(int i){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setact to %d\n",name,i);act=i;}
+void Layer::setbn(int i){ if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting BN %d\n",name,i);bn=i;}
+void Layer::setnoiser(double m){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting noiser %f\n",name,m);noiser=m;}
+void Layer::setnoisesd(double m){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting noisesd %f\n",name,m);noisesd=m;}
+void Layer::setnoiseb(double m){if (VERBOSE_PARAM) fprintf(stderr,"Layer %s setting binary noise %f\n",name,m);noiseb=m;}
 void Layer::setthreads(int t){threads=t;}
-void Layer::setoptim(int t){ fprintf(stderr,"Set optimization method layer %s to %d\n",name,t);optim=t;}
+void Layer::setoptim(int t){ if (VERBOSE_PARAM) fprintf(stderr,"Set optimization method layer %s to %d\n",name,t);optim=t;}
 
 
 void Layer::save_param(FILE *fe)
