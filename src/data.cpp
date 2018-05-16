@@ -536,7 +536,7 @@ double Data::get(int s,int d) {
   }
 
   
-  return M(s-1,d-1);
+  return M(idx[s-1],d-1);
 }
 void Data::set(int s,int d,double val){
 
