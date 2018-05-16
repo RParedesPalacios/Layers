@@ -210,10 +210,11 @@ void FLayer::shared(Layer *li)
 
   FLayer *l=(FLayer *)li;
 
-  fprintf(stderr,"Sharing\n");
-  l->W->ptr[0]=W->ptr[0];
-  l->b->ptr[0]=b->ptr[0];
-
+  for(int i=0;i<lout;i++) {
+    l->W->ptr[i]=W->ptr[i];
+    l->b->ptr[i]=b->ptr[i];
+    fprintf(stderr,"%s->%s sharing parameters with %s->%s\n",name,Lout[i]->name,li->name,li->Lout[i]->name);
+  }
   /*
     l->gW->ptr[0]=gW->ptr[0];
     l->pgW->ptr[0]=pgW->ptr[0];
@@ -221,7 +222,6 @@ void FLayer::shared(Layer *li)
     l->pgb->ptr[0]=pgb->ptr[0];
   */
   
-  fprintf(stderr,"%s->%s sharing parameters with %s->%s\n",name,Lout[0]->name,li->name,li->Lout[0]->name);
 }
 
 
