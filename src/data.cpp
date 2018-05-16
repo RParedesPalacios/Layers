@@ -398,7 +398,7 @@ void Data::copyto(Data *D,int Dsini,int Dsfin,int Ddini,int Ddfin,int Dtype,int 
   for(j=dini;j<=dfin;j++) 
     if ((type==-1)||((type==0)&&(freal[j]))||((type==1)&&(fbin[j]))||((type==2)&&(fint[j]))) {
       for(i=sini;i<=sfin;i++)
-	D->M(Dsini+(i-sini),ind[k])=M(idx[i],j);
+	D->M(D->idx[Dsini+(i-sini)],ind[k])=M(idx[i],j);
       k++;
     }
 
@@ -492,7 +492,7 @@ void Data::copyL(LMatrix N,int sini,int sfin,int dini,int dfin,int type) {
   for(j=dini;j<=dfin;j++,p++) 
     if ((type==-1)||((type==0)&&(freal[j]))||((type==1)&&(fbin[j]))||((type==2)&&(fint[j])))
       for(i=0;i<b;i++) 
-	M(sini+i,j)=N(i,p);
+	M(idx[sini+i],j)=N(i,p);
 
   
   //fprintf(stderr,"Layer copy %dx%d done\n",b,d);
@@ -519,7 +519,7 @@ void Data::set(double val,int sini,int sfin,int dini,int dfin,int type) {
   for(j=dini;j<=dfin;j++) 
     if ((type==-1)||((type==0)&&(freal[j]))||((type==1)&&(fbin[j]))||((type==2)&&(fint[j])))
       for(i=sini;i<=sfin;i++)
-	M(i,j)=val;
+	M(idx[i],j)=val;
 
   return;
 }
@@ -550,7 +550,7 @@ void Data::set(int s,int d,double val){
   }
 
 
-  M(s-1,d-1)=val;
+  M(idx[s-1],d-1)=val;
 }
 
 
@@ -723,14 +723,14 @@ void Data::zscore(int sini,int sfin,int dini,int dfin,int type) {
       if (!cp) {
 	m=0.0;
 	for(i=sini;i<=sfin;i++)
-	  m+=M(i,j);
+	  m+=M(idx[i],j);
 	m/=n;
 
 	fmu[j]=m;
 
 	sd=0.0;
 	for(i=sini;i<=sfin;i++)
-	  sd+=(M(i,j)-m)*(M(i,j)-m);
+	  sd+=(M(idx[i],j)-m)*(M(idx[i],j)-m);
 	sd/=n;
 	sd=sqrt(sd);
 
@@ -738,10 +738,10 @@ void Data::zscore(int sini,int sfin,int dini,int dfin,int type) {
       }
       if (fsd[j]!=0.0)
 	for(i=sini;i<=sfin;i++)
-	  M(i,j)=(M(i,j)-fmu[j])/fsd[j];
+	  M(idx[i],j)=(M(idx[i],j)-fmu[j])/fsd[j];
       else {
 	for(i=sini;i<=sfin;i++)
-	  M(i,j)=0.0;
+	  M(idx[i],j)=0.0;
       }
     }
   }
@@ -772,13 +772,13 @@ void Data::center(int sini,int sfin,int dini,int dfin,int type) {
       if (!cp) {
 	m=0.0;
 	for(i=sini;i<=sfin;i++)
-	  m+=M(i,j);
+	  m+=M(idx[i],j);
 	m/=n;
 
 	fmu[j]=m;
       }
       for(i=sini;i<=sfin;i++)
-	M(i,j)=M(i,j)-fmu[j];
+	M(idx[i],j)=M(idx[i],j)-fmu[j];
     }
   }
 }
@@ -810,8 +810,8 @@ void Data::maxmin(int sini,int sfin,int dini,int dfin,int type) {
 	max=M(sini,j);
 	min=M(sini,j);
 	for(i=sini;i<=sfin;i++) {
-	  if (M(i,j)>max) max=M(i,j);
-	  if (M(i,j)<min) min=M(i,j);
+	  if (M(idx[i],j)>max) max=M(idx[i],j);
+	  if (M(idx[i],j)<min) min=M(idx[i],j);
 	}
 
 	fmax[j]=max;
@@ -819,10 +819,10 @@ void Data::maxmin(int sini,int sfin,int dini,int dfin,int type) {
       }
       if (fmax[j]!=fmin[j]) 
 	for(i=sini;i<=sfin;i++)
-	  M(i,j)=(M(i,j)-fmin[j])/(fmax[j]-fmin[j]);
+	  M(idx[i],j)=(M(idx[i],j)-fmin[j])/(fmax[j]-fmin[j]);
       else
 	for(i=sini;i<=sfin;i++)
-	  M(i,j)=0.0;
+	  M(idx[i],j)=0.0;
     }
     
   }
@@ -848,17 +848,17 @@ void Data::YUV()
   for(i=0;i<num;i++) {
     for(j=0;j<s;j++) {
 
-      r=M(i,j);
-      g=M(i,j+s);
-      b=M(i,j+2*s);
+      r=M(idx[i],j);
+      g=M(idx[i],j+s);
+      b=M(idx[i],j+2*s);
 
       y=0.299*r+0.587*g+0.114*b;
       u=-0.147*r-0.289*g+0.436*b;
       v=0.615*r-0.515*g-0.100*b;
 
-      M(i,j)=y;
-      M(i,j+s)=u;
-      M(i,j+2*s)=v;
+      M(idx[i],j)=y;
+      M(idx[i],j+s)=u;
+      M(idx[i],j+2*s)=v;
     }
 
   }
@@ -891,7 +891,7 @@ void Data::add(double val,int sini,int sfin,int dini,int dfin,int type) {
     for(i=sini;i<=sfin;i++)
       for(j=dini;j<=dfin;j++) {
 	if ((type==-1)||((type==0)&&(freal[j]))||((type==1)&&(fbin[j]))||((type==2)&&(fint[j])))
-	  M(i,j)+=val;
+	  M(idx[i],j)+=val;
       }
 }
 
@@ -925,7 +925,7 @@ void Data::div(double val,int sini,int sfin,int dini,int dfin,int type) {
     for(i=sini;i<=sfin;i++)
       for(j=dini;j<=dfin;j++) {
 	if ((type==-1)||((type==0)&&(freal[j]))||((type==1)&&(fbin[j]))||((type==2)&&(fint[j])))
-	  M(i,j)/=val;
+	  M(idx[i],j)/=val;
       }
 }
 
@@ -950,7 +950,7 @@ void Data::mul(double val,int sini,int sfin,int dini,int dfin,int type) {
   for(i=sini;i<=sfin;i++)   
     for(j=dini;j<=dfin;j++) 
       if ((type==-1)||((type==0)&&(freal[j]))||((type==1)&&(fbin[j]))||((type==2)&&(fint[j])))
-	M(i,j)*=val;
+	M(idx[i],j)*=val;
           
 }
 
