@@ -1444,6 +1444,10 @@ public:
       else if (!strcmp(cad,"evar")) runevar(line);
       else if (!strcmp(cad,"shared")) runshared(line);      
       else if (!strcmp(cad,"pause")) getchar();
+      else {
+	fprintf(stderr,"incorrect command line:\n\t %s\n",line);
+	exit(1);
+      }
     }
   }
 };

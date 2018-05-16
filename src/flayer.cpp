@@ -214,10 +214,12 @@ void FLayer::shared(Layer *li)
   l->W->ptr[0]=W->ptr[0];
   l->b->ptr[0]=b->ptr[0];
 
-  l->gW->ptr[0]=gW->ptr[0];
-  l->pgW->ptr[0]=pgW->ptr[0];
-  l->gb->ptr[0]=gb->ptr[0];
-  l->pgb->ptr[0]=pgb->ptr[0];
+  /*
+    l->gW->ptr[0]=gW->ptr[0];
+    l->pgW->ptr[0]=pgW->ptr[0];
+    l->gb->ptr[0]=gb->ptr[0];
+    l->pgb->ptr[0]=pgb->ptr[0];
+  */
   
   fprintf(stderr,"%s->%s sharing parameters with %s->%s\n",name,Lout[0]->name,li->name,li->Lout[0]->name);
 }
