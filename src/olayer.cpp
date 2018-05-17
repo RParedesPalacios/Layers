@@ -183,11 +183,11 @@ void OLayer::backward()
 
     if (op==OP_SIGM) {
       Tensor::dactivation(n1,N,dE,ACT_SIG);
-      Tensor::el_mult(Delta,0,dE,0,t1,0);
+      Tensor::el_mult(Delta,0,dE,0,t1,1);
     }
     if (op==OP_RELU) {
       Tensor::dactivation(n1,N,dE,ACT_RLU);
-      Tensor::el_mult(Delta,0,dE,0,t1,0);
+      Tensor::el_mult(Delta,0,dE,0,t1,1);
     }
     if (op==OP_TANH) {}
     if (op==OP_LOG) {}

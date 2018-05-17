@@ -886,7 +886,7 @@ double OFLayer::get_err(int n)
 
   
   else if (opt<5) {
-    // max min            
+    // max min
     for(i=0;i<n;i++)
       for(j=0;j<din;j++) {
 	loss+=N->get(i,j)/din;
@@ -945,8 +945,8 @@ void OFLayer::backward()
     // max min
     for(i=0;i<batch;i++)
       for(j=0;j<din;j++)
-	if (opt==3) Delta->set(i,j,1.0);
-	else Delta->set(i,j,-1.0);
+	if (opt==3) Delta->set(i,j,1.0*lambda);
+	else Delta->set(i,j,-1.0*lambda);
   }
   else {
     // maxlog minlog

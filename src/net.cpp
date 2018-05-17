@@ -776,6 +776,10 @@ void Net::printerrors(int num)
       fprintf(stderr,"%s MAX loss=%f\n",o->name,o->loss/num);
       fprintf(flog,"%s MAX loss=%f\n",o->name,o->loss/num);
     }
+    else if (o->opt==4) {
+      fprintf(stderr,"%s MIN loss=%f\n",o->name,o->loss/num);
+      fprintf(flog,"%s MIN loss=%f\n",o->name,o->loss/num);
+    }
   }
   
   fflush(flog);

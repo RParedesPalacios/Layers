@@ -676,10 +676,10 @@ void Data::copystats(Data *D)
 {
   cp=1;
   
-  fprintf(stderr,"Copy stats from %s to %s\n",D->name,name);
+  //fprintf(stderr,"Copy stats from %s to %s\n",D->name,name);
 
   for(int i=0;i<size;i++) {
-    fbin[i]=D->fbin[i];
+   fbin[i]=D->fbin[i];
     freal[i]=D->freal[i];
     fint[i]=D->fint[i];
 
@@ -705,6 +705,7 @@ void Data::zscore(int sini,int sfin,int dini,int dfin,int type) {
 
   double m,sd;
 
+  /*
   fprintf(stderr,"Zscore of %s\n",name);
 
 
@@ -712,7 +713,8 @@ void Data::zscore(int sini,int sfin,int dini,int dfin,int type) {
   else if (type==1) fprintf(stderr,"Zscore [%d:%d,%d:%d] only bin\n",sini,sfin,dini,dfin);
   else if (type==2) fprintf(stderr,"Zscore [%d:%d,%d:%d] only int\n",sini,sfin,dini,dfin);
   else fprintf(stderr,"Zscore [%d:%d,%d:%d]\n",sini,sfin,dini,dfin);
-
+  */
+  
   dini--;sini--;
   dfin--;sfin--;
   
@@ -793,13 +795,14 @@ void Data::maxmin(int sini,int sfin,int dini,int dfin,int type) {
   if (sfin<sini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
   if (dfin<dini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
 
-  fprintf(stderr,"Maxmin of %s\n",name);
+  /*fprintf(stderr,"Maxmin of %s\n",name);
 
   if (type==0)   fprintf(stderr,"Maxmin [%d:%d,%d:%d] only real\n",sini,sfin,dini,dfin);
   else if (type==1)   fprintf(stderr,"Maxmin [%d:%d,%d:%d] only bin\n",sini,sfin,dini,dfin);
   else if (type==2)   fprintf(stderr,"Maxmin [%d:%d,%d:%d] only int\n",sini,sfin,dini,dfin);
   else fprintf(stderr,"Maxmin [%d:%d,%d:%d]\n",sini,sfin,dini,dfin);
-
+  */
+  
   dini--;sini--;
   dfin--;sfin--;
 
@@ -807,8 +810,8 @@ void Data::maxmin(int sini,int sfin,int dini,int dfin,int type) {
   for(j=dini;j<=dfin;j++) {
     if ((type==-1)||((type==0)&&(freal[j]))||((type==1)&&(fbin[j]))||((type==2)&&(fint[j]))){
       if (!cp) {
-	max=M(sini,j);
-	min=M(sini,j);
+	max=M(idx[sini],j);
+	min=M(idx[sini],j);
 	for(i=sini;i<=sfin;i++) {
 	  if (M(idx[i],j)>max) max=M(idx[i],j);
 	  if (M(idx[i],j)<min) min=M(idx[i],j);
@@ -826,7 +829,6 @@ void Data::maxmin(int sini,int sfin,int dini,int dfin,int type) {
     }
     
   }
-
 }
 
 // ONLY FOR IMAGES
@@ -937,13 +939,14 @@ void Data::mul(double val,int sini,int sfin,int dini,int dfin,int type) {
   if (sfin<sini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
   if (dfin<dini) {fprintf(stderr,"Incorrect sizes\n");exit(1);}
 
-
+  /*
   fprintf(stderr,"Mul over %s %f\n",name,val);
   if (type==0)   fprintf(stderr,"Mul [%d:%d,%d:%d] only real\n",sini,sfin,dini,dfin);
   else if (type==1)   fprintf(stderr,"Mul [%d:%d,%d:%d] only bin\n",sini,sfin,dini,dfin);
   else if (type==2)   fprintf(stderr,"Mul [%d:%d,%d:%d] only int\n",sini,sfin,dini,dfin);
   else fprintf(stderr,"Mul [%d:%d,%d:%d]\n",sini,sfin,dini,dfin);
-
+  */
+  
   dini--;sini--;
   dfin--;sfin--;
 
