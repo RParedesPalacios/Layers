@@ -72,6 +72,13 @@ class IBlock {
 
 public:
 
+  ~IBlock() {
+
+    for(int i=0;i<sb;i++)
+      free(block[i]);
+    free(block);
+
+  }
   IBlock(int s) {
     if (VERBOSE) fprintf(stderr,"Creating Inst Block with %d instructions\n",s);
     sb=s;
@@ -1211,6 +1218,7 @@ public:
 	niblock->run();
 	r=getvar(vf);
       }
+      delete niblock;
       point=fin;
     }
     /////////////////////////////////////
@@ -1247,6 +1255,7 @@ public:
 	  niblock=new IBlock(this,ini,fin-1);
 	niblock->run();
 	
+	delete niblock;
 	point=fin;
       }
       // ELSE
@@ -1279,6 +1288,7 @@ public:
 	}
 	IBlock *niblock=new IBlock(this,ini,fin-1);
 	niblock->run();
+	delete niblock;
 	point=fin;
       }
     }
