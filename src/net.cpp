@@ -91,50 +91,50 @@ void Net::net2dot()
     pch = strtok (NULL,":");
     if (lvec[i]->type==1) {
       if (lvec[i]->lin==0)
-	fprintf(fs,"%s [label=\"%s [%d]\",style=filled,fontsize=12,fillcolor=Gray,shape=box]\n",pch,lvec[i]->name,lvec[i]->din);
+	fprintf(fs,"%s%s [label=\"%s [%d]\",style=filled,fontsize=12,fillcolor=Gray,shape=box]\n",name,pch,lvec[i]->name,lvec[i]->din);
       else if (lvec[i]->out)
-	fprintf(fs,"%s [label=\"%s [%d]\",style=filled,fontsize=12, fillcolor=LightSalmon,shape=box]\n",pch,lvec[i]->name,lvec[i]->din);
+	fprintf(fs,"%s%s [label=\"%s [%d]\",style=filled,fontsize=12, fillcolor=LightSalmon,shape=box]\n",name,pch,lvec[i]->name,lvec[i]->din);
       else
-	fprintf(fs,"%s [label=\"%s [%d]\",style=filled,fontsize=12, fillcolor=White,shape=box]\n",pch,lvec[i]->name,lvec[i]->din);
+	fprintf(fs,"%s%s [label=\"%s [%d]\",style=filled,fontsize=12, fillcolor=White,shape=box]\n",name,pch,lvec[i]->name,lvec[i]->din);
 
     }
     if (lvec[i]->type==6) {
       ol=(OLayer *)lvec[i];
       if (ol->op==OP_SUM)
-        fprintf(fs,"%s [label=\" ""+"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
+        fprintf(fs,"%s%s [label=\" ""+"" \",style=filled,fontsize=18, fillcolor=SteelBlue,shape=diamond]\n",name,pch);
       else if (ol->op==OP_SUB)
-        fprintf(fs,"%s [label=\"""-"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
+        fprintf(fs,"%s%s [label=\"""-"" \",style=filled,fontsize=18, fillcolor=SteelBlue,shape=diamond]\n",name,pch);
       else if (ol->op==OP_IMULT)
-        fprintf(fs,"%s [label=\""".*"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
+        fprintf(fs,"%s%s [label=\""".*"" \",style=filled,fontsize=18, fillcolor=SteelBlue,shape=diamond]\n",name,pch);
       else if (ol->op==OP_OMULT)
-        fprintf(fs,"%s [label=\"""^*"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
+        fprintf(fs,"%s%s [label=\"""^*"" \",style=filled,fontsize=18, fillcolor=SteelBlue,shape=diamond]\n",name,pch);
     else if (ol->op==OP_SIGM)
-        fprintf(fs,"%s [label=\"""sigmoid"" \",style=filled,fontsize=12, fillcolor=Gray,shape=diamond]\n",pch);
+        fprintf(fs,"%s%s [label=\"""sigmoid"" \",style=filled,fontsize=12, fillcolor=SteelBlue,shape=diamond]\n",name,pch);
     else if (ol->op==OP_MEAN)
-        fprintf(fs,"%s [label=\"""mean"" \",style=filled,fontsize=12, fillcolor=Gray,shape=diamond]\n",pch);
+        fprintf(fs,"%s%s [label=\"""mean"" \",style=filled,fontsize=12, fillcolor=SteelBlue,shape=diamond]\n",name,pch);
       else 
-        fprintf(fs,"%s [label=\" ""o"" \",style=filled,fontsize=18, fillcolor=Gray,shape=diamond]\n",pch);
+        fprintf(fs,"%s%s [label=\" ""o"" \",style=filled,fontsize=18, fillcolor=SteelBlue,shape=diamond]\n",name,pch);
 
     }
 
     if (lvec[i]->type==2) {
       c=(CLayer *)lvec[i];
       if (lvec[i]->lin==0)
-	fprintf(fs,"%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=gray,shape=box]\n",pch,lvec[i]->name,c->nk,c->outr,c->outc);
+	fprintf(fs,"%s%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=gray,shape=box]\n",name,pch,lvec[i]->name,c->nk,c->outr,c->outc);
       else 
-	fprintf(fs,"%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=steelblue3,shape=box]\n",pch,lvec[i]->name,c->nk,c->kr,c->kc);
+	fprintf(fs,"%s%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=steelblue3,shape=box]\n",name,pch,lvec[i]->name,c->nk,c->kr,c->kc);
     }
     if (lvec[i]->type==3) {
       p=(PLayer *)lvec[i];
-      fprintf(fs,"%s [label=\"%s [%dx%d]\",style=filled,fontsize=12, fillcolor=Crimson,shape=box]\n",pch,lvec[i]->name,p->sizer,p->sizec);
+      fprintf(fs,"%s%s [label=\"%s [%dx%d]\",style=filled,fontsize=12, fillcolor=Crimson,shape=box]\n",name,pch,lvec[i]->name,p->sizer,p->sizec);
     }
     if (lvec[i]->type==4) {
       cat=(CatLayer *)lvec[i];
-      fprintf(fs,"%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=darkkhaki,shape=box]\n",pch,lvec[i]->name,cat->nk,cat->outr,cat->outc);
+      fprintf(fs,"%s%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=darkkhaki,shape=box]\n",name,pch,lvec[i]->name,cat->nk,cat->outr,cat->outc);
     }
     if (lvec[i]->type==5) {
       add=(AddLayer *)lvec[i];
-      fprintf(fs,"%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=darkkhaki,shape=box]\n",pch,lvec[i]->name,add->nk,add->outr,add->outc);
+      fprintf(fs,"%s%s [label=\"%s [%d@%dx%d]\",style=filled,fontsize=12, fillcolor=darkkhaki,shape=box]\n",name,pch,lvec[i]->name,add->nk,add->outr,add->outc);
     }
   }
 
@@ -143,7 +143,7 @@ void Net::net2dot()
       strcpy(cad,lvec[i]->name);
       pch = strtok (cad,":");
       pch = strtok (NULL,":");
-      fprintf(fs,"Data%d->%s\n",i,pch);
+      fprintf(fs,"Data%d->%s%s\n",i,name,pch);
     }
   }
 
@@ -157,15 +157,15 @@ void Net::net2dot()
 	strcpy(cad2,lvec[i]->Lout[j]->name);
 	pch2 = strtok (cad2,":");
 	pch2 = strtok (NULL,":");
-	fprintf(fs,"%s->%s\n",pch,pch2);
+	fprintf(fs,"%s%s->%s%s\n",name,pch,name,pch2);
       }
     }
     if ((lvec[i]->L)&&(isIn(lvec[i]->L))) {
       strcpy(cad2,lvec[i]->L->name);
       pch2 = strtok (cad2,":");
       pch2 = strtok (NULL,":");
-      fprintf(fs,"%s->%s [style=\"dashed\"]\n",pch2,pch);
-      fprintf(fs,"{rank = same; %s; %s;}\n",pch2,pch);
+      fprintf(fs,"%s%s->%s%s [style=\"dashed\"]\n",name,pch2,name,pch);
+      fprintf(fs,"{rank = same; %s%s; %s%s;}\n",name,pch2,name,pch);
     }
     
   }
@@ -180,7 +180,7 @@ void Net::net2dot()
 	  strcpy(cad2,lvec[j]->name);
 	  pch2 = strtok (cad2,":");
 	  pch2 = strtok (NULL,":");
-	  fprintf(fs,"{rank = same; %s; %s;}\n",pch2,pch);
+	  fprintf(fs,"{rank = same; %s%s; %s%s;}\n",name,pch2,name,pch);
 	}
       
       }
