@@ -7,7 +7,7 @@
 * Layers is written in C++. 
 
 
-* Layers uses [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page), [OpenMP](http://openmp.org/wp/), CudaNN and CuBlas
+* Layers uses [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page), [OpenMP](http://openmp.org/wp/), and CuBlas
 
 * Some features:
 	* Flexible.
