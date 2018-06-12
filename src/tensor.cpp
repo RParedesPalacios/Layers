@@ -678,6 +678,7 @@ void Tensor::set(LType val)
 	for(int k=0;k<c;k++)
 	  for(int l=0;l<d;l++)
 	    ptr[i]->ptr[j]->ptr2(k,l)=val;
+    
 
   }
  }
@@ -1068,9 +1069,14 @@ void Tensor::mul(LType val)
 	for(int i=0;i<a;i++)
 	  for(int j=0;j<b;j++)
 	    ptr2(i,j)*=val;
-      else 
-	for(int i=0;i<a;i++)
-	  ptr[i]->mul(val);
+      else if (dim==4){
+#pragma omp parallel for
+	for(int i=0;i<a;i++) 
+	  for(int j=0;j<b;j++)
+	    for(int k=0;k<c;k++)
+	      for(int l=0;l<d;l++)
+		ptr[i]->ptr[j]->ptr2(k,l)*=val;
+      }
     }
 #ifdef fGPU
   else
@@ -1095,9 +1101,14 @@ void Tensor::div(LType val)
 	for(int i=0;i<a;i++)
 	  for(int j=0;j<b;j++)
 	    ptr2(i,j)/=val;
-      else 
-	for(int i=0;i<a;i++)
-	  ptr[i]->div(val);
+       else if (dim==4){
+#pragma omp parallel for
+	for(int i=0;i<a;i++) 
+	  for(int j=0;j<b;j++)
+	    for(int k=0;k<c;k++)
+	      for(int l=0;l<d;l++)
+		ptr[i]->ptr[j]->ptr2(k,l)/=val;
+      }
     }
 #ifdef fGPU
   else
@@ -1122,9 +1133,14 @@ void Tensor::add(LType val)
 	for(int i=0;i<a;i++)
 	  for(int j=0;j<b;j++)
 	    ptr2(i,j)+=val;
-      else 
-	for(int i=0;i<a;i++)
-	  ptr[i]->add(val);
+       else if (dim==4){
+#pragma omp parallel for
+	for(int i=0;i<a;i++) 
+	  for(int j=0;j<b;j++)
+	    for(int k=0;k<c;k++)
+	      for(int l=0;l<d;l++)
+		ptr[i]->ptr[j]->ptr2(k,l)+=val;
+      }
     }
 #ifdef fGPU
   else
@@ -1147,9 +1163,14 @@ void Tensor::abs()
 	for(int i=0;i<a;i++)
 	  for(int j=0;j<b;j++)
 	    ptr2(i,j)=fabs(ptr2(i,j));
-      else 
-	for(int i=0;i<a;i++)
-	  ptr[i]->abs();
+       else if (dim==4){
+#pragma omp parallel for
+	for(int i=0;i<a;i++) 
+	  for(int j=0;j<b;j++)
+	    for(int k=0;k<c;k++)
+	      for(int l=0;l<d;l++)
+		ptr[i]->ptr[j]->ptr2(k,l)=fabs(ptr[i]->ptr[j]->ptr2(k,l));
+      }
     }
 #ifdef fGPU
   else
@@ -1173,9 +1194,14 @@ void Tensor::sqr()
 	for(int i=0;i<a;i++)
 	  for(int j=0;j<b;j++)
 	    ptr2(i,j)=sqrt(ptr2(i,j));
-      else 
-	for(int i=0;i<a;i++)
-	  ptr[i]->sqr();
+       else if (dim==4){
+#pragma omp parallel for
+	for(int i=0;i<a;i++) 
+	  for(int j=0;j<b;j++)
+	    for(int k=0;k<c;k++)
+	      for(int l=0;l<d;l++)
+		ptr[i]->ptr[j]->ptr2(k,l)=sqrt(ptr[i]->ptr[j]->ptr2(k,l));
+      }
     }
 #ifdef fGPU
   else
