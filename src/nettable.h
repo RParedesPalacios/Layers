@@ -242,7 +242,7 @@ typedef struct tdmacro  { /* Elements of macro table */
   pparam lpa;
   }TDMACRO;
 /************************************** External variables defined in the AL */
-extern int yyleng;
+//extern int yyleng;
 extern FILE *yyin;
 extern int   yylineno;
 extern char *yytext;
