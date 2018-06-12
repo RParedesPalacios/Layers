@@ -658,7 +658,7 @@ void Tensor::set(LType val)
  if(useCPU)
  { 
   if (dim==1) {
-#pragma omp parallel for
+    #pragma omp parallel for
     for(int i=0;i<a;i++) ptr1(i)=val;
   }
   else if (dim==2) {
@@ -666,9 +666,20 @@ void Tensor::set(LType val)
     for(int i=0;i<a;i++) 
       for(int j=0;j<b;j++) ptr2(i,j)=val;
   }
-  else 
+  else if (dim==3) {
     for(int i=0;i<a;i++)
       ptr[i]->set(val);
+    
+  }
+  else if (dim==4) {
+    #pragma omp parallel for
+    for(int i=0;i<a;i++) 
+      for(int j=0;j<b;j++)
+	for(int k=0;k<c;k++)
+	  for(int l=0;l<d;l++)
+	    ptr[i]->ptr[j]->ptr2(k,l)=val;
+
+  }
  }
  #ifdef fGPU
  else
