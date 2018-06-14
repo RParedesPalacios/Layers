@@ -436,12 +436,12 @@ void ConvolBGrad(Tensor *N, Tensor *gK, Tensor *D,int stride, int pad,int thread
 
   void *status;
   int rc;
-  int nt=2;
+  int nt=1;
   int i,j,r,c;
   double sum;
 
 
-  setNbThreads(threads/2);
+  setNbThreads(threads);
   
 
   for( i=0; i < nt; ++i ){
