@@ -326,6 +326,7 @@ int Tensor::eqsize(Tensor *A)
     if ((a!=A->a)||(b!=A->b)) return 0;
 
   if (dim>2) {
+    if (a!=A->a) return 0;
     for(int i=0;i<a;i++)
       if (!ptr[i]->eqsize(A->ptr[i])) return 0;
   }
