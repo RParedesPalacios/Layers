@@ -206,21 +206,19 @@ void FLayer::addparent(Layer *l)
 
 void FLayer::shared(Layer *li) 
 {
-  // sharing fixed now for [0]<->[0]
 
   FLayer *l=(FLayer *)li;
 
-  for(int i=0;i<lout;i++) {
-    l->W->ptr[i]=W->ptr[i];
-    l->b->ptr[i]=b->ptr[i];
-    fprintf(stderr,"%s->%s sharing parameters with %s->%s\n",name,Lout[i]->name,li->name,li->Lout[i]->name);
-  }
-  /*
-    l->gW->ptr[0]=gW->ptr[0];
-    l->pgW->ptr[0]=pgW->ptr[0];
-    l->gb->ptr[0]=gb->ptr[0];
-    l->pgb->ptr[0]=pgb->ptr[0];
-  */
+
+  if (W->eqsize(l->W)) l->W=W;
+  else {fprintf(stderr,"Error sharing tensors, different sizes (W)\n");exit(1);}
+
+  if (b->eqsize(l->b)) l->b=b;
+  else {fprintf(stderr,"Error sharing tensors, different sizes (b)\n");exit(1);}
+ 
+  fprintf(stderr,"%s sharing parameters with %s\n",name,li->name);
+
+
   
 }
 

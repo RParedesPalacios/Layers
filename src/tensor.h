@@ -69,6 +69,7 @@ class Tensor {
   void resize(int a,int b);
   void resize(int a,int b,int c);
   void resize(int a,int b,int c,int d);
+  int eqsize(Tensor *A);
 
   Tensor *subTensor(int a);
   Tensor *subTensor(int a,int b);

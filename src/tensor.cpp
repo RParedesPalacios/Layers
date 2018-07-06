@@ -313,6 +313,26 @@ void Tensor::resize(int d1,int d2,int d3,int d4) {
   for(int i=0;i<a;i++)
     ptr[i]=new Tensor(b,c,d);
 }
+
+
+int Tensor::eqsize(Tensor *A)
+{
+  if (dim!=A->dim) return 0;
+
+  if (dim==1) 
+    if (a!=A->a) return 0;
+
+  if (dim==2) 
+    if ((a!=A->a)||(b!=A->b)) return 0;
+
+  if (dim>2) {
+    for(int i=0;i<a;i++)
+      if (!ptr[i]->eqsize(A->ptr[i])) return 0;
+  }
+
+  return 1;
+}
+
 //////////////////////////////////////////////////
 
 //JUAN: Implemented
