@@ -155,7 +155,7 @@ void Net::net2dot()
       strcpy(cad,lvec[i]->name);
       pch = strtok (cad,":");
       pch = strtok (NULL,":");
-      fprintf(fs,"%s%s->Data%d\n",name,pch,i);
+      fprintf(fs,"Data%d->%s%s [dir=both,style=\"dashed\"]\n",i,name,pch);
     }
 
   }
@@ -199,6 +199,24 @@ void Net::net2dot()
       }
     }
   }
+
+  for(i=0;i<layers;i++) {
+    if (lvec[i]->out) {
+      strcpy(cad,lvec[i]->name);
+      pch = strtok (cad,":");
+      pch = strtok (NULL,":");
+      for(j=i+1;j<layers;j++) {
+	if (lvec[j]->out) {
+	  strcpy(cad2,lvec[j]->name);
+	  pch2 = strtok (cad2,":");
+	  pch2 = strtok (NULL,":");
+	  fprintf(fs,"{rank = same; %s%s; %s%s;}\n",name,pch2,name,pch);
+	}
+      
+      }
+    }
+  }
+  
   fprintf(fs,"}\n");
   fclose(fs);
 
