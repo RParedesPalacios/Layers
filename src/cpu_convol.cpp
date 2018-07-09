@@ -15,7 +15,6 @@ struct tdata{
   int kz;
   int outr;
   int outc;
-  int zpad;
   int rpad;
   int cpad;
   int stride;
@@ -134,7 +133,7 @@ void *ConvolFt(void *threadarg)
   }
 }
 
-void ConvolF(Tensor *N, Tensor *K, Tensor *E,int stride, int pad,int threads,int batch)
+void ConvolF(Tensor *N, Tensor *K, Tensor *E,int stride, int rpad,int cpad,int threads,int batch)
 {
   void *status;
   int rc;
@@ -153,9 +152,8 @@ void ConvolF(Tensor *N, Tensor *K, Tensor *E,int stride, int pad,int threads,int
     td[i].kz=K->b;
     td[i].outr=E->c;
     td[i].outc=E->d;
-    td[i].zpad=pad;
-    td[i].rpad=pad;
-    td[i].cpad=pad;
+    td[i].rpad=rpad;
+    td[i].cpad=cpad;
     td[i].stride=stride;
 
     td[i].N=N;
@@ -372,7 +370,7 @@ void *ConvolBDeltat(void *threadarg)
 	}
     }
 
-    if (m->zpad) {
+    if (m->rpad||m->cpad) {
 
 
       for(i=0;i<m->outr;i++) {
@@ -431,7 +429,7 @@ void *ConvolBDeltat(void *threadarg)
 }
 
 
-void ConvolBGrad(Tensor *N, Tensor *gK, Tensor *D,int stride, int pad,int threads,int batch)
+void ConvolBGrad(Tensor *N, Tensor *gK, Tensor *D,int stride, int rpad,int cpad,int threads,int batch)
 {
 
   void *status;
@@ -456,9 +454,8 @@ void ConvolBGrad(Tensor *N, Tensor *gK, Tensor *D,int stride, int pad,int thread
     td[i].kz=gK->b;
     td[i].outr=D->c;
     td[i].outc=D->d;
-    td[i].zpad=pad;
-    td[i].rpad=pad;
-    td[i].cpad=pad;
+    td[i].rpad=rpad;
+    td[i].cpad=cpad;
     td[i].stride=stride;
 
     td[i].D=D;
@@ -490,7 +487,7 @@ void ConvolBGrad(Tensor *N, Tensor *gK, Tensor *D,int stride, int pad,int thread
 }
 
 
-void ConvolBDelta(Tensor *D, Tensor *K, Tensor *ID,int stride, int pad,int threads,int batch)
+void ConvolBDelta(Tensor *D, Tensor *K, Tensor *ID,int stride, int rpad,int cpad,int threads,int batch)
 {
 
   void *status;
@@ -514,9 +511,8 @@ void ConvolBDelta(Tensor *D, Tensor *K, Tensor *ID,int stride, int pad,int threa
     td[i].kz=K->b;
     td[i].outr=D->c;
     td[i].outc=D->d;
-    td[i].zpad=pad;
-    td[i].rpad=pad;
-    td[i].cpad=pad;
+    td[i].rpad=rpad;
+    td[i].cpad=cpad;
     td[i].stride=stride;
 
     td[i].D=D;

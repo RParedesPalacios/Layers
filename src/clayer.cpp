@@ -23,7 +23,7 @@ CLayer::CLayer()
 CLayer::CLayer(int batch,char *name):Layer(batch,name)
 {
   type=CLAYER;
-  rpad=cpad=zpad=0;
+  rpad=cpad=0;
   stride=1;
 }
 
@@ -44,7 +44,6 @@ CLayer::CLayer(int nk,int kr, int kc,int batch,int rp,int cp,int stride,char *na
   rpad=rp;
   cpad=cp;
 
-  if ((rpad)||(cpad)) zpad=1;
 
   if (stride<=0) {
     fprintf(stderr,"Error stride value %d\n",stride);
@@ -243,7 +242,7 @@ void CLayer::forward()
     cin=(CLayer *)Lin[0];
 
     // CONVOL
-    Tensor::ConvolForward(cin->N,K,0,E,0,stride,zpad,threads);
+    Tensor::ConvolForward(cin->N,K,0,E,0,stride,rpad,cpad,threads);
 
     
     if (!bn)
@@ -381,7 +380,7 @@ void CLayer::backward()
   ///// COMPUTE GRADIENT
   if (VERBOSE) fprintf(stderr,"--> cinN=%f Delta=%f gK=%f\n",cin->N->norm(),Delta->norm(),gK->norm());
 
-  Tensor::ConvolGrad(cin->N,gK,0,Delta,1,stride,zpad,threads);
+  Tensor::ConvolGrad(cin->N,gK,0,Delta,1,stride,rpad,cpad,threads);
 
   if (!bn) 
     Tensor::reduceTosum(Delta,gbias,1);
@@ -390,7 +389,7 @@ void CLayer::backward()
 
   ///// PROPAGATE DELTA
   if (cin->lin>0) 
-    Tensor::ConvolBackward(Delta,K,1,cin->Delta,0,stride,zpad,threads);
+    Tensor::ConvolBackward(Delta,K,1,cin->Delta,0,stride,rpad,cpad,threads);
 }
 
 

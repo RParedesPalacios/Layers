@@ -2347,32 +2347,32 @@ void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
 ////     batch x depth_out x images (rows x cols) 
 ////     where depth_out=K numfilters
 ///////////////////////////////////////////////
-void Tensor::ConvolForward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad,int threads)
+void Tensor::ConvolForward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int rpad,int cpad,int threads)
 {
   if(useCPU) 
-    ConvolF(A,K,B,stride,pad,threads,A->a);
+    ConvolF(A,K,B,stride,rpad,cpad,threads,A->a);
   #ifdef fGPU
   else
   {
   }
  #endif
 }
-void Tensor::ConvolGrad(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad,int threads)
+void Tensor::ConvolGrad(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int rpad,int cpad,int threads)
 {
   //return;
   if(useCPU) 
-    ConvolBGrad(A,K,B,stride,pad,threads,A->a);
+    ConvolBGrad(A,K,B,stride,rpad,cpad,threads,A->a);
   #ifdef fGPU
   else
   {
   }
  #endif
 }
-void Tensor::ConvolBackward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int pad,int threads)
+void Tensor::ConvolBackward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int rpad,int cpad,int threads)
 {
 
   if(useCPU) 
-    ConvolBDelta(A,K,B,stride,pad,threads,A->a);
+    ConvolBDelta(A,K,B,stride,rpad,cpad,threads,A->a);
   #ifdef fGPU
   else
   {
