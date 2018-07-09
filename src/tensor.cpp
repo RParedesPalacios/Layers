@@ -959,6 +959,36 @@ void Tensor::add_noise_gauss(LType noiser,LType mean,LType noisesd)
 
 }
 
+
+void Tensor::add_noise_binary(LType noiseb)
+{
+  if(useCPU)
+    {
+      Tensor *n=toLin();
+      int s=rand();
+      //CPU                                                                                           
+
+#pragma omp parallel for
+      for(int i=0;i<n->ptr1.size();i++) {
+	int c=(i*s)%LUT;
+	if (un[(c++)%LUT]<noiseb){
+	  n->ptr1(i)=1.0;
+	}
+      }
+      fromLin(n);
+      delete n;
+    }
+#ifdef fGPU
+  else
+    {
+      //...
+    }
+  #endif
+
+}
+
+
+
 /////
 ///////////////////////////////////////////////////////////////////////////
 //Juan: Not implemented

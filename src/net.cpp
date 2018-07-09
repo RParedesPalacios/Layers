@@ -80,15 +80,21 @@ void Net::net2dot()
   fprintf(fs,"digraph %s {\n",name);
   fprintf(fs,"rankdir=TB;\n");
 
-  for(i=0;i<layers;i++)
+  for(i=0;i<layers;i++) {
     if (lvec[i]->lin==0) 
       if (lvec[i]->D!=NULL) 
 	fprintf(fs,"Data%d [label=\"%s\",style=filled,fontsize=12,fillcolor=LightBlue,shape=box]\n",i,lvec[i]->D->name);
+    if (lvec[i]->out) 
+      if (lvec[i]->D!=NULL) 
+	fprintf(fs,"Data%d [label=\"%s\",style=filled,fontsize=12,fillcolor=LightBlue,shape=box]\n",i,lvec[i]->D->name);
+  }
+
 
   for(i=0;i<layers;i++) {
     strcpy(cad,lvec[i]->name);
     pch = strtok (cad,":");
     pch = strtok (NULL,":");
+
     if (lvec[i]->type==1) {
       if (lvec[i]->lin==0)
 	fprintf(fs,"%s%s [label=\"%s [%d]\",style=filled,fontsize=12,fillcolor=Gray,shape=box]\n",name,pch,lvec[i]->name,lvec[i]->din);
@@ -145,6 +151,13 @@ void Net::net2dot()
       pch = strtok (NULL,":");
       fprintf(fs,"Data%d->%s%s\n",i,name,pch);
     }
+    if (lvec[i]->out) {
+      strcpy(cad,lvec[i]->name);
+      pch = strtok (cad,":");
+      pch = strtok (NULL,":");
+      fprintf(fs,"%s%s->Data%d\n",name,pch,i);
+    }
+
   }
 
 

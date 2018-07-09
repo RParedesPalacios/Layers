@@ -117,7 +117,8 @@ class Tensor {
   void set_rand_uniform(LType val);
   void set_rand_binary(LType val);
   void add_noise_gauss(LType noiser,LType m,LType noisesd);
-  
+  void add_noise_binary(LType noiseb);
+
   // I/O
   void info();
   void print(const char *cad);

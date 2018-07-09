@@ -367,6 +367,9 @@ void FLayer::forward()
       if ((trmode)&&(noiser>0.0)) {
 	E->add_noise_gauss(noiser,0.0,noisesd);
       }
+      if ((trmode)&&(noiseb>0.0)) {
+	E->add_noise_binary(noiseb);
+      }
     }
   
     if (VERBOSE) fprintf(stderr,"E(%s) = %f\n",name,E->sum());

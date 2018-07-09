@@ -788,6 +788,14 @@ public:
     l1->shared(l2);
     
   }
+  void runrand(char *line) {
+    int i;
+    char vname[100];
+    sscanf(line,"rand %s\n",vname);
+
+    setvar(vname,rand());
+  }
+
 
 
   void runendnet(char *line) {
@@ -1453,6 +1461,7 @@ public:
       else if (!strcmp(cad,"rename")) runrename(line);      
       else if (!strcmp(cad,"evar")) runevar(line);
       else if (!strcmp(cad,"shared")) runshared(line);      
+      else if (!strcmp(cad,"rand")) runrand(line);      
       else if (!strcmp(cad,"pause")) getchar();
       else {
 	fprintf(stderr,"incorrect command line:\n\t %s\n",line);
