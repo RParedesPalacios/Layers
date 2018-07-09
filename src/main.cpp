@@ -565,9 +565,9 @@ public:
       Lc++;
     }
     ////////////// CAT //////////////
-    else if (!strcmp(ltype,"CA")) {
+    else if (!strcmp(ltype,"CAT")) {
       // layer id CAT
-      sscanf(line,"layer %s CA\n",name);
+      sscanf(line,"layer %s CAT\n",name);
       sprintf(lname,"%s:%s",innet,name);
 
       LTable[Lc]=new CatLayer(batch,lname);
