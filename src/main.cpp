@@ -1185,6 +1185,7 @@ public:
 	    if (!strcmp(LTable[i]->name,lname)) break;
 	  l=LTable[i];
 
+	  fprintf(stderr,"Copying from %s to %s\n",l->name,d1->name);
 	  if (d1!=NULL) {
 	    d1->copyL(((FLayer *)l)->N->ptr2,sini1,sfin1,cini1,cfin1,ctype1);
 	  }

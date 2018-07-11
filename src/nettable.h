@@ -242,7 +242,7 @@ typedef struct tdmacro  { /* Elements of macro table */
   pparam lpa;
   }TDMACRO;
 /************************************** External variables defined in the AL */
-//extern int yyleng;
+extern int yyleng;
 extern FILE *yyin;
 extern int   yylineno;
 extern char *yytext;
@@ -300,14 +300,14 @@ void get_com_net_exp (int ref, int cod, EXPRE val) ;
 void get_com_data_void_rank(int ref, RANGO r, int cod) ;
 void get_com_data_void(int ref, int cod) ;
 void get_com_data_file(int ref, int cod, char *valor) ;
-void get_com_data_dat(int ref1, int cod, int ref2) ;
+void get_com_data_dat(int ref, int cod, int ref2) ;
 void get_com_data_exp_rank(int ref, RANGO r, int cod, EXPRE val) ;
 void get_com_data_exp(int ref, int cod, EXPRE val) ;
 void get_com_data_copy_rank(int ref, RANGO r, int cod, char *aux) ;
 void get_com_data_copy (int ref, int cod, char *aux) ;
 
 void get_init_cte(int ref, float val) ;
-void get_init_elem(int ref, int dat, EXPRE f, EXPRE c) ;
+void get_init_elem(int type, int ref, int dat, EXPRE f, EXPRE c) ;
 void get_init_amend(int type, int ref, int lay, int cod) ;
 void get_exp_unary(int ref, int aux, EXPRE val) ;
 void get_functions(int ref, int aux, EXPRE val) ;
