@@ -966,8 +966,7 @@ void Tensor::add_noise_binary(LType noiseb)
     {
       Tensor *n=toLin();
       int s=rand();
-      //CPU                                                                                           
-
+      //CPU                                                                                         
 #pragma omp parallel for
       for(int i=0;i<n->ptr1.size();i++) {
 	int c=(i*s)%LUT;
@@ -1090,16 +1089,17 @@ void Tensor::save(FILE *fs,int nl=0)
 void Tensor::load(FILE *fs)
 {
   float fv;
+  int fr;
 
   if (dim==1) 
     for(int i=0;i<a;i++) {
-      fscanf(fs,"%f ",&fv);
+      fr=fscanf(fs,"%f ",&fv);
       ptr1(i)=fv;
     }
   else if (dim==2) 
     for(int i=0;i<a;i++) 
       for(int j=0;j<b;j++) {
-	fscanf(fs,"%f ",&fv);
+	fr=fscanf(fs,"%f ",&fv);
 	ptr2(i,j)=fv;
       }
   else
@@ -1938,22 +1938,20 @@ void Tensor::dactivation(Tensor *E,Tensor *N, Tensor *D, int act)
 void Tensor::maskZeros(Tensor *mask,Tensor *A)
 {
   if(useCPU)
-  {
-  if (A->dim==1) 
-      A->ptr1=mask->ptr1.cwiseProduct(A->ptr1);
-  if (A->dim==2) 
-      A->ptr2=A->ptr2.array().rowwise()*mask->ptr1.array();
-  else {
-    for(int i=0;i<A->a;i++)
-      Tensor::maskZeros(mask->ptr[i],A->ptr[i]);
-  }
-  }
-  #ifdef fGPU
+    {
+      if (A->dim==2) 
+	A->ptr2=A->ptr2.array().rowwise()*mask->ptr1.array();
+      else if (A->dim==4) 
+	for(int i=0;i<A->a;i++) 
+	  for(int j=0;j<A->b;j++)
+	    A->ptr[i]->ptr[j]->ptr2=A->ptr[i]->ptr[j]->ptr2.cwiseProduct(mask->ptr[j]->ptr2);
+    }
+#ifdef fGPU
   else
-  {
-  gpu_tensor_op.mat_elwise_vec(A->gptr,A->gptr,mask->gptr,&(A->gsp),1,0,1.0,1.0,1);
-  }
-  #endif
+    {
+      gpu_tensor_op.mat_elwise_vec(A->gptr,A->gptr,mask->gptr,&(A->gsp),1,0,1.0,1.0,1);
+    }
+#endif
 }
 
 

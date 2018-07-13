@@ -1239,7 +1239,7 @@ public:
       char var[MAX_CHAR];
       float vf;
 
-      sscanf(line,"command If %s",vf,var);
+      sscanf(line,"command If %s",var);
       vf=getvar(var);
 
       // IF
@@ -1417,7 +1417,7 @@ public:
   void runShell(char *line) 
   {
     line=line+6;
-    system(line);
+    int s=system(line);
   }
   void runrename(char *line)
   {
@@ -1433,7 +1433,7 @@ public:
     sprintf(com,"mv %s %s",fname1,fname2);
 
     fprintf(stderr,"%s\n",com);
-    system(com);
+    int s=system(com);
   }
 
   void run() {

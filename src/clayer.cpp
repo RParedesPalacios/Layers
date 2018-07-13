@@ -145,7 +145,7 @@ void CLayer::addparent(Layer *l)
     N=new Tensor(batch,nk,outr,outc);
     Delta=new Tensor(batch,nk,outr,outc);
     
-    Dvec=new Tensor(batch,nk,outr,outc);
+    Dvec=new Tensor(nk,outr,outc);
     dE=new Tensor(batch,nk,outr,outc);
 
     bias=new Tensor(nk);
@@ -581,7 +581,7 @@ ICLayer::ICLayer(Data *Dt,Layer *Lt,int batch,int z,int ir,int ic,int cr,int cc,
 
   N=new Tensor(batch,nk,outr,outc);
   Delta=new Tensor(batch,nk,outr,outc);
-  Dvec=new Tensor(batch,nk,outr,outc);
+  Dvec=new Tensor(nk,outr,outc);
 
   fprintf(stderr,"Creating Convol output %d@%dx%d\n",outz,outr,outc);
 }

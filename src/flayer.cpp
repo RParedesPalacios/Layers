@@ -541,8 +541,6 @@ void FLayer::backward()
 {
   int i,j,k,ind;
 
-  if (drop>0.0) Tensor::maskZeros(dvec,Delta);
-
   
   if (reshape) {
     if (VERBOSE) {
@@ -561,6 +559,8 @@ void FLayer::backward()
   }
   else { //!reshape
     FLayer *l;
+
+    if (drop>0.0) Tensor::maskZeros(dvec,Delta);
 
     if (VERBOSE) fprintf(stderr,"%s Delta norm %f\n",name,Delta->sum());
 

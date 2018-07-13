@@ -1145,6 +1145,9 @@ GData::GData(int n,int d,int t,int p,char *name)
   }
 
   Mem();
+
+  //generate initial values
+  next();
 }
 
 
