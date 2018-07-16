@@ -1258,9 +1258,24 @@ exp_suf:  BRB_  exp  ERB_   { $$ = $2; }
 
        { int k =  search_data ($1);
          $$.psymbol=NULL; $$.reftemp =  cr_var_temp();
-	 if (k >= 0)  get_init_elem($$.reftemp, k, $3, $5);
+	 if (k >= 0)  get_init_elem(DATA, $$.reftemp, k, $3, $5);
 	 else yyerror("Data name does not exist");
        }
+
+       |  id_  PER_  id_  BRB_  exp  COM_  exp  ERB_
+
+       { int k2, k1 =  search_network ($1);
+         $$.psymbol=NULL; $$.reftemp = cr_var_temp();
+	 if (k1 >= 0) {
+           k2 = search_layer(k1, $3);
+	   if (k2 >= 0)
+	     get_init_elem(LAYER, $$.reftemp, k2, $5, $7);
+	   else 
+	     yyerror("The name of the layer does not exist on this network");
+	 }
+	 else yyerror("Network name does not exist");
+       }
+
        ;
 /*****************************************************************************/
 op_log :  AND_       { $$ = AND; }

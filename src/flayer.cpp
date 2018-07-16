@@ -328,15 +328,22 @@ void FLayer::forward()
   FLayer *l;
   CLayer *cin;
 
-  
-  if (lin>0) 
-    if (Lin[0]->type==OLAYER) {
-      OLayer *l;
-      l=(OLayer *)Lin[0];
-      N->copy(l->N);
-      if (VERBOSE) fprintf(stderr,"%s from OP(%s) = %f\n",name,l->name,N->sum());
-      reshape=1;
-    }
+  if (!reshape) 
+    if (lin>0) 
+      if (Lin[0]->type==OLAYER) {
+	OLayer *l;
+	l=(OLayer *)Lin[0];
+	N->copy(l->N);
+	if (VERBOSE) fprintf(stderr,"%s from OP(%s) = %f\n",name,l->name,N->sum());
+	reshape=1;
+      }
+      else if (Lin[0]->type==CLAYER) {
+	CLayer *l;
+	l=(CLayer *)Lin[0];
+	N->copy(l->N);
+	if (VERBOSE) fprintf(stderr,"%s from Conv (%s) = %f\n",name,l->name,N->sum());
+	reshape=1;
+      }
   
 
   if (reshape) {    
@@ -350,8 +357,8 @@ void FLayer::forward()
     else {
       cin=(CLayer *)Lin[0];
       N->copy(cin->N);
-    
-      if (VERBOSE) fprintf(stderr,"from CNN (%s) = %f\n",cin->name,N->sum());
+
+      if (VERBOSE) fprintf(stderr,"from Conv (%s) = %f\n",cin->name,N->sum());
 
     }
   }
@@ -880,12 +887,14 @@ double OFLayer::get_err(int n)
       T->copyfromData(D);
   }
 
+  //float mseant=mse;
 
   if (opt==0) Tensor::loss_cross_entropy(T,N,cerr,ent);
   else if (opt==1) Tensor::loss_sse(T,N,D,0,mae,mse);
   else if (opt==2) Tensor::loss_sse(T,N,D,D->dim,mae,mse);
 
-  
+  //if (opt==1) fprintf(stderr,"%f\n",mse-mseant);
+
   else if (opt<5) {
     // max min
     for(i=0;i<n;i++)
