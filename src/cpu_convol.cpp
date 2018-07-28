@@ -65,7 +65,7 @@ void ConvolF(Tensor *N, Tensor *K, Tensor *E,int stride, int rpad,int cpad,int t
     }
   }
 
-  
+
   // MAKE LOWERING CONVOLUTION
   O->ptr2=Kn->ptr2*I->ptr2;
 
@@ -211,6 +211,7 @@ void ConvolBDelta(Tensor *D, Tensor *K, Tensor *ID,int stride, int rpad,int cpad
   }
 
 #ifdef USEOMP
+  setNbThreads(1);
 #pragma omp parallel for
 #endif
   for(int i=0;i<D->c;++i) {
@@ -233,7 +234,9 @@ void ConvolBDelta(Tensor *D, Tensor *K, Tensor *ID,int stride, int rpad,int cpad
     }//j
   }//i
 
-
+#ifdef USEOMP
+  setNbThreads(threads);
+#endif
   
   delete Del;
   delete Kr;
