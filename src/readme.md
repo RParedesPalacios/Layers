@@ -13,11 +13,11 @@ make clean
 make ## will run with default compiling setting, see below
 make install
 ~~~
-~~~
 
 ## Target system and CPU optimizations
 
 By default a Linux target is selected with standard optimizations but you can choose other systems and optimizations, see table
+
 
 | TARGET | OPT  | SYSTEM  | AVX  | SSE  | Debug  |
 |---|---|---|---|---|---|
