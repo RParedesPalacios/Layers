@@ -3,12 +3,12 @@
 
 * A Neural Network toolkit.
 
-
 * Layers is written in C++. 
 
+* Without interpreter
 
-* A lght version for inference (in C++ without interpreter)
+* A light version only for inference
 
-* Wihout dependencies
+* Without dependencies
 
 
