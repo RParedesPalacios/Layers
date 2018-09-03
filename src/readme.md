@@ -3,7 +3,7 @@
 ## Compile and install
 
 > 
-> you need to have **g++** and **make** installed, and the **Flex** library to link the parser (-lfl). In case you want to modify the parser (but this is not required for normal installation) you would need Bison  as well.
+> you need to have **g++** and **make** installed
 >
 
 
@@ -13,15 +13,7 @@ make clean
 make ## will run with default compiling setting, see below
 make install
 ~~~
-
-Compiling on CPU or GPU can be selected with the CORE parameter:
-
-~~~shell
-make CORE=0 ## FOR CPU (Default)
-make CORE=1 ## FOR GPU, check CudaNN is installed and LD_LIBRARY_PATH set
 ~~~
-
-On how to install NVIDIA GPU Libraries [here](https://github.com/RParedesPalacios/Layers/blob/master/src/gpu_install.md)
 
 ## Target system and CPU optimizations
 
@@ -45,7 +37,7 @@ By default a Linux target is selected with standard optimizations but you can ch
 | 3  | 4  | POWER  | --  | --  | YES |
 
 
-__Default values, CORE=0, TARGET=1, OPT=3__
+__Default values, TARGET=1, OPT=3__
 
 
 Example for LINUX using AVX instruction set:
