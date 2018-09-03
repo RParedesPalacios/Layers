@@ -1,1 +1,0 @@
-Some examples with MNIST, CIFAR and MIT-UrbanNatural datasets
