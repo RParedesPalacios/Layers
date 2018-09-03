@@ -1,4 +1,10 @@
-![Layers](./figs/layers.jpg)
+![Layers](./figs/layers.jpg) **LIGHT!**
+
+--
+
+**UNDER DEVELOPMENT!!**
+
+--
 
 
 * A Neural Network toolkit.
