@@ -889,12 +889,10 @@ double OFLayer::get_err(int n)
 
   //float mseant=mse;
 
+  
   if (opt==0) Tensor::loss_cross_entropy(T,N,cerr,ent);
-  else if (opt==1) Tensor::loss_sse(T,N,D,0,mae,mse);
-  else if (opt==2) Tensor::loss_sse(T,N,D,D->dim,mae,mse);
-
-  //if (opt==1) fprintf(stderr,"%f\n",mse-mseant);
-
+  else if (opt==1) Tensor::loss_sse(T,N,D,D->dim,mae,mse);
+  else if (opt==2) Tensor::loss_sse(T,N,D,0,mae,mse);
   else if (opt<5) {
     // max min
     for(i=0;i<n;i++)
@@ -907,6 +905,7 @@ double OFLayer::get_err(int n)
     for(i=0;i<n;i++)
       for(j=0;j<din;j++) loss+=log(N->get(i,j))/din;
   }
+
   return 0.0;
   
 }

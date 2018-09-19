@@ -10,7 +10,7 @@
 #endif
 #include "Eigen/Dense"
 
-#define VERBOSE_PARAM 0
+#define VERBOSE_PARAM 1
 
 using namespace Eigen;
 using namespace std;

@@ -17,6 +17,9 @@
 // Data structures variables and functions for GPU computation setup
 #endif
 
+#define use4D 1
+#define use3D 0
+#define use2D 0
 
 using namespace Eigen;
 using namespace std;
@@ -28,7 +31,6 @@ extern double un[LUT];
 //GLOBAL,EXTERN VARIABLES DIRECTIVES INCLUDES FOR GPU COMPUTATION
 
 extern int useCPU;
-
 void msgerr(const char *s1,const char *s2) {
   fprintf(stderr,"%s\n",s1);
   fprintf(stderr,"%s\n",s2);
@@ -88,7 +90,7 @@ Tensor::Tensor(int d1,int d2)
     b=d2;
     replace_unset();
     ptr=(Tensor **)malloc(a*sizeof(Tensor *));
-    for(int i=0;i<a;++i)
+    for(int i=0;i<a;i++)
       ptr[i]=new Tensor(b);
     size=a*b; // take care
   }
@@ -127,7 +129,7 @@ Tensor::Tensor(int d1,int d2,int d3)
 
   //CPU
   ptr=(Tensor **)malloc(a*sizeof(Tensor *));
-  for(int i=0;i<a;++i)
+  for(int i=0;i<a;i++)
     ptr[i]=new Tensor(b,c);
 
 }
@@ -147,7 +149,7 @@ Tensor::Tensor(int d1,int d2,int d3,int d4)
 
   //CPU
   ptr=(Tensor **)malloc(a*sizeof(Tensor *));
-  for(int i=0;i<a;++i)
+  for(int i=0;i<a;i++)
     ptr[i]=new Tensor(b,c,d);
 }
 
@@ -179,8 +181,8 @@ void Tensor::Transpose()
 	T=new Tensor(b,a,c,d);
       }
   
-    for(int i=0;i<a;++i)
-      for(int j=0;j<b;++j)
+    for(int i=0;i<a;i++)
+      for(int j=0;j<b;j++)
 	T->ptr[j]->ptr[i]->ptr2=ptr[i]->ptr[j]->ptr2;
   }
   else {
@@ -197,8 +199,8 @@ void Tensor::UnTranspose()
 	return;
       }
     
-    for(int i=0;i<a;++i)
-      for(int j=0;j<b;++j)
+    for(int i=0;i<a;i++)
+      for(int j=0;j<b;j++)
 	ptr[i]->ptr[j]->ptr2=T->ptr[j]->ptr[i]->ptr2;
   }
   else {
@@ -270,7 +272,7 @@ void Tensor::resize(int d1,int d2,int d3) {
     exit(1);
   }
   // CPU
-  for(int i=0;i<a;++i) {
+  for(int i=0;i<a;i++) {
     delete(ptr[i]);
   }
   delete ptr;
@@ -283,7 +285,7 @@ void Tensor::resize(int d1,int d2,int d3) {
 
   // CPU
   ptr=(Tensor **)malloc(a*sizeof(Tensor *));
-  for(int i=0;i<a;++i)
+  for(int i=0;i<a;i++)
     ptr[i]=new Tensor(b,c);
 }
 
@@ -294,7 +296,7 @@ void Tensor::resize(int d1,int d2,int d3,int d4) {
   }
 
   // CPU
-  for(int i=0;i<a;++i) {
+  for(int i=0;i<a;i++) {
     delete(ptr[i]);
   }
   delete ptr;
@@ -310,7 +312,7 @@ void Tensor::resize(int d1,int d2,int d3,int d4) {
 
   // CPU
   ptr=(Tensor **)malloc(a*sizeof(Tensor *));
-  for(int i=0;i<a;++i)
+  for(int i=0;i<a;i++)
     ptr[i]=new Tensor(b,c,d);
 }
 
@@ -327,7 +329,7 @@ int Tensor::eqsize(Tensor *A)
 
   if (dim>2) {
     if (a!=A->a) return 0;
-    for(int i=0;i<a;++i)
+    for(int i=0;i<a;i++)
       if (!ptr[i]->eqsize(A->ptr[i])) return 0;
   }
 
@@ -346,7 +348,7 @@ Tensor::~Tensor()
     if (dim==1) ptr1.resize(0);
     else if (dim==2) ptr2.resize(0,0);
     else if (dim>2) {
-      for(int i=0;i<a;++i) {
+      for(int i=0;i<a;i++) {
         delete ptr[i];
       }
     delete ptr;
@@ -371,28 +373,28 @@ Tensor* Tensor::toLin()
   }
   else if (dim==2) {    
 #pragma omp parallel for
-    for(int i=0;i<a;++i) {
+    for(int i=0;i<a;i++) {
       int p=i*b;
-      for(int j=0;j<b;++j,++p)
+      for(int j=0;j<b;j++,p++)
 	n->ptr1(p)=ptr2(i,j);
     } 
   }
   else if (dim==3) {
 #pragma omp parallel for
-    for(int i=0;i<a;++i) {
+    for(int i=0;i<a;i++) {
       int p=i*b*c;
-      for(int j=0;j<b;++j)
-	for(int k=0;k<c;++k,++p)
+      for(int j=0;j<b;j++)
+	for(int k=0;k<c;k++,p++)
 	  n->ptr1(p)=ptr[i]->ptr2(j,k);
     }
   }
   else if (dim==4) {
 #pragma omp parallel for
-    for(int i=0;i<a;++i) {
+    for(int i=0;i<a;i++) {
       int p=i*b*c*d;
-      for(int j=0;j<b;++j)
-	for(int k=0;k<c;++k)
-	  for(int l=0;l<d;++l,++p) 
+      for(int j=0;j<b;j++)
+	for(int k=0;k<c;k++)
+	  for(int l=0;l<d;l++,p++) 
 	    n->ptr1(p)=ptr[i]->ptr[j]->ptr2(k,l);
     }
   }
@@ -410,28 +412,28 @@ void Tensor::fromLin(Tensor *T)
   }
   else if (dim==2) {
 #pragma omp parallel for
-    for(int i=0;i<a;++i) {
+    for(int i=0;i<a;i++) {
       int p=i*b;
-      for(int j=0;j<b;++j,++p)
+      for(int j=0;j<b;j++,p++)
 	ptr2(i,j)=T->ptr1(p);
     }
   }
   else if (dim==3) {
 #pragma omp parallel for
-    for(int i=0;i<a;++i) {
+    for(int i=0;i<a;i++) {
       int p=i*b*c;
-      for(int j=0;j<b;++j)
-	for(int k=0;k<c;++k,++p)
+      for(int j=0;j<b;j++)
+	for(int k=0;k<c;k++,p++)
 	  ptr[i]->ptr2(j,k)=T->ptr1(p);
     }
   }
   else if (dim==4) {
 #pragma omp parallel for
-    for(int i=0;i<a;++i) {
+    for(int i=0;i<a;i++) {
     int p=i*b*c*d;
-      for(int j=0;j<b;++j)
-	for(int k=0;k<c;++k)
-	  for(int l=0;l<d;++l,++p)
+      for(int j=0;j<b;j++)
+	for(int k=0;k<c;k++)
+	  for(int l=0;l<d;l++,p++)
 	    ptr[i]->ptr[j]->ptr2(k,l)=T->ptr1(p);
     }
   }
@@ -452,7 +454,7 @@ int Tensor::equal(Tensor *T)
     Tensor *n1=toLin();
     Tensor *n2=T->toLin();
 
-    for(int i=0;i<size;++i) {
+    for(int i=0;i<size;i++) {
       int v1=10000*n1->ptr1(i);
       int v2=10000*n2->ptr1(i);
       if (v1!=v2) {
@@ -509,7 +511,7 @@ void Tensor::copy(Tensor *T)  //copy, reshape etc...
     if (T->dim==2)
       ptr2=T->ptr2;
     if (T->dim>2) {
-      for(int i=0;i<a;++i)
+      for(int i=0;i<a;i++)
 	ptr[i]->copy(T->ptr[i]);
     }
   }
@@ -537,8 +539,8 @@ void Tensor::copylabels(Data *D)
 
   if(useCPU) {
 #pragma omp parallel for
-    for(int i=0;i<a;++i)
-      for(int j=0;j<b;++j)
+    for(int i=0;i<a;i++)
+      for(int j=0;j<b;j++)
 	ptr2(i,j)=D->M(D->getpos(i),j+D->dim);
     
   }
@@ -550,9 +552,9 @@ void Tensor::copylabels(Data *D)
       size_t counter=0;
       data_aux = (float*)malloc(a*b*sizeof(float));
       
-      for (int i=0;i<a;++i)
+      for (int i=0;i<a;i++)
 	{
-	  for(int j=0;j<b;++j)
+	  for(int j=0;j<b;j++)
 	    batch_aux[j]=D->M(D->getpos(i),j+D->dim);
 	  memcpy((void*)data_aux+counter,batch_aux,b*sizeof(float));
 	  counter+=b*sizeof(float);
@@ -573,11 +575,11 @@ void Tensor::copyfromEigen(LMatrix M)
     }
     else if (dim==4) {
       #pragma omp parallel for
-      for(int i=0;i<a;++i) {
+      for(int i=0;i<a;i++) {
         int p=0;
-        for(int j=0;j<b;++j)
-          for(int k=0;k<c;++k)
-            for(int l=0;l<d;++l,++p)
+        for(int j=0;j<b;j++)
+          for(int k=0;k<c;k++)
+            for(int l=0;l<d;l++,p++)
               ptr[i]->ptr[j]->ptr2(k,l)=M(i,p);
       }
     }
@@ -596,17 +598,17 @@ void Tensor::copyfromData(Data *D)
    //a_batch 
     if (dim==2) {
       #pragma omp parallel for
-      for(int i=0;i<a;++i) 
-        for(int j=0;j<b;++j)
+      for(int i=0;i<a;i++) 
+        for(int j=0;j<b;j++)
 	  ptr2(i,j)=D->M(D->getpos(i),j);
     }
     else if (dim==4) {
       #pragma omp parallel for
-      for(int i=0;i<a;++i) {
+      for(int i=0;i<a;i++) {
         int p=0;
-        for(int j=0;j<b;++j)
-	  for(int k=0;k<c;++k)
-	    for(int l=0;l<d;++l,++p)
+        for(int j=0;j<b;j++)
+	  for(int k=0;k<c;k++)
+	    for(int l=0;l<d;l++,p++)
 	      ptr[i]->ptr[j]->ptr2(k,l)=D->M(D->getpos(i),p);
       }
     }  
@@ -623,9 +625,9 @@ void Tensor::copyfromData(Data *D)
       data_aux = (float*)malloc(a*b*sizeof(float));
   
 
-      for (int i=0;i<a;++i)
+      for (int i=0;i<a;i++)
       {
-        for(int j=0;j<b;++j)
+        for(int j=0;j<b;j++)
         	batch_aux[j]=D->M(D->getpos(i),j);
         memcpy((void*)data_aux+counter,batch_aux,b*sizeof(float));
         counter+=b*sizeof(float);
@@ -650,7 +652,7 @@ void Tensor::copyStatistics(Data *D,int tipe)
       data_aux = (float*)malloc(a*sizeof(float));
       if (tipe==1)//std
       {
-	  for(int j=0;j<a;++j)
+	  for(int j=0;j<a;j++)
 	    batch_aux[j]=D->fsd[j+D->dim],j+D->dim;
           
 	  memcpy((void*)data_aux+counter,batch_aux,a*sizeof(float));
@@ -658,7 +660,7 @@ void Tensor::copyStatistics(Data *D,int tipe)
       }
       else if (tipe==2)	//mean
       {
-	  for(int j=0;j<a;++j)
+	  for(int j=0;j<a;j++)
 	    batch_aux[j]=D->fmu[j+D->dim],j+D->dim;
           
 	  memcpy((void*)data_aux+counter,batch_aux,a*sizeof(float));
@@ -680,24 +682,24 @@ void Tensor::set(LType val)
  { 
   if (dim==1) {
     #pragma omp parallel for
-    for(int i=0;i<a;++i) ptr1(i)=val;
+    for(int i=0;i<a;i++) ptr1(i)=val;
   }
   else if (dim==2) {
     #pragma omp parallel for
-    for(int i=0;i<a;++i) 
-      for(int j=0;j<b;++j) ptr2(i,j)=val;
+    for(int i=0;i<a;i++) 
+      for(int j=0;j<b;j++) ptr2(i,j)=val;
   }
   else if (dim==3) {
-    for(int i=0;i<a;++i)
+    for(int i=0;i<a;i++)
       ptr[i]->set(val);
     
   }
   else if (dim==4) {
     #pragma omp parallel for
-    for(int i=0;i<a;++i) 
-      for(int j=0;j<b;++j)
-	for(int k=0;k<c;++k)
-	  for(int l=0;l<d;++l)
+    for(int i=0;i<a;i++) 
+      for(int j=0;j<b;j++)
+	for(int k=0;k<c;k++)
+	  for(int l=0;l<d;l++)
 	    ptr[i]->ptr[j]->ptr2(k,l)=val;
     
 
@@ -712,7 +714,7 @@ void Tensor::set(LType val)
    else
    {
       //#pragma omp parallel for
-      for(int i=0;i<a;++i)
+      for(int i=0;i<a;i++)
       {
          printf("%d of %d",i,a);
          ptr[i]->set(val); 
@@ -833,7 +835,7 @@ void Tensor::set_rand_binary(LType val)
   Tensor *n=new Tensor(size);
   int s=rand()%LUT;
   //CPU
-  for(int i=0;i<n->ptr1.size();++i) {
+  for(int i=0;i<n->ptr1.size();i++) {
     int c=(s*i)%LUT;
     if (un[(c++)%LUT]>val) n->ptr1(i)=1;
     else n->ptr1(i)=0;
@@ -858,7 +860,7 @@ void Tensor::set_rand_signed_uniform(LType val)
   Tensor *n=new Tensor(size);
 
   //CPU
-  for(int i=0;i<n->ptr1.size();++i) 
+  for(int i=0;i<n->ptr1.size();i++) 
       n->ptr1(i)=val*suniform();
   ////
 
@@ -877,7 +879,7 @@ void Tensor::set_rand_uniform(LType val)
   Tensor *n=new Tensor(size);
 
   //CPU
-  for(int i=0;i<n->ptr1.size();++i) 
+  for(int i=0;i<n->ptr1.size();i++) 
     n->ptr1(i)=val*uniform();
   /////
   
@@ -893,7 +895,7 @@ void Tensor::set_rand_gauss(LType m,LType sd)
   Tensor *n=new Tensor(size);
 
   //CPU
-  for(int i=0;i<n->ptr1.size();++i) 
+  for(int i=0;i<n->ptr1.size();i++) 
       n->ptr1(i)=gauss(m,sd);
   //////
 
@@ -921,14 +923,14 @@ void Tensor::add_noise_gauss(LType noiser,LType mean,LType noisesd)
   if (noiser==1) {
     if (mean==0.0) {
 #pragma omp parallel for
-      for(int i=0;i<n->ptr1.size();++i) {
+      for(int i=0;i<n->ptr1.size();i++) {
 	int c=(i*s)%LUT;
 	n->ptr1(i)+=noisesd*gn[(c++)%LUT];
       }
     }
     else {
 #pragma omp parallel for
-      for(int i=0;i<n->ptr1.size();++i) {
+      for(int i=0;i<n->ptr1.size();i++) {
 	int c=(i*s)%LUT;
 	n->ptr1(i)+=mean+noisesd*gn[(c++)%LUT];
       }
@@ -936,7 +938,7 @@ void Tensor::add_noise_gauss(LType noiser,LType mean,LType noisesd)
   }
   else {
 #pragma omp parallel for
-    for(int i=0;i<n->ptr1.size();++i) {
+    for(int i=0;i<n->ptr1.size();i++) {
       int c=(i*s)%LUT;
       if (un[(c++)%LUT]<noiser) 
 	n->ptr1(i)+=mean+noisesd*gn[(c++)%LUT];
@@ -968,7 +970,7 @@ void Tensor::add_noise_binary(LType noiseb)
       int s=rand();
       //CPU                                                                                         
 #pragma omp parallel for
-      for(int i=0;i<n->ptr1.size();++i) {
+      for(int i=0;i<n->ptr1.size();i++) {
 	int c=(i*s)%LUT;
 	if (un[(c++)%LUT]<noiseb){
 	  n->ptr1(i)=1.0;
@@ -1073,14 +1075,14 @@ LType Tensor::get(int a,int b,int c,int d)
 void Tensor::save(FILE *fs,int nl=0)
 {
   if (dim==1) 
-    for(int i=0;i<a;++i) 
+    for(int i=0;i<a;i++) 
       fprintf(fs,"%f ",ptr1(i));
   else if (dim==2) 
-    for(int i=0;i<a;++i) 
-      for(int j=0;j<b;++j)
+    for(int i=0;i<a;i++) 
+      for(int j=0;j<b;j++)
 	fprintf(fs,"%f ",ptr2(i,j));
   else
-    for(int i=0;i<a;++i) 
+    for(int i=0;i<a;i++) 
       ptr[i]->save(fs);
 
   if (nl) fprintf(fs,"\n");
@@ -1092,18 +1094,18 @@ void Tensor::load(FILE *fs)
   int fr;
 
   if (dim==1) 
-    for(int i=0;i<a;++i) {
+    for(int i=0;i<a;i++) {
       fr=fscanf(fs,"%f ",&fv);
       ptr1(i)=fv;
     }
   else if (dim==2) 
-    for(int i=0;i<a;++i) 
-      for(int j=0;j<b;++j) {
+    for(int i=0;i<a;i++) 
+      for(int j=0;j<b;j++) {
 	fr=fscanf(fs,"%f ",&fv);
 	ptr2(i,j)=fv;
       }
   else
-    for(int i=0;i<a;++i) 
+    for(int i=0;i<a;i++) 
       ptr[i]->load(fs);
 }
 
@@ -1114,18 +1116,18 @@ void Tensor::mul(LType val)
     {
       if (dim==1)
 #pragma omp parallel for
-	for(int i=0;i<a;++i) ptr1(i)*=val;
+	for(int i=0;i<a;i++) ptr1(i)*=val;
       else if (dim==2)
 #pragma omp parallel for
-	for(int i=0;i<a;++i)
-	  for(int j=0;j<b;++j)
+	for(int i=0;i<a;i++)
+	  for(int j=0;j<b;j++)
 	    ptr2(i,j)*=val;
       else if (dim==4){
 #pragma omp parallel for
-	for(int i=0;i<a;++i) 
-	  for(int j=0;j<b;++j)
-	    for(int k=0;k<c;++k)
-	      for(int l=0;l<d;++l)
+	for(int i=0;i<a;i++) 
+	  for(int j=0;j<b;j++)
+	    for(int k=0;k<c;k++)
+	      for(int l=0;l<d;l++)
 		ptr[i]->ptr[j]->ptr2(k,l)*=val;
       }
     }
@@ -1146,18 +1148,18 @@ void Tensor::div(LType val)
     {
       if (dim==1)
 	  #pragma omp parallel for
-	for(int i=0;i<a;++i) ptr1(i)/=val;
+	for(int i=0;i<a;i++) ptr1(i)/=val;
       else if (dim==2)
   #pragma omp parallel for
-	for(int i=0;i<a;++i)
-	  for(int j=0;j<b;++j)
+	for(int i=0;i<a;i++)
+	  for(int j=0;j<b;j++)
 	    ptr2(i,j)/=val;
        else if (dim==4){
 #pragma omp parallel for
-	for(int i=0;i<a;++i) 
-	  for(int j=0;j<b;++j)
-	    for(int k=0;k<c;++k)
-	      for(int l=0;l<d;++l)
+	for(int i=0;i<a;i++) 
+	  for(int j=0;j<b;j++)
+	    for(int k=0;k<c;k++)
+	      for(int l=0;l<d;l++)
 		ptr[i]->ptr[j]->ptr2(k,l)/=val;
       }
     }
@@ -1178,18 +1180,18 @@ void Tensor::add(LType val)
     {
       if (dim==1)
 	  #pragma omp parallel for
-	for(int i=0;i<a;++i) ptr1(i)+=val;
+	for(int i=0;i<a;i++) ptr1(i)+=val;
       else if (dim==2)
 	  #pragma omp parallel for
-	for(int i=0;i<a;++i)
-	  for(int j=0;j<b;++j)
+	for(int i=0;i<a;i++)
+	  for(int j=0;j<b;j++)
 	    ptr2(i,j)+=val;
        else if (dim==4){
 #pragma omp parallel for
-	for(int i=0;i<a;++i) 
-	  for(int j=0;j<b;++j)
-	    for(int k=0;k<c;++k)
-	      for(int l=0;l<d;++l)
+	for(int i=0;i<a;i++) 
+	  for(int j=0;j<b;j++)
+	    for(int k=0;k<c;k++)
+	      for(int l=0;l<d;l++)
 		ptr[i]->ptr[j]->ptr2(k,l)+=val;
       }
     }
@@ -1208,18 +1210,18 @@ void Tensor::abs()
     {
       if (dim==1)
 	  #pragma omp parallel for
-	for(int i=0;i<a;++i) ptr1(i)=fabs(ptr1(i));
+	for(int i=0;i<a;i++) ptr1(i)=fabs(ptr1(i));
       else if (dim==2)
 	  #pragma omp parallel for
-	for(int i=0;i<a;++i)
-	  for(int j=0;j<b;++j)
+	for(int i=0;i<a;i++)
+	  for(int j=0;j<b;j++)
 	    ptr2(i,j)=fabs(ptr2(i,j));
        else if (dim==4){
 #pragma omp parallel for
-	for(int i=0;i<a;++i) 
-	  for(int j=0;j<b;++j)
-	    for(int k=0;k<c;++k)
-	      for(int l=0;l<d;++l)
+	for(int i=0;i<a;i++) 
+	  for(int j=0;j<b;j++)
+	    for(int k=0;k<c;k++)
+	      for(int l=0;l<d;l++)
 		ptr[i]->ptr[j]->ptr2(k,l)=fabs(ptr[i]->ptr[j]->ptr2(k,l));
       }
     }
@@ -1239,18 +1241,18 @@ void Tensor::sqr()
     {
       if (dim==1)
 	  #pragma omp parallel for
-	for(int i=0;i<a;++i) ptr1(i)=sqrt(ptr1(i));
+	for(int i=0;i<a;i++) ptr1(i)=sqrt(ptr1(i));
       else if (dim==2)
 	  #pragma omp parallel for
-	for(int i=0;i<a;++i)
-	  for(int j=0;j<b;++j)
+	for(int i=0;i<a;i++)
+	  for(int j=0;j<b;j++)
 	    ptr2(i,j)=sqrt(ptr2(i,j));
        else if (dim==4){
 #pragma omp parallel for
-	for(int i=0;i<a;++i) 
-	  for(int j=0;j<b;++j)
-	    for(int k=0;k<c;++k)
-	      for(int l=0;l<d;++l)
+	for(int i=0;i<a;i++) 
+	  for(int j=0;j<b;j++)
+	    for(int k=0;k<c;k++)
+	      for(int l=0;l<d;l++)
 		ptr[i]->ptr[j]->ptr2(k,l)=sqrt(ptr[i]->ptr[j]->ptr2(k,l));
       }
     }
@@ -1275,7 +1277,7 @@ LType Tensor::sum()
   else if (dim==2) return ptr2.sum();
   else {
     LType sum=0;
-    for(int i=0;i<a;++i)
+    for(int i=0;i<a;i++)
       sum+=ptr[i]->sum();
 
     return sum;
@@ -1366,7 +1368,7 @@ void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double 
     Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
     Tensor::el_mult(Res,0,Res,0,Res,0); //(T-N)*(T-N)
     mse+=Res->sum()/T->b;
-  
+
     Tensor::sum(1,T,0,-1,N,0,Res,0); // T-N
     if(useCPU)
       {
@@ -1386,14 +1388,14 @@ void Tensor::loss_sse(Tensor *T,Tensor *N,Data *D,int offset,double &mae,double 
     mae+=Res->sum()/T->b;
     delete Res;
   }
-  else { //D!=NULL hay que deshacer normalización por si existiera
+  else { //D!=NULL hay que deshacer normalización
     if (useCPU) {
-      for(int i=0;i<N->a;++i)
-	for(int j=0;j<N->b;++j) {
+      for(int i=0;i<N->a;i++)
+	for(int j=0;j<N->b;j++) {
 	  float Tn,Nn;
 	  Tn=(T->ptr2(i,j)*D->fsd[j+offset])+D->fmu[j+offset];
 	  Nn=(N->ptr2(i,j)*D->fsd[j+offset])+D->fmu[j+offset];
-
+	  
 	  mse+=(Tn-Nn)*(Tn-Nn)/T->b;
 	  mae+=fabs(Tn-Nn)/T->b;
 	}
@@ -1458,18 +1460,18 @@ void Tensor::loss_cross_entropy(Tensor *T,Tensor *N,double &cerr,double &ent)
   if (useCPU) {
     if (T->b>1) {
       int i,j,rindex,nindex;
-      for(i=0;i<T->a;++i) {
+      for(i=0;i<T->a;i++) {
 	T->row_max(i,&rindex);
 	N->row_max(i,&nindex);
 	if (rindex!=nindex) cerr++;
-	for(j=0;j<T->b;++j) {
+	for(j=0;j<T->b;j++) {
 	  if (j==rindex) {if (N->ptr2(i,j)!=0.0) ent-=log(N->ptr2(i,j));}
 	  else if (N->ptr2(i,j)!=1.0) ent-=log(1-N->ptr2(i,j));
 	}
       }
     }
     else {
-      for(int i=0;i<T->a;++i) {
+      for(int i=0;i<T->a;i++) {
 	if (T->ptr2(i,0)) {
 	  ent-=log(N->ptr2(i,0));
 	  if (N->ptr2(i,0)<0.5) cerr++;
@@ -1488,11 +1490,11 @@ void Tensor::loss_cross_entropy(Tensor *T,Tensor *N,double &cerr,double &ent)
     if (op)
     {
        int i,j,rindex,nindex;
-    for(i=0;i<T->a;++i) {
+    for(i=0;i<T->a;i++) {
       T->row_max(i,&rindex);
       N->row_max(i,&nindex);
       if (rindex!=nindex) cerr++;
-      for(j=0;j<T->b;++j) {
+      for(j=0;j<T->b;j++) {
 	if (j==rindex) {if (N->get(i,j)!=0.0) ent-=log(N->get(i,j));}
 	else if (N->get(i,j)!=1.0) ent-=log(1-N->get(i,j));
       }
@@ -1580,7 +1582,7 @@ Tensor * Tensor::sc_mult(Tensor *A, LType sc, Tensor *B, int inc)
       else B->ptr2=sc*A->ptr2;
     }
     else {
-      for(int i=0;i<A->a;++i)
+      for(int i=0;i<A->a;i++)
         Tensor::sc_mult(A->ptr[i],sc,B->ptr[i],inc);
     }
   }
@@ -1634,7 +1636,7 @@ Tensor * Tensor::el_mult(Tensor *A, int tA, Tensor *B, int tB, Tensor *C, int in
       if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr2+=A->ptr2.transpose().cwiseProduct(B->ptr2.transpose());
     }
     else {
-      for(int i=0;i<A->a;++i)
+      for(int i=0;i<A->a;i++)
         Tensor::el_mult(A->ptr[i],tA,B->ptr[i],tB,C->ptr[i],inc);
     }
   }
@@ -1657,7 +1659,7 @@ Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
 {
   if(useCPU)
   {
-  for(int i=0;i<A->a;++i) {
+  for(int i=0;i<A->a;i++) {
     LMatrix Res=A->ptr2.row(i).transpose()*B->ptr2.row(i);
     Map<RowVectorXf> v(Res.data(), Res.size());
     C->ptr2.row(i)=v;
@@ -1715,7 +1717,7 @@ Tensor * Tensor::out_mult(Tensor *A, Tensor *B, Tensor *C, int inc)
       if ((tA==1)&&(tB==1)&&(inc==1)) C->ptr2+=(sca*A->ptr2.transpose())+(scb*B->ptr2.transpose());
     }
     else {
-      for(int i=0;i<A->a;++i)
+      for(int i=0;i<A->a;i++)
         Tensor::sum(sca,A->ptr[i], tA, scb,B->ptr[i],tB, C->ptr[i],inc);
 
     }
@@ -1734,7 +1736,7 @@ void Tensor::sumcol(Tensor *A,Tensor *B)
   int j;
   
   if (useCPU) {
-    for(j=0;j<A->a;++j)
+    for(j=0;j<A->a;j++)
       A->set(j,B->ptr2.col(j).sum());
   }
   #ifdef fGPU
@@ -1766,7 +1768,7 @@ void Tensor::sumcol(Tensor *A,Tensor *B)
     if (A->dim==1) C->ptr1+=A->ptr1;
     else  if (A->dim==2) C->ptr2+=A->ptr2;
     else {
-      for(int i=0;i<A->a;++i)
+      for(int i=0;i<A->a;i++)
         Tensor::inc(A->ptr[i],C->ptr[i]);
     }
   }
@@ -1796,20 +1798,20 @@ Tensor * Tensor::sc_sum(Tensor *A, LType sc,Tensor *B,int inc)
   if (useCPU)
   {
     if (A->dim==1) {
-      for (int i=0;i<B->a;++i)
+      for (int i=0;i<B->a;i++)
         if (inc)
 	  B->ptr1(i)+=sc+A->ptr2(i);
         else
 	  B->ptr1(i)=sc+A->ptr2(i);
     }
     else if (A->dim==2) {
-      for (int i=0;i<B->a;++i)
-        for(int j=0;j<B->b;++j)
+      for (int i=0;i<B->a;i++)
+        for(int j=0;j<B->b;j++)
 	  if (inc) B->ptr2(i,j)+=sc+A->ptr2(i,j);
 	  else B->ptr2(i,j)=sc+A->ptr2(i,j);
     }
     else {
-      for(int i=0;i<A->a;++i)
+      for(int i=0;i<A->a;i++)
         Tensor::sc_sum(A->ptr[i], sc, B->ptr[i],inc);
     }
   }
@@ -1845,7 +1847,7 @@ void Tensor::activation(Tensor *E,Tensor *N,int act)
     }
     /////
     if (E->dim>2) {
-      for(int i=0;i<E->a;++i) 
+      for(int i=0;i<E->a;i++) 
         Tensor::activation(E->ptr[i],N->ptr[i],act);
     }
   }
@@ -1873,25 +1875,25 @@ void Tensor::print(const char *cad="")
 {
   fprintf(stderr,"%s\n",cad);
   if (dim==1) {
-    for(int i=0;i<a;++i)
+    for(int i=0;i<a;i++)
       fprintf(stderr,"%1.3f ",ptr1(i));
     fprintf(stderr,"\n");
   }
   if (dim==2) {
-    for(int i=0;i<a;++i) {
-      for(int j=0;j<b;++j)
+    for(int i=0;i<a;i++) {
+      for(int j=0;j<b;j++)
         fprintf(stderr,"%1.3f ",ptr2(i,j));
       fprintf(stderr,"\n");
     }
   }
   else if (dim==3) {
-    for(int i=0;i<a;++i) {
+    for(int i=0;i<a;i++) {
       fprintf(stderr,"==== 3(%d) ====\n",i);
       ptr[i]->print();
     }
   }
   else if (dim==4) {
-    for(int i=0;i<a;++i) {
+    for(int i=0;i<a;i++) {
       fprintf(stderr,"==== 4(%d) ====\n",i);
       ptr[i]->print();
     }
@@ -1906,8 +1908,8 @@ void Tensor::dactivation(Tensor *E,Tensor *N, Tensor *D, int act)
   {
   //E->print();
   if (E->dim==2) {
-  for(int i=0;i<E->a;++i)
-    for(int j=0;j<E->b;++j)
+  for(int i=0;i<E->a;i++)
+    for(int j=0;j<E->b;j++)
       if (act==ACT_LIN) 
 	D->ptr2(i,j)=1;
       else if (act==ACT_RLU) {
@@ -1922,7 +1924,7 @@ void Tensor::dactivation(Tensor *E,Tensor *N, Tensor *D, int act)
       }
   }
   else if (E->dim>2) {
-    for(int i=0;i<E->a;++i)
+    for(int i=0;i<E->a;i++)
       Tensor::dactivation(E->ptr[i],N->ptr[i],D->ptr[i],act);
   }
   }
@@ -1942,8 +1944,8 @@ void Tensor::maskZeros(Tensor *mask,Tensor *A)
       if (A->dim==2) 
 	A->ptr2=A->ptr2.array().rowwise()*mask->ptr1.array();
       else if (A->dim==4) 
-	for(int i=0;i<A->a;++i) 
-	  for(int j=0;j<A->b;++j)
+	for(int i=0;i<A->a;i++) 
+	  for(int j=0;j<A->b;j++)
 	    A->ptr[i]->ptr[j]->ptr2=A->ptr[i]->ptr[j]->ptr2.cwiseProduct(mask->ptr[j]->ptr2);
     }
 #ifdef fGPU
@@ -1966,7 +1968,7 @@ void Tensor::RegL1(Tensor *A,LType l1)
   Tensor *N=A->toLin();
 
  #pragma omp parallel for
- for(int i=0;i<N->a;++i) 
+ for(int i=0;i<N->a;i++) 
     if (N->ptr1(i)>0) N->ptr1(i)-=l1;
     else N->ptr1(i)+=l1;
   
@@ -1976,7 +1978,7 @@ void Tensor::RegL1(Tensor *A,LType l1)
 void Tensor::RegMaxN(Tensor *A,LType maxn) 
 {
   if (A->dim==2) {
-    for(int i=0;i<A->b;++i){
+    for(int i=0;i<A->b;i++){
       LType n=A->ptr2.col(i).norm();
       if (n>maxn) {
 	A->ptr2.col(i)=(maxn/n)*A->ptr2.col(i);
@@ -1996,14 +1998,14 @@ void Tensor::augment(Tensor *A, Tensor *B, int adim)
   
   if (adim==0) {
     #pragma omp parallel for
-    for(int i=0;i<B->a;++i) 
-      for(int j=0;j<B->b;++j) 
+    for(int i=0;i<B->a;i++) 
+      for(int j=0;j<B->b;j++) 
 	B->ptr2(i,j)=A->ptr1(i);
   }
   else {
     #pragma omp parallel for
-    for(int i=0;i<B->a;++i)
-      for(int j=0;j<B->b;++j)
+    for(int i=0;i<B->a;i++)
+      for(int j=0;j<B->b;j++)
 	B->ptr2(i,j)=A->ptr1(j);
   }
 }
@@ -2021,22 +2023,22 @@ Tensor * Tensor::reduce(Tensor *A,int rdim)
   if (rdim==0) {
     N=new Tensor(A->a,A->b*A->c*A->d);
 #pragma omp parallel for
-    for(int i=0;i<A->a;++i) {
+    for(int i=0;i<A->a;i++) {
       int p=0;
-      for(int j=0;j<A->b;++j)
-	for(int k=0;k<A->c;++k)
-	  for(int l=0;l<A->d;++l,++p)
+      for(int j=0;j<A->b;j++)
+	for(int k=0;k<A->c;k++)
+	  for(int l=0;l<A->d;l++,p++)
 	    N->ptr2(i,p)=A->ptr[i]->ptr[j]->ptr2(k,l);
     }
   }
   else if (rdim==1) {
     N=new Tensor(A->b,A->a*A->c*A->d);
 #pragma omp parallel for
-    for(int i=0;i<A->b;++i) {
+    for(int i=0;i<A->b;i++) {
       int p=0;
-      for(int j=0;j<A->a;++j)
-	for(int k=0;k<A->c;++k)
-	  for(int l=0;l<A->d;++l,++p)
+      for(int j=0;j<A->a;j++)
+	for(int k=0;k<A->c;k++)
+	  for(int l=0;l<A->d;l++,p++)
 	    N->ptr2(i,p)=A->ptr[j]->ptr[i]->ptr2(k,l);
     }
   }
@@ -2057,17 +2059,17 @@ void Tensor::reduceTosum(Tensor *A, Tensor *B,int row)
     if (useCPU) {
       if (row) {
 #pragma omp parallel for
-	for(int i=0;i<A->b;++i) {
+	for(int i=0;i<A->b;i++) {
 	  B->ptr1(i)=0;
-	  for(int j=0;j<A->a;++j)
+	  for(int j=0;j<A->a;j++)
 	    B->ptr1(i)+=A->ptr2(j,i);
 	}
       }
       else {
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i) {
+	for(int i=0;i<A->a;i++) {
 	  B->ptr1(i)=0;
-	  for(int j=0;j<A->b;++j)
+	  for(int j=0;j<A->b;j++)
 	    B->ptr1(i)+=A->ptr2(i,j);
 	}
       }
@@ -2150,14 +2152,14 @@ void Tensor::reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int 
     if (useCPU) {
       if (rdim==0)
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
 	    if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
 	    else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(i));
       else 
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
 	    if (inc) C->ptr2(i,j)+=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
 	    else  C->ptr2(i,j)=(scA*A->ptr2(i,j))+(scB*B->ptr1(j));
     }
@@ -2178,18 +2180,18 @@ void Tensor::reduced_sum(float scA, Tensor *A,float scB,Tensor *B,Tensor *C,int 
     if (useCPU) {
     if (rdim==0)
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
-	    for(int k=0;k<A->c;++k)
-	      for(int l=0;l<A->d;++l)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
 		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=(scA*A->ptr[i]->ptr[j]->ptr2(k,l))+(scB*B->ptr1(i));
 		else  C->ptr[i]->ptr[j]->ptr2(k,l)=(scA*A->ptr[i]->ptr[j]->ptr2(k,l))+(scB*B->ptr1(i));
     else if (rdim==1)
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
-	    for(int k=0;k<A->c;++k)
-	      for(int l=0;l<A->d;++l)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
 		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=(scA*A->ptr[i]->ptr[j]->ptr2(k,l))+(scB*B->ptr1(j));
 		else  C->ptr[i]->ptr[j]->ptr2(k,l)=(scA*A->ptr[i]->ptr[j]->ptr2(k,l))+(scB*B->ptr1(j));
 
@@ -2213,14 +2215,14 @@ void Tensor::reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
     if (useCPU) {
       if (rdim==0)
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
 	    if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(i);
 	    else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(i);
       else 
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
 	    if (inc) C->ptr2(i,j)+=A->ptr2(i,j)/B->ptr1(j);
 	    else C->ptr2(i,j)=A->ptr2(i,j)/B->ptr1(j);
     }
@@ -2241,18 +2243,18 @@ void Tensor::reduced_div(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
     if (useCPU) {
       if (rdim==0)
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
-	    for(int k=0;k<A->c;++k)
-	      for(int l=0;l<A->d;++l)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
 		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=A->ptr[i]->ptr[j]->ptr2(k,l)/B->ptr1(i);
 		else  C->ptr[i]->ptr[j]->ptr2(k,l)=A->ptr[i]->ptr[j]->ptr2(k,l)/B->ptr1(i);
       else if (rdim==1)
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
-	    for(int k=0;k<A->c;++k)
-	      for(int l=0;l<A->d;++l)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
 		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=A->ptr[i]->ptr[j]->ptr2(k,l)/B->ptr1(j);
 		else  C->ptr[i]->ptr[j]->ptr2(k,l)=A->ptr[i]->ptr[j]->ptr2(k,l)/B->ptr1(j);
 
@@ -2277,14 +2279,14 @@ void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
     if (useCPU) {
       if (rdim==0)
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
 	    if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(i);
 	    else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(i);
       else 
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
 	    if (inc) C->ptr2(i,j)+=A->ptr2(i,j)*B->ptr1(j);
 	    else C->ptr2(i,j)=A->ptr2(i,j)*B->ptr1(j);
     }
@@ -2306,18 +2308,18 @@ void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
       
       if (rdim==0)
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
-	    for(int k=0;k<A->c;++k)
-	      for(int l=0;l<A->d;++l)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
 		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=A->ptr[i]->ptr[j]->ptr2(k,l)*B->ptr1(i);
 		else  C->ptr[i]->ptr[j]->ptr2(k,l)=A->ptr[i]->ptr[j]->ptr2(k,l)*B->ptr1(i);
       else if (rdim==1)
 #pragma omp parallel for
-	for(int i=0;i<A->a;++i)
-	  for(int j=0;j<A->b;++j)
-	    for(int k=0;k<A->c;++k)
-	      for(int l=0;l<A->d;++l)
+	for(int i=0;i<A->a;i++)
+	  for(int j=0;j<A->b;j++)
+	    for(int k=0;k<A->c;k++)
+	      for(int l=0;l<A->d;l++)
 		if (inc) C->ptr[i]->ptr[j]->ptr2(k,l)+=A->ptr[i]->ptr[j]->ptr2(k,l)*B->ptr1(j);
 		else  C->ptr[i]->ptr[j]->ptr2(k,l)=A->ptr[i]->ptr[j]->ptr2(k,l)*B->ptr1(j);
 
@@ -2347,14 +2349,35 @@ void Tensor::reduced_mult(Tensor *A,Tensor *B,Tensor *C,int inc,int rdim)
 ///////////////////////////////////////////////
 void Tensor::ConvolForward(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int rpad,int cpad,int threads)
 {
-  if(useCPU) 
-    ConvolF(A,K,B,stride,rpad,cpad,threads,A->a);
-  #ifdef fGPU
-  else
-  {
+  if(useCPU) {
+    if (use4D) 
+      ConvolF(A,K,B,stride,rpad,cpad,threads,A->a);
+    else if (use3D) {
+      setNbThreads(1);
+#pragma omp parallel for
+      for(int i=0;i<A->a;i++)
+	for(int k=0;k<K->a;k++) 
+	  Convol3DF(A->ptr[i],K->ptr[k],B->ptr[i]->ptr[k],stride,rpad,cpad);
+      setNbThreads(threads);
+    }
+    else {
+      setNbThreads(1);
+#pragma omp parallel for
+      for(int i=0;i<A->a;i++)
+	for(int j=0;j<A->b;j++)
+	  for(int k=0;k<K->a;k++) 
+	    Convol2DF(A->ptr[i]->ptr[j],K->ptr[k]->ptr[j],B->ptr[i]->ptr[k],stride,rpad,cpad);
+      
+      setNbThreads(threads);
+    }   
   }
- #endif
+#ifdef fGPU
+  else
+    {
+    }
+#endif
 }
+
 void Tensor::ConvolGrad(Tensor *A,Tensor *K,int tK,Tensor *B,int tr,int stride, int rpad,int cpad,int threads)
 {
   //return;
