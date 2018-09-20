@@ -131,9 +131,10 @@ void FLayer::addchild(Layer *li)
 
   int enc=0,i,j;
 
-  for(i=0;i<lout;i++)
-    if (Lout[i]==li) enc=1;
-
+  if (li->type!=OLAYER)
+    for(i=0;i<lout;i++)
+      if (Lout[i]==li) enc=1;
+  
   if (enc) {
     fprintf(stderr,"%s->%s just connected\n",this->name,li->name);
   }
